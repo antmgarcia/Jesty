@@ -1,0 +1,8 @@
+# API key - never commit
+config.js
+
+# Design lab experiments
+design-lab/
+
+# OS files
+.DS_Store

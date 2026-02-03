@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <!-- SVG Character Definitions -->
+  <svg style="display: none;">
+    <defs>
+      <!-- Smug face -->
+      <symbol id="face-smug" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
+        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
+        <path d="M33 19 Q36 17 40 18" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M20 34 Q28 38 36 33" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Suspicious/skeptical face -->
+      <symbol id="face-suspicious" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <path d="M16 25 Q20 23 24 25" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="36" cy="24" rx="3.5" ry="3" fill="#2D2A26"/>
+        <circle cx="37" cy="23" r="1" fill="#FFAB7D"/>
+        <path d="M22 35 L34 35" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Yikes/awkward face -->
+      <symbol id="face-yikes" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <circle cx="20" cy="24" r="4" fill="#2D2A26"/>
+        <circle cx="36" cy="24" r="4" fill="#2D2A26"/>
+        <circle cx="21" cy="23" r="1.5" fill="#FFAB7D"/>
+        <circle cx="37" cy="23" r="1.5" fill="#FFAB7D"/>
+        <path d="M19 34 Q22 36 25 34 Q28 32 31 34 Q34 36 37 34" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Eye roll face -->
+      <symbol id="face-eyeroll" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <circle cx="20" cy="23" r="4" fill="#2D2A26"/>
+        <circle cx="36" cy="23" r="4" fill="#2D2A26"/>
+        <circle cx="20" cy="21" r="2" fill="#FFAB7D"/>
+        <circle cx="36" cy="21" r="2" fill="#FFAB7D"/>
+        <path d="M22 36 Q28 34 34 36" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Disappointed face -->
+      <symbol id="face-disappointed" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <ellipse cx="20" cy="25" rx="3" ry="2.5" fill="#2D2A26"/>
+        <ellipse cx="36" cy="25" rx="3" ry="2.5" fill="#2D2A26"/>
+        <path d="M15 20 Q20 22 25 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M31 20 Q36 22 41 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M21 36 Q28 32 35 36" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Melting/overwhelmed face -->
+      <symbol id="face-melting" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <ellipse cx="28" cy="30" rx="23" ry="21" fill="#FFAB7D"/>
+        <path d="M17 22 L23 28 M23 22 L17 28" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M33 22 L39 28 M39 22 L33 28" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M20 36 Q24 38 28 36 Q32 34 36 36" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Dead/skull face -->
+      <symbol id="face-dead" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <path d="M16 21 L24 29 M24 21 L16 29" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M32 21 L40 29 M40 21 L32 29" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M20 38 L36 38" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M38 12 Q42 8 40 4" stroke="#FFCAB0" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+      </symbol>
+
+      <!-- Thinking/loading face -->
+      <symbol id="face-thinking" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
+        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
+        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
+        <path d="M14 20 Q18 18 22 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="30" cy="35" r="4" fill="#2D2A26"/>
+      </symbol>
+
+      <!-- Search icon -->
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Refresh icon -->
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M21 3v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Top Right Links -->
+  <div class="top-links">
+    <a href="https://mail.google.com" class="top-link">Gmail</a>
+    <a href="https://www.google.com/imghp" class="top-link">Images</a>
+  </div>
+
+  <div class="container">
+    <!-- Google Logo -->
+    <div class="logo">
+      <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" alt="Google">
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+      <form id="search-form" class="search-form">
+        <div class="search-box">
+          <svg class="search-icon"><use href="#icon-search"/></svg>
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="Search Google or type a URL"
+            autocomplete="off"
+            autofocus
+          >
+        </div>
+      </form>
+    </div>
+
+    <!-- Jesty Section -->
+    <div class="jesty-section">
+      <div class="jesty-card" id="jesty-card">
+        <div class="character" id="character">
+          <svg><use href="#face-thinking"/></svg>
+        </div>
+
+        <p id="joke-text" class="joke-text hidden"></p>
+        <p id="loading-text" class="loading-text">Reading your tabs...</p>
+
+        <button id="refresh-btn" class="refresh-btn hidden" title="Get another roast">
+          <svg><use href="#icon-refresh"/></svg>
+        </button>
+      </div>
+
+      <p class="tab-count" id="tab-count"></p>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="newtab.js"></script>
+</body>
+</html>
