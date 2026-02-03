@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Jesty",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI that reads your tabs and judges you. Short, funny, brutal.",
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "sidePanel"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -19,5 +19,8 @@
   },
   "chrome_url_overrides": {
     "newtab": "newtab.html"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   }
 }

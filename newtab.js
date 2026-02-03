@@ -54,6 +54,7 @@ async function init() {
   const searchForm = document.getElementById('search-form');
   const searchInput = document.getElementById('search-input');
   const refreshBtn = document.getElementById('refresh-btn');
+  const talkbackBtn = document.getElementById('talkback-btn');
   const tabCountEl = document.getElementById('tab-count');
 
   // Show tab count
@@ -77,8 +78,20 @@ async function init() {
   // Refresh button
   refreshBtn.addEventListener('click', generateRoast);
 
+  // Talk back button - opens side panel
+  talkbackBtn.addEventListener('click', openSidePanel);
+
   // Auto-roast on load
   generateRoast();
+}
+
+async function openSidePanel() {
+  try {
+    await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id });
+  } catch (e) {
+    // Fallback: show instruction
+    alert('Right-click the Jesty icon and select "Open side panel" to talk back!');
+  }
 }
 
 function isValidUrl(string) {
@@ -116,12 +129,14 @@ function showJoke(text, mood) {
   const jokeText = document.getElementById('joke-text');
   const loadingText = document.getElementById('loading-text');
   const refreshBtn = document.getElementById('refresh-btn');
+  const talkbackBtn = document.getElementById('talkback-btn');
 
   jokeText.textContent = text;
   jokeText.classList.remove('hidden');
   loadingText.classList.add('hidden');
   refreshBtn.classList.remove('hidden');
   refreshBtn.disabled = false;
+  talkbackBtn.classList.remove('hidden');
 
   // Re-trigger animation
   jokeText.style.animation = 'none';
@@ -183,6 +198,12 @@ async function generateRoast() {
     }
 
     showJoke(joke, mood);
+
+    // Save roast for side panel conversation
+    await chrome.storage.local.set({
+      lastRoast: joke,
+      lastRoastTime: Date.now()
+    });
 
     // Track roast count
     await incrementRoastCount();

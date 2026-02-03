@@ -180,6 +180,25 @@ body {
   font-weight: 500;
 }
 
+.talkback-btn {
+  background: #18181B;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.talkback-btn:hover {
+  background: #27272A;
+  transform: translateY(-1px);
+}
+
 .refresh-btn {
   background: none;
   border: none;
