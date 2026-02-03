@@ -180,18 +180,25 @@ body {
   font-weight: 500;
 }
 
+.jesty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .talkback-btn {
   background: #18181B;
   color: #FFFFFF;
   border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
+  border-radius: 20px;
+  padding: 8px 18px;
   font-size: 13px;
   font-weight: 600;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
 
 .talkback-btn:hover {
@@ -200,7 +207,7 @@ body {
 }
 
 .refresh-btn {
-  background: none;
+  background: rgba(0, 0, 0, 0.04);
   border: none;
   color: #9AA0A6;
   cursor: pointer;
@@ -210,11 +217,10 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
 
 .refresh-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.08);
   color: #5F6368;
 }
 
@@ -224,8 +230,8 @@ body {
 }
 
 .refresh-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .tab-count {

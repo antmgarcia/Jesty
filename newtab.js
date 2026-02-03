@@ -128,22 +128,19 @@ function detectExpression(text) {
 function showLoading() {
   document.getElementById('loading-text').classList.remove('hidden');
   document.getElementById('joke-text').classList.add('hidden');
-  document.getElementById('refresh-btn').disabled = true;
+  document.getElementById('jesty-actions').classList.add('hidden');
   setExpression('thinking');
 }
 
 function showJoke(text, mood) {
   const jokeText = document.getElementById('joke-text');
   const loadingText = document.getElementById('loading-text');
-  const refreshBtn = document.getElementById('refresh-btn');
-  const talkbackBtn = document.getElementById('talkback-btn');
+  const jestyActions = document.getElementById('jesty-actions');
 
   jokeText.textContent = text;
   jokeText.classList.remove('hidden');
   loadingText.classList.add('hidden');
-  refreshBtn.classList.remove('hidden');
-  refreshBtn.disabled = false;
-  talkbackBtn.classList.remove('hidden');
+  jestyActions.classList.remove('hidden');
 
   // Re-trigger animation
   jokeText.style.animation = 'none';
