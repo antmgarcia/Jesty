@@ -23,5 +23,16 @@
 
 ---
 
+### `experiment-hero-jesty` (v1.2)
+**Hero Jesty - character takes center stage**
+- White new tab screen
+- Large, prominent character with expressive animations
+- Quote as the main focus
+- Minimal Google search bar
+- Gmail + Google links in top right
+- Character-first design: Jesty is the hero, not a widget
+
+---
+
 ### `[future branch]`
 *Description of next experiment...*

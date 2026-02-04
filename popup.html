@@ -8,37 +8,41 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <!-- SVG Character Definitions -->
+  <!-- SVG Character Definitions - Dumb Ways to Die style -->
   <svg style="display: none;">
     <defs>
       <!-- Happy/Fed face -->
-      <symbol id="face-happy" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+      <symbol id="face-happy" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
         <!-- Closed happy eyes -->
-        <path d="M16 24 Q20 21 24 24" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M32 24 Q36 21 40 24" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M22 44 Q28 38 34 44" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M46 44 Q52 38 58 44" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
         <!-- Big smile -->
-        <path d="M18 32 Q28 42 38 32" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M25 62 Q40 78 55 62" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
         <!-- Blush -->
-        <circle cx="14" cy="30" r="4" fill="#FF7A50" opacity="0.3"/>
-        <circle cx="42" cy="30" r="4" fill="#FF7A50" opacity="0.3"/>
+        <circle cx="20" cy="55" r="5" fill="#E5673D" opacity="0.4"/>
+        <circle cx="60" cy="55" r="5" fill="#E5673D" opacity="0.4"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Hungry/Pleading face -->
-      <symbol id="face-hungry" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
+      <symbol id="face-hungry" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
         <!-- Big puppy eyes -->
-        <circle cx="20" cy="24" r="5" fill="#2D2A26"/>
-        <circle cx="36" cy="24" r="5" fill="#2D2A26"/>
-        <circle cx="21" cy="22" r="2" fill="#FFAB7D"/>
-        <circle cx="37" cy="22" r="2" fill="#FFAB7D"/>
+        <circle cx="28" cy="44" r="7" fill="#FFFFFF"/>
+        <circle cx="52" cy="44" r="7" fill="#FFFFFF"/>
+        <circle cx="30" cy="44" r="4" fill="#2D2A26"/>
+        <circle cx="54" cy="44" r="4" fill="#2D2A26"/>
+        <circle cx="31" cy="43" r="1.5" fill="#FFFFFF"/>
+        <circle cx="55" cy="43" r="1.5" fill="#FFFFFF"/>
         <!-- Raised eyebrows -->
-        <path d="M14 17 Q17 14 24 16" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M42 17 Q39 14 32 16" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M18 32 Q28 28 38 34" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M62 32 Q52 28 42 34" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
         <!-- Small pout -->
-        <ellipse cx="28" cy="38" rx="4" ry="3" fill="#2D2A26"/>
+        <ellipse cx="40" cy="68" rx="6" ry="4" fill="#2D2A26"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Coffee icon -->

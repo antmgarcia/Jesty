@@ -44,25 +44,14 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-bottom: 20vh;
-}
-
-/* Google Logo */
-.logo {
-  margin-bottom: 28px;
-}
-
-.logo img {
-  height: 92px;
-  width: auto;
+  gap: 48px;
+  padding: 20vh 16px;
 }
 
 /* Search Section */
 .search-section {
   width: 100%;
-  max-width: 584px;
-  padding: 0 16px;
-  margin-bottom: 32px;
+  max-width: 480px;
 }
 
 .search-form {
@@ -111,21 +100,20 @@ body {
   color: #9AA0A6;
 }
 
-/* Jesty Section */
-.jesty-section {
+/* Hero Section */
+.hero-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 24px;
   max-width: 600px;
-  animation: fadeInUp 0.5s ease-out 0.3s both;
+  animation: fadeInUp 0.5s ease-out;
 }
 
 @keyframes fadeInUp {
   0% {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(20px);
   }
   100% {
     opacity: 1;
@@ -133,62 +121,52 @@ body {
   }
 }
 
-.jesty-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: #FDF6F0;
-  border-radius: 20px;
-  padding: 16px 24px;
-  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.1);
-  transition: background 0.3s ease, box-shadow 0.3s ease, padding 0.3s ease;
-}
-
-.jesty-card.loading {
-  background: transparent;
-  box-shadow: none;
-  padding: 16px 0;
-}
-
-.character {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
+.hero-character {
+  width: 120px;
+  height: 120px;
   transition: transform 0.3s ease;
 }
 
-.character.pop {
-  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+.hero-character.pop {
+  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes popIn {
   0% { transform: scale(0.8); }
-  50% { transform: scale(1.1); }
+  50% { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
 
-.character svg {
+.hero-character svg {
   width: 100%;
   height: 100%;
+  filter: drop-shadow(0 4px 12px rgba(255, 140, 90, 0.3));
 }
 
-.joke-text {
-  font-size: 16px;
+.hero-content {
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-quote {
+  font-size: 22px;
   line-height: 1.4;
   color: #202124;
   font-weight: 600;
-  max-width: 400px;
+  max-width: 500px;
+  animation: fadeInUp 0.4s ease-out;
 }
 
-.loading-text {
-  font-size: 15px;
+.hero-loading {
+  font-size: 16px;
   color: #9AA0A6;
   font-weight: 500;
 }
 
-.jesty-actions {
-  width: 100%;
-  max-width: 584px;
+.hero-actions {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,7 +178,7 @@ body {
   border: none;
   color: #9AA0A6;
   cursor: pointer;
-  padding: 10px;
+  padding: 12px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -218,7 +196,6 @@ body {
   height: 20px;
 }
 
-
 .tab-count {
   font-size: 12px;
   color: #9AA0A6;
@@ -232,22 +209,21 @@ body {
 /* Responsive */
 @media (max-width: 640px) {
   .container {
-    padding-bottom: 10vh;
+    padding: 15vh 16px;
+    gap: 40px;
   }
 
-  .logo img {
-    height: 72px;
+  .hero-character {
+    width: 100px;
+    height: 100px;
   }
 
-  .jesty-card {
-    flex-direction: column;
-    text-align: center;
-    padding: 20px;
-    gap: 12px;
+  .hero-quote {
+    font-size: 18px;
+    max-width: 300px;
   }
 
-  .joke-text {
-    font-size: 15px;
-    max-width: 280px;
+  .search-section {
+    max-width: 100%;
   }
 }

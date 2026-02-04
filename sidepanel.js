@@ -95,7 +95,7 @@ function addMessage(text, sender) {
   if (sender === 'jesty') {
     messageDiv.innerHTML = `
       <div class="message-avatar">
-        <svg viewBox="0 0 56 56" width="32" height="32"><use href="#face-smug"/></svg>
+        <svg viewBox="0 0 80 100" width="26" height="32"><use href="#face-smug"/></svg>
       </div>
       <div class="message-bubble">${escapeHtml(text)}</div>
     `;
@@ -119,7 +119,7 @@ function showTypingIndicator() {
   typingDiv.id = 'typing-indicator';
   typingDiv.innerHTML = `
     <div class="message-avatar">
-      <svg viewBox="0 0 56 56" width="32" height="32"><use href="#face-thinking"/></svg>
+      <svg viewBox="0 0 80 100" width="26" height="32"><use href="#face-thinking"/></svg>
     </div>
     <div class="message-bubble">
       <div class="typing-indicator">

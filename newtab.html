@@ -8,89 +8,122 @@
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
-  <!-- SVG Character Definitions -->
+  <!-- SVG Character Definitions - Dumb Ways to Die style -->
   <svg style="display: none;">
     <defs>
       <!-- Smug face -->
-      <symbol id="face-smug" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <path d="M33 19 Q36 17 40 18" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M20 34 Q28 38 36 33" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <symbol id="face-smug" viewBox="0 0 80 100">
+        <!-- Bean/pill body -->
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- Simple dot eyes -->
+        <circle cx="28" cy="45" r="4" fill="#2D2A26"/>
+        <circle cx="52" cy="45" r="4" fill="#2D2A26"/>
+        <!-- Raised eyebrow -->
+        <path d="M46 36 Q52 33 58 35" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Smug smirk -->
+        <path d="M28 62 Q40 72 52 62" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Tiny legs -->
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Suspicious/skeptical face -->
-      <symbol id="face-suspicious" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <path d="M16 25 Q20 23 24 25" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <ellipse cx="36" cy="24" rx="3.5" ry="3" fill="#2D2A26"/>
-        <circle cx="37" cy="23" r="1" fill="#FFAB7D"/>
-        <path d="M22 35 L34 35" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <symbol id="face-suspicious" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- One squinted eye, one open -->
+        <path d="M22 45 Q28 42 34 45" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="52" cy="45" r="5" fill="#2D2A26"/>
+        <circle cx="53" cy="44" r="1.5" fill="#FF7A50"/>
+        <!-- Flat skeptical mouth -->
+        <path d="M28 64 L52 64" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Yikes/awkward face -->
-      <symbol id="face-yikes" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <circle cx="20" cy="24" r="4" fill="#2D2A26"/>
-        <circle cx="36" cy="24" r="4" fill="#2D2A26"/>
-        <circle cx="21" cy="23" r="1.5" fill="#FFAB7D"/>
-        <circle cx="37" cy="23" r="1.5" fill="#FFAB7D"/>
-        <path d="M19 34 Q22 36 25 34 Q28 32 31 34 Q34 36 37 34" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <symbol id="face-yikes" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- Wide worried eyes -->
+        <circle cx="28" cy="45" r="6" fill="#FFFFFF"/>
+        <circle cx="52" cy="45" r="6" fill="#FFFFFF"/>
+        <circle cx="28" cy="45" r="3" fill="#2D2A26"/>
+        <circle cx="52" cy="45" r="3" fill="#2D2A26"/>
+        <!-- Wavy nervous mouth -->
+        <path d="M25 65 Q32 60 40 65 Q48 70 55 65" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Eye roll face -->
-      <symbol id="face-eyeroll" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <circle cx="20" cy="23" r="4" fill="#2D2A26"/>
-        <circle cx="36" cy="23" r="4" fill="#2D2A26"/>
-        <circle cx="20" cy="21" r="2" fill="#FFAB7D"/>
-        <circle cx="36" cy="21" r="2" fill="#FFAB7D"/>
-        <path d="M22 36 Q28 34 34 36" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <symbol id="face-eyeroll" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- Eyes rolled up -->
+        <circle cx="28" cy="44" r="6" fill="#FFFFFF"/>
+        <circle cx="52" cy="44" r="6" fill="#FFFFFF"/>
+        <circle cx="28" cy="40" r="3" fill="#2D2A26"/>
+        <circle cx="52" cy="40" r="3" fill="#2D2A26"/>
+        <!-- Unimpressed mouth -->
+        <path d="M30 66 Q40 62 50 66" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Disappointed face -->
-      <symbol id="face-disappointed" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <ellipse cx="20" cy="25" rx="3" ry="2.5" fill="#2D2A26"/>
-        <ellipse cx="36" cy="25" rx="3" ry="2.5" fill="#2D2A26"/>
-        <path d="M15 20 Q20 22 25 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M31 20 Q36 22 41 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M21 36 Q28 32 35 36" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <symbol id="face-disappointed" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- Sad droopy eyes -->
+        <circle cx="28" cy="46" r="4" fill="#2D2A26"/>
+        <circle cx="52" cy="46" r="4" fill="#2D2A26"/>
+        <!-- Worried eyebrows -->
+        <path d="M20 38 Q28 42 36 40" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M44 40 Q52 42 60 38" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Sad frown -->
+        <path d="M28 68 Q40 60 52 68" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Melting/overwhelmed face -->
-      <symbol id="face-melting" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <ellipse cx="28" cy="30" rx="23" ry="21" fill="#FFAB7D"/>
-        <path d="M17 22 L23 28 M23 22 L17 28" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M33 22 L39 28 M39 22 L33 28" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M20 36 Q24 38 28 36 Q32 34 36 36" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <symbol id="face-melting" viewBox="0 0 80 100">
+        <!-- Droopy melting body -->
+        <ellipse cx="40" cy="58" rx="34" ry="40" fill="#FF7A50"/>
+        <ellipse cx="25" cy="90" rx="10" ry="6" fill="#FF7A50"/>
+        <ellipse cx="55" cy="88" rx="8" ry="5" fill="#FF7A50"/>
+        <!-- X eyes -->
+        <path d="M22 42 L34 52 M34 42 L22 52" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M46 42 L58 52 M58 42 L46 52" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Wavy distressed mouth -->
+        <path d="M26 68 Q33 72 40 68 Q47 64 54 68" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </symbol>
 
-      <!-- Dead/skull face -->
-      <symbol id="face-dead" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <path d="M16 21 L24 29 M24 21 L16 29" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M32 21 L40 29 M40 21 L32 29" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M20 38 L36 38" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M38 12 Q42 8 40 4" stroke="#FFCAB0" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+      <!-- Dead face -->
+      <symbol id="face-dead" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- X eyes -->
+        <path d="M20 40 L36 54 M36 40 L20 54" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M44 40 L60 54 M60 40 L44 54" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Flat dead mouth -->
+        <path d="M28 70 L52 70" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Ghost wisp -->
+        <path d="M55 15 Q62 10 58 3" stroke="#FFB499" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Thinking/loading face -->
-      <symbol id="face-thinking" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <path d="M14 20 Q18 18 22 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <circle cx="30" cy="35" r="4" fill="#2D2A26"/>
+      <symbol id="face-thinking" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <!-- Looking up eyes -->
+        <circle cx="28" cy="44" r="5" fill="#FFFFFF"/>
+        <circle cx="52" cy="44" r="5" fill="#FFFFFF"/>
+        <circle cx="30" cy="42" r="2.5" fill="#2D2A26"/>
+        <circle cx="54" cy="42" r="2.5" fill="#2D2A26"/>
+        <!-- Thinking raised eyebrow -->
+        <path d="M18 36 Q28 32 38 36" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Small "o" thinking mouth -->
+        <circle cx="40" cy="68" r="5" fill="#2D2A26"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <!-- Search icon -->
@@ -119,40 +152,18 @@
   </div>
 
   <div class="container">
-    <!-- Google Logo -->
-    <div class="logo">
-      <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" alt="Google">
-    </div>
-
-    <!-- Search Section -->
-    <div class="search-section">
-      <form id="search-form" class="search-form">
-        <div class="search-box">
-          <svg class="search-icon"><use href="#icon-search"/></svg>
-          <input
-            type="text"
-            id="search-input"
-            class="search-input"
-            placeholder="Search Google or type a URL"
-            autocomplete="off"
-            autofocus
-          >
-        </div>
-      </form>
-    </div>
-
-    <!-- Jesty Section -->
-    <div class="jesty-section">
-      <div class="jesty-card" id="jesty-card">
-        <div class="character" id="character">
-          <svg><use href="#face-thinking"/></svg>
-        </div>
-
-        <p id="joke-text" class="joke-text hidden"></p>
-        <p id="loading-text" class="loading-text">Reading your tabs...</p>
+    <!-- Hero Jesty Section -->
+    <div class="hero-section">
+      <div class="hero-character" id="character">
+        <svg><use href="#face-thinking"/></svg>
       </div>
 
-      <div class="jesty-actions hidden" id="jesty-actions">
+      <div class="hero-content" id="jesty-card">
+        <p id="joke-text" class="hero-quote hidden"></p>
+        <p id="loading-text" class="hero-loading">Reading your tabs...</p>
+      </div>
+
+      <div class="hero-actions hidden" id="jesty-actions">
         <button id="talkback-btn" class="action-btn" title="Talk back to Jesty">
           <svg><use href="#icon-chat"/></svg>
         </button>
@@ -162,6 +173,22 @@
       </div>
 
       <p class="tab-count" id="tab-count"></p>
+    </div>
+
+    <!-- Search Section (minimal, bottom) -->
+    <div class="search-section">
+      <form id="search-form" class="search-form">
+        <div class="search-box">
+          <svg class="search-icon"><use href="#icon-search"/></svg>
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="Search Google"
+            autocomplete="off"
+          >
+        </div>
+      </form>
     </div>
   </div>
 

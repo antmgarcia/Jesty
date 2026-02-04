@@ -8,34 +8,29 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <!-- SVG Definitions -->
+  <!-- SVG Definitions - Dumb Ways to Die style -->
   <svg style="display: none;">
     <defs>
-      <symbol id="face-smug" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <path d="M33 19 Q36 17 40 18" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M20 34 Q28 38 36 33" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <symbol id="face-smug" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <circle cx="28" cy="45" r="4" fill="#2D2A26"/>
+        <circle cx="52" cy="45" r="4" fill="#2D2A26"/>
+        <path d="M46 36 Q52 33 58 35" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M28 62 Q40 72 52 62" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
-      <symbol id="face-thinking" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <path d="M14 20 Q18 18 22 20" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <circle cx="30" cy="35" r="4" fill="#2D2A26"/>
-      </symbol>
-
-      <symbol id="face-sassy" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="26" fill="#FF8C5A"/>
-        <circle cx="28" cy="28" r="23" fill="#FFAB7D"/>
-        <ellipse cx="20" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <ellipse cx="36" cy="24" rx="3" ry="2" fill="#2D2A26"/>
-        <path d="M33 18 L40 16" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <path d="M22 34 Q28 37 34 34" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <symbol id="face-thinking" viewBox="0 0 80 100">
+        <ellipse cx="40" cy="55" rx="32" ry="42" fill="#FF7A50"/>
+        <circle cx="28" cy="44" r="5" fill="#FFFFFF"/>
+        <circle cx="52" cy="44" r="5" fill="#FFFFFF"/>
+        <circle cx="30" cy="42" r="2.5" fill="#2D2A26"/>
+        <circle cx="54" cy="42" r="2.5" fill="#2D2A26"/>
+        <path d="M18 36 Q28 32 38 36" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <circle cx="40" cy="68" r="5" fill="#2D2A26"/>
+        <ellipse cx="30" cy="95" rx="6" ry="4" fill="#E5673D"/>
+        <ellipse cx="50" cy="95" rx="6" ry="4" fill="#E5673D"/>
       </symbol>
 
       <symbol id="icon-send" viewBox="0 0 24 24">
@@ -49,7 +44,7 @@
     <!-- Header -->
     <div class="header">
       <div class="header-character">
-        <svg viewBox="0 0 56 56" width="40" height="40"><use href="#face-smug"/></svg>
+        <svg viewBox="0 0 80 100" width="32" height="40"><use href="#face-smug"/></svg>
       </div>
       <div class="header-info">
         <h1 class="header-title">Jesty</h1>
@@ -61,7 +56,7 @@
     <div class="chat-container" id="chat-container">
       <div class="empty-state" id="empty-state">
         <div class="empty-character">
-          <svg viewBox="0 0 56 56" width="64" height="64"><use href="#face-smug"/></svg>
+          <svg viewBox="0 0 80 100" width="52" height="65"><use href="#face-smug"/></svg>
         </div>
         <p class="empty-text">Open a new tab to get roasted, then come back here to argue.</p>
       </div>

@@ -27,8 +27,8 @@ body {
 }
 
 .character {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 90px;
   margin: 0 auto 12px;
   animation: float 3s ease-in-out infinite;
 }
