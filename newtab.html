@@ -104,13 +104,18 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 3v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </symbol>
+
+      <!-- Chat icon -->
+      <symbol id="icon-chat" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
     </defs>
   </svg>
 
   <!-- Top Right Links -->
   <div class="top-links">
     <a href="https://mail.google.com" class="top-link">Gmail</a>
-    <a href="https://www.google.com/imghp" class="top-link">Images</a>
+    <a href="https://www.google.com" class="top-link">Google</a>
   </div>
 
   <div class="container">
@@ -148,10 +153,10 @@
       </div>
 
       <div class="jesty-actions hidden" id="jesty-actions">
-        <button id="talkback-btn" class="talkback-btn" title="Talk back to Jesty">
-          Talk back
+        <button id="talkback-btn" class="action-btn" title="Talk back to Jesty">
+          <svg><use href="#icon-chat"/></svg>
         </button>
-        <button id="refresh-btn" class="refresh-btn" title="Get another roast">
+        <button id="refresh-btn" class="action-btn" title="Get another roast">
           <svg><use href="#icon-refresh"/></svg>
         </button>
       </div>
