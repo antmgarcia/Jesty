@@ -24,6 +24,7 @@ TONES (pick ONE randomly):
 - SAVAGE: Brutal but fair
 - NAUGHTY: Cheeky, playful tease
 - WHOLESOME: Backhanded compliment
+- PROUD ROAST: Genuinely impressed but still teasing. Acknowledge something good they're doing while poking fun. Make them feel seen in a good way.
 
 RULES:
 - Be SPECIFIC. Name the actual site, search, or topic.
@@ -60,6 +61,14 @@ EXAMPLES:
 - "That hotel page looks interesting. Planning something fun, are we?"
 - "Learning a new language? Actually impressed. Keep going."
 - "Researching that hobby? Love the ambition. Now actually do it."
+- "Finally tackling that to-do list? Look at you being an adult."
+- "Reading actual articles instead of just headlines? Respect."
+- "Comparing prices before buying? Financial growth. Love to see it."
+- "Online course open? Okay, self-improvement era. Don't quit this one."
+- "Booking that trip? You deserve it. Just don't ghost work."
+- "Meal planning? Who are you and what did you do with the old you?"
+- "Actually using your calendar? Main character behavior."
+- "Saving recipes you'll actually cook? Optimistic. I believe in you."
 
 After your roast, add | and a mood: smug, suspicious, yikes, eyeroll, disappointed, melting, dead`;
 
@@ -187,6 +196,12 @@ async function generateRoast() {
     const shuffledTabs = shuffleArray(tabs);
     const tabList = shuffledTabs.map(tab => `- ${tab.title} (${tab.url})`).join('\n');
 
+    // Get recent roast history to avoid repetition
+    const recentTopics = await getRecentRoastTopics();
+    const avoidList = recentTopics.length > 0
+      ? `\n\nAVOID THESE (recently roasted): ${recentTopics.join(', ')}. Pick something DIFFERENT.`
+      : '';
+
     // Get API key (user's key or default)
     const apiKey = await getApiKey();
 
@@ -199,7 +214,7 @@ async function generateRoast() {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: SYSTEM_PROMPT + avoidList },
           { role: 'user', content: tabList }
         ],
         max_tokens: 80,
@@ -239,8 +254,9 @@ async function generateRoast() {
       lastRoastTime: Date.now()
     });
 
-    // Track roast count
+    // Track roast count and save topic to avoid repetition
     await incrementRoastCount();
+    await saveRoastTopic(joke);
   } catch (error) {
     console.error('Error generating roast:', error);
     showJoke(`Oops! ${error.message}`, 'yikes');
@@ -256,4 +272,50 @@ async function incrementRoastCount() {
   const result = await chrome.storage.local.get(['roastCount']);
   const count = (result.roastCount || 0) + 1;
   await chrome.storage.local.set({ roastCount: count });
+}
+
+async function getRecentRoastTopics() {
+  const result = await chrome.storage.local.get(['recentRoastTopics']);
+  return result.recentRoastTopics || [];
+}
+
+async function saveRoastTopic(joke) {
+  // Extract key words from the roast (sites, apps, topics mentioned)
+  const keywords = extractKeywords(joke);
+  if (keywords.length === 0) return;
+
+  const result = await chrome.storage.local.get(['recentRoastTopics']);
+  let topics = result.recentRoastTopics || [];
+
+  // Add new keywords, avoid duplicates
+  keywords.forEach(kw => {
+    if (!topics.includes(kw)) {
+      topics.unshift(kw);
+    }
+  });
+
+  // Keep only last 5 topics
+  topics = topics.slice(0, 5);
+
+  await chrome.storage.local.set({ recentRoastTopics: topics });
+}
+
+function extractKeywords(joke) {
+  // Common sites/apps to detect
+  const knownSites = [
+    'gmail', 'youtube', 'netflix', 'reddit', 'twitter', 'instagram', 'facebook',
+    'linkedin', 'spotify', 'amazon', 'ebay', 'tiktok', 'pinterest', 'twitch',
+    'discord', 'slack', 'notion', 'figma', 'github', 'stackoverflow', 'wikipedia',
+    'doordash', 'uber', 'airbnb', 'booking', 'expedia', 'zillow', 'indeed',
+    'tinder', 'bumble', 'hinge', 'google docs', 'google sheets', 'google drive'
+  ];
+
+  const lowerJoke = joke.toLowerCase();
+  const found = knownSites.filter(site => lowerJoke.includes(site));
+
+  // Also extract quoted terms or capitalized words that might be site names
+  const quotedTerms = joke.match(/'([^']+)'/g) || [];
+  const cleanedQuotes = quotedTerms.map(t => t.replace(/'/g, '').toLowerCase());
+
+  return [...new Set([...found, ...cleanedQuotes])].slice(0, 3);
 }
