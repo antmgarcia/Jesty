@@ -182,9 +182,6 @@ function showActionCelebration(celebration) {
   const character = document.getElementById('character');
   character.classList.add('celebrating');
 
-  // Add celebration overlay to body
-  document.body.classList.add('celebration-active');
-
   // Show "You listened!" badge
   const heroSection = document.querySelector('.hero-section');
   const badge = document.createElement('div');
@@ -192,15 +189,11 @@ function showActionCelebration(celebration) {
   badge.textContent = 'You listened!';
   heroSection.appendChild(badge);
 
-  // Remove badge and effects after 5 seconds
+  // Remove badge after animation
   setTimeout(() => {
-    badge.classList.add('fade-out');
-    setTimeout(() => {
-      badge.remove();
-      character.classList.remove('celebrating');
-      document.body.classList.remove('celebration-active');
-    }, 500);
-  }, 5000);
+    badge.remove();
+    character.classList.remove('celebrating');
+  }, 3000);
 
   // Record the action in storage for stats
   JestyStorage.recordActionFollowed(celebration.domain);
