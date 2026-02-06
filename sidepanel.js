@@ -312,19 +312,40 @@ async function sendMessage() {
     conversationHistory.push({ role: 'assistant', content: jestyResponse });
 
     // Store roasted domains for action tracking (marks source as chat)
-    const roastedDomains = tabs.slice(0, 12).map(tab => {
+    const roastedDomains = tabs.slice(0, 15).map(tab => {
       try {
         const url = new URL(tab.url);
         return {
           domain: url.hostname.replace('www.', ''),
+          title: tab.title,
           timestamp: Date.now(),
           expiresAt: Date.now() + (10 * 60 * 1000)
         };
       } catch { return null; }
     }).filter(Boolean);
 
+    // Also refresh openTabs cache so background worker can match
+    const openTabs = {};
+    tabs.forEach(tab => {
+      if (tab.url && !tab.url.startsWith('chrome://')) {
+        try {
+          const url = new URL(tab.url);
+          openTabs[tab.id] = {
+            tabId: tab.id,
+            domain: url.hostname.replace('www.', ''),
+            url: tab.url,
+            title: tab.title || ''
+          };
+        } catch {}
+      }
+    });
+
+    console.log('Jesty Chat: Storing roasted domains:', roastedDomains.map(d => d.domain));
+    console.log('Jesty Chat: Storing openTabs:', Object.keys(openTabs).length, 'tabs');
+
     await chrome.storage.local.set({
       roastedDomains,
+      openTabs,
       lastRoastSource: 'chat'
     });
 

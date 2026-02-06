@@ -10,20 +10,36 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   try {
     const { roastedDomains, openTabs } = await chrome.storage.local.get(['roastedDomains', 'openTabs']);
 
-    if (!openTabs || !roastedDomains) return;
+    console.log('Jesty: Tab closed, id:', tabId);
+    console.log('Jesty: openTabs:', openTabs ? Object.keys(openTabs).length : 'none');
+    console.log('Jesty: roastedDomains:', roastedDomains);
+
+    if (!openTabs || !roastedDomains || roastedDomains.length === 0) {
+      console.log('Jesty: No tracking data available');
+      return;
+    }
 
     const closedTab = openTabs[tabId];
-    if (!closedTab) return;
+    if (!closedTab) {
+      console.log('Jesty: Closed tab not in openTabs cache');
+      return;
+    }
+
+    console.log('Jesty: Closed tab:', closedTab.domain, closedTab.title);
 
     // Check if this domain was recently roasted
     const now = Date.now();
-    const match = roastedDomains.find(rd =>
-      rd.domain === closedTab.domain &&
-      now < rd.expiresAt
-    );
+    const match = roastedDomains.find(rd => {
+      const domainMatch = rd.domain === closedTab.domain && now < rd.expiresAt;
+      console.log('Jesty: Comparing', rd.domain, 'vs', closedTab.domain, '=', domainMatch);
+      return domainMatch;
+    });
 
     if (match) {
+      console.log('Jesty: MATCH FOUND! Creating celebration');
       await createPendingCelebration(closedTab, match);
+    } else {
+      console.log('Jesty: No match found for domain:', closedTab.domain);
     }
 
     // Remove from open tabs cache
