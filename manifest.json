@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Jesty",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI that reads your tabs and judges you. Short, funny, brutal.",
-  "permissions": ["tabs", "storage", "sidePanel", "identity.email"],
+  "permissions": ["tabs", "storage", "sidePanel", "identity.email", "alarms"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

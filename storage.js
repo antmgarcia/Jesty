@@ -7,6 +7,44 @@ const SCHEMA_VERSION = "1.0";
 const MAX_ROASTS = 100;
 const MAX_CONVERSATIONS = 50;
 
+// Action followed celebration messages
+const ACTION_MESSAGES = {
+  first: [
+    "Wait, you actually listened? I'm shocked. And proud. Mostly shocked.",
+    "You closed it! I didn't think you had it in you.",
+    "First time following advice? Mark your calendar."
+  ],
+  streak_3: [
+    "Three in a row? Who are you and what did you do with my user?",
+    "A hat trick of obedience. Impressive.",
+    "Three tabs closed on command. You're trainable after all."
+  ],
+  streak_7: [
+    "A whole week of listening? I'm getting emotional.",
+    "Seven straight. You're basically my pet now.",
+    "Week streak! Your browser thanks you."
+  ],
+  milestone_10: [
+    "10 tabs closed on my orders. You've earned a salute.",
+    "Double digits! You're officially reformed.",
+    "10 down. Only about 40 more to go for that tab bankruptcy."
+  ],
+  milestone_25: [
+    "25 suggestions followed. You deserve a trophy. Or therapy.",
+    "Quarter century of obedience. You're my favorite minion.",
+    "25! At this point, I should be paying you."
+  ],
+  generic: [
+    "You closed {domain}? Bold. I approve.",
+    "Gone! {domain} didn't deserve you anyway.",
+    "{domain} has left the chat. Finally.",
+    "One less distraction. You're welcome.",
+    "Closed it! Your future self thanks you.",
+    "Look at you, taking my advice. This is new.",
+    "{domain}? Gone. Productivity? Maybe incoming."
+  ]
+};
+
 // Milestone celebration messages
 const MILESTONE_MESSAGES = {
   25: [
@@ -169,6 +207,13 @@ function getDefaultData() {
         comeback_king: false,
         glutton: false,
         sharer: false
+      },
+      actions: {
+        total_actions_followed: 0,
+        first_action_followed: null,
+        action_streak: 0,
+        longest_action_streak: 0,
+        last_action_date: null
       }
     },
     settings: {
@@ -681,6 +726,93 @@ async function getUserStats() {
 }
 
 /**
+ * Record that user followed a suggestion (closed a roasted tab)
+ */
+async function recordActionFollowed(domain) {
+  const data = await getJestyData();
+  const now = new Date();
+
+  // Initialize if needed (for existing users)
+  if (!data.milestones.actions) {
+    data.milestones.actions = {
+      total_actions_followed: 0,
+      first_action_followed: null,
+      action_streak: 0,
+      longest_action_streak: 0,
+      last_action_date: null
+    };
+  }
+
+  const actions = data.milestones.actions;
+  actions.total_actions_followed++;
+
+  // Track first action
+  if (!actions.first_action_followed) {
+    actions.first_action_followed = now.toISOString();
+  }
+
+  // Update streak
+  const today = now.toISOString().split('T')[0];
+  if (actions.last_action_date === today) {
+    // Same day, just increment total
+  } else {
+    // New day, check if consecutive
+    const yesterday = new Date(now - 86400000).toISOString().split('T')[0];
+    actions.action_streak = (actions.last_action_date === yesterday)
+      ? actions.action_streak + 1
+      : 1;
+  }
+
+  if (actions.action_streak > actions.longest_action_streak) {
+    actions.longest_action_streak = actions.action_streak;
+  }
+  actions.last_action_date = today;
+
+  await saveJestyData(data);
+
+  // Get celebration message
+  const message = getActionCelebrationMessage(actions, domain);
+
+  return { actions, message };
+}
+
+/**
+ * Get appropriate celebration message based on action milestones
+ */
+function getActionCelebrationMessage(actions, domain) {
+  const total = actions.total_actions_followed;
+  const streak = actions.action_streak;
+
+  let messages;
+  let mood = 'happy';
+
+  if (total === 1) {
+    messages = ACTION_MESSAGES.first;
+    mood = 'suspicious';
+  } else if (streak === 3) {
+    messages = ACTION_MESSAGES.streak_3;
+    mood = 'smug';
+  } else if (streak === 7) {
+    messages = ACTION_MESSAGES.streak_7;
+    mood = 'happy';
+  } else if (total === 10) {
+    messages = ACTION_MESSAGES.milestone_10;
+    mood = 'happy';
+  } else if (total === 25) {
+    messages = ACTION_MESSAGES.milestone_25;
+    mood = 'happy';
+  } else {
+    messages = ACTION_MESSAGES.generic;
+    mood = 'smug';
+  }
+
+  let message = messages[Math.floor(Math.random() * messages.length)];
+  message = message.replace('{domain}', domain);
+
+  return { text: message, mood };
+}
+
+/**
  * Clear all data (for testing/reset)
  */
 async function clearAllData() {
@@ -706,6 +838,8 @@ if (typeof window !== 'undefined') {
     getUserStats,
     checkMilestones,
     getMilestoneMessage,
+    recordActionFollowed,
+    getActionCelebrationMessage,
     clearAllData,
     categorizeUrl,
     categorizeTabs

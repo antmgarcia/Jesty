@@ -78,6 +78,9 @@ async function init() {
   // Initialize storage
   await JestyStorage.initializeStorage();
 
+  // Check for pending action celebration (user closed a roasted tab)
+  const pendingCelebration = await checkPendingCelebration();
+
   const searchForm = document.getElementById('search-form');
   const searchInput = document.getElementById('search-input');
   const refreshBtn = document.getElementById('refresh-btn');
@@ -115,8 +118,12 @@ async function init() {
   const shareBtn = document.getElementById('share-btn');
   shareBtn.addEventListener('click', shareRoast);
 
-  // Auto-roast on load
-  generateRoast();
+  // Show celebration if pending, otherwise auto-roast
+  if (pendingCelebration) {
+    showActionCelebration(pendingCelebration);
+  } else {
+    generateRoast();
+  }
 }
 
 async function openSidePanel() {
@@ -140,6 +147,62 @@ function setExpression(mood) {
   character.classList.remove('pop');
   void character.offsetWidth;
   character.classList.add('pop');
+}
+
+/**
+ * Check for pending action celebration (user closed a roasted tab)
+ */
+async function checkPendingCelebration() {
+  try {
+    const { pendingCelebration } = await chrome.storage.local.get(['pendingCelebration']);
+    if (pendingCelebration && pendingCelebration.type === 'action_followed') {
+      // Clear it so it doesn't show again
+      await chrome.storage.local.remove(['pendingCelebration']);
+      return pendingCelebration;
+    }
+  } catch (e) {
+    console.log('Could not check pending celebration:', e);
+  }
+  return null;
+}
+
+/**
+ * Show action celebration when user follows a suggestion
+ */
+function showActionCelebration(celebration) {
+  showJoke(celebration.message, celebration.mood || 'happy');
+
+  // Add celebration animation
+  const character = document.getElementById('character');
+  character.classList.add('celebrating');
+
+  // Show "You listened!" badge
+  const heroSection = document.querySelector('.hero-section');
+  const badge = document.createElement('div');
+  badge.className = 'action-badge';
+  badge.textContent = 'You listened!';
+  heroSection.appendChild(badge);
+
+  // Remove badge after animation
+  setTimeout(() => {
+    badge.remove();
+    character.classList.remove('celebrating');
+  }, 3000);
+
+  // Record the action in storage for stats
+  JestyStorage.recordActionFollowed(celebration.domain);
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
 }
 
 function detectExpression(text) {
@@ -427,6 +490,18 @@ async function generateRoast() {
       lastTabCount: tabs.length,
       lastRoastId: roast.id
     });
+
+    // Store roasted domains for action tracking (background worker uses this)
+    const roastedDomains = shuffledTabs
+      .map(tab => ({
+        domain: extractDomain(tab.url),
+        roastId: roast.id,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + (10 * 60 * 1000) // 10 minutes
+      }))
+      .filter(d => d.domain); // Remove empty domains
+
+    await chrome.storage.local.set({ roastedDomains });
 
   } catch (error) {
     console.error('Error generating roast:', error);
