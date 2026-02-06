@@ -230,35 +230,65 @@ body {
 
 /* Action Celebration Animation */
 .hero-character.celebrating {
-  animation: celebrate 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: celebrate 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes celebrate {
   0% { transform: scale(1); }
-  25% { transform: scale(1.2) rotate(-5deg); }
-  50% { transform: scale(1.1) rotate(5deg); }
-  75% { transform: scale(1.15) rotate(-3deg); }
+  15% { transform: scale(1.25) rotate(-8deg); }
+  30% { transform: scale(1.15) rotate(8deg); }
+  45% { transform: scale(1.2) rotate(-5deg); }
+  60% { transform: scale(1.1) rotate(5deg); }
+  75% { transform: scale(1.15) rotate(-2deg); }
   100% { transform: scale(1); }
 }
 
-/* Action followed badge */
+/* Celebration background effect */
+body.celebration-active {
+  animation: celebrationBg 2s ease-out;
+}
+
+@keyframes celebrationBg {
+  0% { background: #FFFFFF; }
+  10% { background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 50%, #FFFFFF 100%); }
+  100% { background: #FFFFFF; }
+}
+
+/* Action followed badge - much more prominent */
 .action-badge {
   position: absolute;
-  top: -24px;
+  top: -40px;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #22C55E, #16A34A);
   color: white;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  animation: badgePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  animation: badgePop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), badgePulse 1.5s ease-in-out 0.6s infinite;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.3);
   white-space: nowrap;
+  z-index: 100;
+}
+
+.action-badge.fade-out {
+  animation: badgeFadeOut 0.5s ease-out forwards;
 }
 
 @keyframes badgePop {
-  0% { opacity: 0; transform: translateX(-50%) scale(0.5) translateY(10px); }
+  0% { opacity: 0; transform: translateX(-50%) scale(0.3) translateY(20px); }
+  60% { transform: translateX(-50%) scale(1.1) translateY(-5px); }
   100% { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 0 4px 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.3); }
+  50% { transform: translateX(-50%) scale(1.05); box-shadow: 0 4px 30px rgba(34, 197, 94, 0.6), 0 0 60px rgba(34, 197, 94, 0.4); }
+}
+
+@keyframes badgeFadeOut {
+  0% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(-10px); }
 }
