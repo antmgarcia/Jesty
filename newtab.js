@@ -75,6 +75,9 @@ const EXPRESSION_PATTERNS = {
 };
 
 async function init() {
+  // Initialize storage
+  await JestyStorage.initializeStorage();
+
   const searchForm = document.getElementById('search-form');
   const searchInput = document.getElementById('search-input');
   const refreshBtn = document.getElementById('refresh-btn');
@@ -99,8 +102,11 @@ async function init() {
     }
   });
 
-  // Refresh button
-  refreshBtn.addEventListener('click', generateRoast);
+  // Refresh button - track refresh before generating new roast
+  refreshBtn.addEventListener('click', async () => {
+    await JestyStorage.markRoastRefreshed();
+    generateRoast();
+  });
 
   // Talk back button - opens side panel
   talkbackBtn.addEventListener('click', openSidePanel);
@@ -331,6 +337,10 @@ async function generateRoast() {
 
   try {
     const tabs = await chrome.tabs.query({});
+
+    // Update category stats for personalization
+    const categories = await JestyStorage.updateCategoryStats(tabs);
+
     // Shuffle tabs and pick only 12 random ones to force variety
     const shuffledTabs = shuffleArray(tabs).slice(0, 12);
     const tabList = shuffledTabs.map(tab => {
@@ -340,14 +350,17 @@ async function generateRoast() {
         : `- ${tab.title} (${tab.url})`;
     }).join('\n');
 
-    // Get recent roast history to avoid repetition
-    const recentTopics = await getRecentRoastTopics();
-    const avoidList = recentTopics.length > 0
-      ? `\n\nAVOID THESE (recently roasted): ${recentTopics.join(', ')}. Pick something DIFFERENT.`
-      : '';
+    // Get personalized context from user history
+    const personalizedContext = await JestyStorage.buildPersonalizedContext();
 
     // Get API key (user's key or default)
-    const apiKey = await getApiKey();
+    const userApiKey = await JestyStorage.getUserApiKey();
+    const apiKey = userApiKey || CONFIG.OPENAI_API_KEY;
+
+    // Build full system prompt with personalization
+    const fullPrompt = personalizedContext
+      ? `${SYSTEM_PROMPT}\n\nUSER CONTEXT:\n${personalizedContext}`
+      : SYSTEM_PROMPT;
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -358,7 +371,7 @@ async function generateRoast() {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT + avoidList },
+          { role: 'system', content: fullPrompt },
           { role: 'user', content: tabList }
         ],
         max_tokens: 50,
@@ -392,16 +405,30 @@ async function generateRoast() {
 
     showJoke(joke, mood);
 
-    // Save roast for side panel conversation (include tab count for sharing)
+    // Save roast with full context to storage
+    const { roast, milestone } = await JestyStorage.saveRoast({
+      text: joke,
+      mood: mood,
+      tabCount: tabs.length,
+      categories: categories,
+      topics: extractKeywords(joke)
+    });
+
+    // Check for milestone achievement - override with celebration message
+    if (milestone && milestone.isNew && milestone.message) {
+      joke = milestone.message;
+      mood = 'happy';
+      showJoke(joke, mood);
+    }
+
+    // Save to simple storage for side panel compatibility
     await chrome.storage.local.set({
       lastRoast: joke,
       lastRoastTime: Date.now(),
-      lastTabCount: tabs.length
+      lastTabCount: tabs.length,
+      lastRoastId: roast.id
     });
 
-    // Track roast count and save topic to avoid repetition
-    await incrementRoastCount();
-    await saveRoastTopic(joke);
   } catch (error) {
     console.error('Error generating roast:', error);
     showJoke(`Oops! ${error.message}`, 'yikes');
@@ -507,6 +534,9 @@ async function shareRoast() {
       canvas.toBlob(async (blob) => {
         const file = new File([blob], 'jesty-roast.png', { type: 'image/png' });
 
+        // Track the share
+        await JestyStorage.markRoastShared();
+
         // Try native share first
         if (navigator.share && navigator.canShare({ files: [file] })) {
           try {
@@ -540,43 +570,6 @@ function downloadImage(blob) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-async function getApiKey() {
-  const result = await chrome.storage.local.get(['userApiKey']);
-  return result.userApiKey || CONFIG.OPENAI_API_KEY;
-}
-
-async function incrementRoastCount() {
-  const result = await chrome.storage.local.get(['roastCount']);
-  const count = (result.roastCount || 0) + 1;
-  await chrome.storage.local.set({ roastCount: count });
-}
-
-async function getRecentRoastTopics() {
-  const result = await chrome.storage.local.get(['recentRoastTopics']);
-  return result.recentRoastTopics || [];
-}
-
-async function saveRoastTopic(joke) {
-  // Extract key words from the roast (sites, apps, topics mentioned)
-  const keywords = extractKeywords(joke);
-  if (keywords.length === 0) return;
-
-  const result = await chrome.storage.local.get(['recentRoastTopics']);
-  let topics = result.recentRoastTopics || [];
-
-  // Add new keywords, avoid duplicates
-  keywords.forEach(kw => {
-    if (!topics.includes(kw)) {
-      topics.unshift(kw);
-    }
-  });
-
-  // Keep only last 5 topics
-  topics = topics.slice(0, 5);
-
-  await chrome.storage.local.set({ recentRoastTopics: topics });
 }
 
 function extractKeywords(joke) {

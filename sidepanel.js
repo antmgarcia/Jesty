@@ -22,8 +22,12 @@ Never break character. You ARE Jesty.`;
 
 let conversationHistory = [];
 let currentRoast = null;
+let currentConversationId = null;
 
 async function init() {
+  // Initialize storage
+  await JestyStorage.initializeStorage();
+
   const messageInput = document.getElementById('message-input');
   const sendBtn = document.getElementById('send-btn');
   const chatContainer = document.getElementById('chat-container');
@@ -60,7 +64,7 @@ async function init() {
 }
 
 async function loadLastRoast() {
-  const result = await chrome.storage.local.get(['lastRoast', 'lastRoastTime']);
+  const result = await chrome.storage.local.get(['lastRoast', 'lastRoastTime', 'lastRoastId']);
 
   if (result.lastRoast) {
     currentRoast = result.lastRoast;
@@ -69,7 +73,14 @@ async function loadLastRoast() {
     const isRecent = result.lastRoastTime && (Date.now() - result.lastRoastTime < 5 * 60 * 1000);
 
     if (isRecent && conversationHistory.length === 0) {
-      // Start conversation with the roast
+      // Start a new conversation in storage
+      const conversation = await JestyStorage.startConversation(result.lastRoastId);
+      currentConversationId = conversation.id;
+
+      // Add Jesty's initial message
+      await JestyStorage.addMessage(currentConversationId, 'jesty', currentRoast);
+
+      // Show in UI
       document.getElementById('empty-state')?.classList.add('hidden');
       addMessage(currentRoast, 'jesty');
 
@@ -95,7 +106,7 @@ function addMessage(text, sender) {
   if (sender === 'jesty') {
     messageDiv.innerHTML = `
       <div class="message-avatar">
-        <svg viewBox="0 0 100 120" width="27" height="32"><use href="#face-smug"/></svg>
+        <svg viewBox="-10 -5 120 115" width="27" height="26"><use href="#face-smug"/></svg>
       </div>
       <div class="message-bubble">${escapeHtml(text)}</div>
     `;
@@ -119,7 +130,7 @@ function showTypingIndicator() {
   typingDiv.id = 'typing-indicator';
   typingDiv.innerHTML = `
     <div class="message-avatar">
-      <svg viewBox="0 0 100 120" width="27" height="32"><use href="#face-thinking"/></svg>
+      <svg viewBox="-10 -5 120 115" width="27" height="26"><use href="#face-thinking"/></svg>
     </div>
     <div class="message-bubble">
       <div class="typing-indicator">
@@ -162,12 +173,23 @@ async function sendMessage() {
   // Add user message to chat
   addMessage(userMessage, 'user');
 
+  // Save user message to storage
+  if (currentConversationId) {
+    await JestyStorage.addMessage(currentConversationId, 'user', userMessage);
+  }
+
   // Add to conversation history
   conversationHistory.push({ role: 'user', content: userMessage });
 
   // If first message and no roast loaded, add system prompt
   if (conversationHistory.length === 1) {
     conversationHistory.unshift({ role: 'system', content: JESTY_PERSONALITY });
+
+    // Start a new conversation if we don't have one
+    if (!currentConversationId) {
+      const conversation = await JestyStorage.startConversation(null);
+      currentConversationId = conversation.id;
+    }
   }
 
   // Show typing indicator
@@ -188,7 +210,9 @@ async function sendMessage() {
       { role: 'user', content: messageWithContext }
     ];
 
-    const apiKey = await getApiKey();
+    // Get API key from storage
+    const userApiKey = await JestyStorage.getUserApiKey();
+    const apiKey = userApiKey || CONFIG.OPENAI_API_KEY;
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -215,6 +239,11 @@ async function sendMessage() {
     hideTypingIndicator();
     addMessage(jestyResponse, 'jesty');
 
+    // Save Jesty's response to storage
+    if (currentConversationId) {
+      await JestyStorage.addMessage(currentConversationId, 'jesty', jestyResponse);
+    }
+
     // Add to conversation history
     conversationHistory.push({ role: 'assistant', content: jestyResponse });
 
@@ -223,11 +252,6 @@ async function sendMessage() {
     hideTypingIndicator();
     addMessage("Ugh, my brain glitched. Try again.", 'jesty');
   }
-}
-
-async function getApiKey() {
-  const result = await chrome.storage.local.get(['userApiKey']);
-  return result.userApiKey || CONFIG.OPENAI_API_KEY;
 }
 
 function escapeHtml(text) {

@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+  // Initialize storage
+  await JestyStorage.initializeStorage();
+
   const byokBtn = document.getElementById('byok-btn');
   const byokPanel = document.getElementById('byok-panel');
   const saveKeyBtn = document.getElementById('save-key-btn');
@@ -31,7 +34,7 @@ async function init() {
   saveKeyBtn.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
     if (key && key.startsWith('sk-')) {
-      await chrome.storage.local.set({ userApiKey: key });
+      await JestyStorage.setUserApiKey(key);
       byokPanel.classList.add('hidden');
       showFeedback('API key saved!');
     } else {
@@ -43,19 +46,17 @@ async function init() {
 async function loadStats() {
   const roastCountEl = document.getElementById('roast-count');
 
-  const result = await chrome.storage.local.get(['roastCount']);
-  const count = result.roastCount || 0;
-
-  roastCountEl.textContent = count;
+  const stats = await JestyStorage.getUserStats();
+  roastCountEl.textContent = stats.totalRoasts;
 }
 
 async function loadExistingKey() {
   const apiKeyInput = document.getElementById('api-key-input');
-  const result = await chrome.storage.local.get(['userApiKey']);
+  const existingKey = await JestyStorage.getUserApiKey();
 
-  if (result.userApiKey) {
+  if (existingKey) {
     // Show masked version
-    apiKeyInput.value = result.userApiKey.substring(0, 7) + '...' + result.userApiKey.slice(-4);
+    apiKeyInput.value = existingKey.substring(0, 7) + '...' + existingKey.slice(-4);
     apiKeyInput.placeholder = 'Key saved - enter new key to replace';
   }
 }
@@ -64,10 +65,10 @@ async function checkSupportStatus() {
   const character = document.getElementById('character');
   const statusText = document.getElementById('status-text');
 
-  const result = await chrome.storage.local.get(['hasSupported', 'roastCount']);
+  const stats = await JestyStorage.getUserStats();
 
   // Show happy face if they've supported or used a lot
-  if (result.hasSupported || (result.roastCount && result.roastCount > 50)) {
+  if (stats.totalRoasts > 50) {
     character.innerHTML = '<svg><use href="#face-happy"/></svg>';
     statusText.textContent = 'Jesty is happy!';
     statusText.classList.add('happy');
