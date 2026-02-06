@@ -87,7 +87,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 /**
- * Create a pending celebration for the appropriate context
+ * Create and show celebration immediately
  */
 async function createPendingCelebration(closedTab, match) {
   // Check if there's already a pending celebration
@@ -97,22 +97,27 @@ async function createPendingCelebration(closedTab, match) {
   // Generate celebration message
   const message = getCelebrationMessage(closedTab.domain);
 
-  // Determine source - was this from a chat suggestion or new tab roast?
-  const { lastRoastSource } = await chrome.storage.local.get(['lastRoastSource']);
-  const source = lastRoastSource || 'newtab';
+  const celebration = {
+    type: 'action_followed',
+    message: message.text,
+    mood: message.mood,
+    domain: closedTab.domain,
+    timestamp: Date.now()
+  };
 
-  await chrome.storage.local.set({
-    pendingCelebration: {
-      type: 'action_followed',
-      message: message.text,
-      mood: message.mood,
-      domain: closedTab.domain,
-      source: source, // 'newtab' or 'chat'
-      timestamp: Date.now()
-    }
-  });
+  // Store celebration (sidepanel will pick this up via storage listener)
+  await chrome.storage.local.set({ pendingCelebration: celebration });
 
-  console.log('Jesty: Pending celebration created for closing', closedTab.domain, 'source:', source);
+  console.log('Jesty: Celebration triggered for closing', closedTab.domain);
+
+  // Try to open sidepanel to show celebration immediately
+  try {
+    const currentWindow = await chrome.windows.getCurrent();
+    await chrome.sidePanel.open({ windowId: currentWindow.id });
+    console.log('Jesty: Opened sidepanel for celebration');
+  } catch (e) {
+    console.log('Jesty: Could not open sidepanel:', e.message);
+  }
 }
 
 /**

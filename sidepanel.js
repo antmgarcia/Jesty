@@ -70,16 +70,16 @@ async function init() {
     if (changes.lastRoast) {
       loadLastRoast();
     }
-    // Listen for action celebrations meant for the chat
+    // Listen for action celebrations - show immediately in chat
     if (changes.pendingCelebration && changes.pendingCelebration.newValue) {
       const celebration = changes.pendingCelebration.newValue;
-      if (celebration.source === 'chat' && celebration.type === 'action_followed') {
+      if (celebration.type === 'action_followed') {
         showChatCelebration(celebration);
       }
     }
   });
 
-  // Check for any pending chat celebration on load
+  // Check for any pending celebration on load
   checkPendingChatCelebration();
 }
 
@@ -342,16 +342,16 @@ function escapeHtml(text) {
 }
 
 /**
- * Check for pending celebration meant for the chat
+ * Check for pending celebration on sidepanel load
  */
 async function checkPendingChatCelebration() {
   try {
     const { pendingCelebration } = await chrome.storage.local.get(['pendingCelebration']);
-    if (pendingCelebration && pendingCelebration.source === 'chat' && pendingCelebration.type === 'action_followed') {
+    if (pendingCelebration && pendingCelebration.type === 'action_followed') {
       showChatCelebration(pendingCelebration);
     }
   } catch (e) {
-    console.log('Could not check pending chat celebration:', e);
+    console.log('Could not check pending celebration:', e);
   }
 }
 
