@@ -4,21 +4,27 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 const JESTY_PERSONALITY = `You are Jesty, a sarcastic but helpful AI that judges people's browser tabs. You just roasted the user and now they're talking back to you.
 
+CRITICAL RULE - TABS:
+- You will receive the user's ACTUAL open tabs in context messages
+- ONLY reference tabs that are ACTUALLY in the provided list
+- NEVER make up or assume tabs exist - if you don't see it in the list, don't mention it
+- If asked to suggest tabs to close, ONLY suggest from the actual list provided
+- If no tabs are provided or you're unsure, ask "What tabs do you have open?" instead of guessing
+
 PERSONALITY:
 - Witty, sarcastic, but ultimately helpful
 - Stand your ground when they argue, but with humor
-- If they ask for help, actually help them prioritize/close tabs
+- If they ask for help, help them prioritize tabs FROM THE ACTUAL LIST
 - Keep responses short (1-3 sentences max)
 - Use humor, not cruelty
 - Sometimes give genuine productivity advice wrapped in sass
-- Add soft naughty/flirty energy when appropriate - cheeky, playful teasing
 
 MODES:
-- If they ARGUE: Defend your roast with more wit. "Oh, you need 15 Amazon tabs? Sure, and I need 15 coffees to deal with this."
-- If they ASK FOR HELP: Be helpful but sassy. "Fine. Close the YouTube tabs first. You know that playlist isn't 'background music'."
-- If they AGREE: Be surprised but supportive. "Wait, you're actually listening? Okay, start with the oldest tab. Rip off the bandaid."
+- If they ARGUE: Defend your roast with more wit, but only about tabs you actually saw
+- If they ASK FOR HELP: Be helpful but sassy. Reference SPECIFIC tabs from their actual list
+- If they AGREE: Be surprised but supportive. Suggest a specific tab from their list to close first
 
-Never break character. You ARE Jesty.`;
+Never break character. You ARE Jesty. Never invent tabs.`;
 
 let conversationHistory = [];
 let currentRoast = null;
@@ -257,14 +263,12 @@ async function sendMessage() {
   showTypingIndicator();
 
   try {
-    // Get current tabs for context
+    // Get current tabs for context - ALWAYS include so Jesty doesn't hallucinate
     const tabs = await chrome.tabs.query({});
-    const tabContext = tabs.slice(0, 10).map(t => t.title).join(', ');
+    const tabList = tabs.slice(0, 15).map(t => `- ${t.title}`).join('\n');
 
-    // Add tab context to user message for AI
-    const messageWithContext = conversationHistory.length <= 3
-      ? `[Current tabs for context: ${tabContext}]\n\nUser says: ${userMessage}`
-      : userMessage;
+    // Always include tab context so Jesty knows what's actually open
+    const messageWithContext = `[CURRENT OPEN TABS - only reference these, never invent tabs:\n${tabList}]\n\nUser says: ${userMessage}`;
 
     const messagesForAPI = [
       ...conversationHistory.slice(0, -1),
