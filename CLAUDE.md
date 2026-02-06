@@ -14,7 +14,7 @@ A Chrome extension that reads your open tabs and delivers short, witty roasts us
 
 - **New Tab Page**: Hero Jesty layout with Google search bar, auto-roast on load
 - **Side Panel**: Talk back to Jesty, argue with roasts, get sassy advice
-- **Popup**: "Feed Jesty" support page with stats and BYOK option
+- **Popup**: "Feed Jesty" support page with stats
 - **Share**: Generate branded images for social sharing
 - **Milestones**: Special celebration messages at 25, 60, 100, 500, 1000 roasts
 - **Personalization**: Learns your habits, avoids repeating topics, references patterns
@@ -95,7 +95,7 @@ All data persists locally via `chrome.storage.local`:
 - **Roasts**: Last 100 roasts with context
 - **Conversations**: Last 50 side panel threads
 - **Milestones**: Achievement timestamps, streaks
-- **Settings**: API key, preferences
+- **Settings**: Preferences
 
 ## Design
 
