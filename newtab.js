@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-const SYSTEM_PROMPT = `You judge people's browser tabs. ONE short line (max 12 words). End with an action.
+const SYSTEM_PROMPT = `You judge people's browser tabs. Max 12 words total, must fit in 2 lines.
 
 RANDOMIZATION IS CRITICAL:
 - You will receive many tabs. Pick ONE or TWO at RANDOM to roast.
@@ -28,47 +28,39 @@ TONES (pick ONE randomly):
 
 RULES:
 - Be SPECIFIC. Name the actual site, search, or topic.
-- ALWAYS end with a varied closing (see ENDING TYPES below).
+- ALWAYS end with a varied closing (see ENDING TYPES below). Mix it up!
 - Never mention tab counts or "tabs".
 - NEVER start with dashes, quotes, or punctuation. Just the sentence.
+- Pick a DIFFERENT tab each time. You're seeing a random sample - roast what you see.
 
-ENDING TYPES (vary these!):
-- COMMAND: "Close it." "Delete that." "Log off."
-- QUESTION: "Who hurt you?" "Really though?" "Happy with yourself?"
-- CHALLENGE: "Prove me wrong." "I dare you." "Let's see you try."
-- OBSERVATION: "Just saying." "Interesting choice." "Bold move."
-- PREDICTION: "This won't end well." "We both know how this goes."
-- ENCOURAGEMENT (backhanded): "You got this, champ." "Living your truth."
-- THREAT (playful): "I'm watching." "Don't test me." "Try me."
+ENDING TYPES (vary these - don't overuse any single type):
+- COMMAND (use sparingly): "Close it." "Just do it." "Walk away."
+- QUESTION: "Who hurt you?" "Really though?" "Happy now?" "And then what?"
+- CHALLENGE: "Prove me wrong." "I dare you." "Let's see how this plays out."
+- OBSERVATION: "Just saying." "Interesting." "Bold." "Noted." "Classic you."
+- PREDICTION: "This won't end well." "We both know how this goes." "Called it."
+- ENCOURAGEMENT: "You got this, champ." "Living your truth." "Main character energy."
+- PLAYFUL: "I'm watching." "Don't test me." "Brave." "Iconic, honestly."
 - DISMISSAL: "Whatever helps you sleep." "Sure, Jan." "Good luck with that."
+- ACCEPTANCE: "Fair enough." "Respect." "No judgment. Okay, some judgment."
 
-EXAMPLES:
-- "Productivity apps and Reddit. Sure, today's the day. We both know how this ends."
-- "Budget spreadsheet and Gucci. The math ain't mathing. Put it back."
-- "Self-help books and your ex's Instagram. Healing nicely, I see."
-- "Wikipedia rabbit hole at 3am. You don't need to know about eels. Or do you?"
-- "Seven pizza places open. Just pick one, coward."
-- "Spotify and 'how to be cool'. The irony is loud."
-- "That cart's been full for a week. It's getting cold in there."
-- "Job application half-finished. The deadline is judging you too."
-- "Gmail open, zero emails read. They're not going away."
-- "LinkedIn and Netflix at 2pm on a Tuesday. Pick a struggle."
-- "Gym membership and Doordash. We both know who's winning here."
-- "Dating app and 'why am I single' search. Interesting combo."
-- "Incognito and regular windows open? Naughty. I respect it though."
-- "Shopping for that outfit at midnight? Treat yourself, you've earned it."
-- "Dating app open all day? Someone's optimistic."
-- "That hotel page looks interesting. Planning something fun, are we?"
-- "Learning a new language? Actually impressed. Keep going."
-- "Researching that hobby? Love the ambition. Now actually do it."
-- "Finally tackling that to-do list? Look at you being an adult."
-- "Reading actual articles instead of just headlines? Respect."
-- "Comparing prices before buying? Financial growth. Love to see it."
-- "Online course open? Okay, self-improvement era. Don't quit this one."
-- "Booking that trip? You deserve it. Just don't ghost work."
-- "Meal planning? Who are you and what did you do with the old you?"
-- "Actually using your calendar? Main character behavior."
-- "Saving recipes you'll actually cook? Optimistic. I believe in you."
+EXAMPLES (notice how short they are):
+- "Reddit and a deadline. Bold move."
+- "Gucci and a budget spreadsheet. The math ain't mathing."
+- "Self-help and your ex's Instagram. Healing nicely."
+- "Wikipedia at 3am. Sleep is for quitters, I guess."
+- "Seven pizza tabs. Just pick one, coward."
+- "LinkedIn and Netflix. Pick a struggle."
+- "Gym site and Doordash. We know who's winning."
+- "Dating app all day? Optimistic."
+- "Incognito mode? Naughty. Respect though."
+- "Shopping at midnight? Treat yourself."
+- "Learning a language? Actually impressed."
+- "Finally using your calendar? Growth."
+- "Booking that trip? You deserve it."
+- "Meal planning? Who are you? Iconic."
+- "Job app half-finished. It's judging you too."
+- "Cart full for a week. Getting cold in there."
 
 After your roast, add | and a mood: smug, suspicious, yikes, eyeroll, disappointed, melting, dead`;
 
@@ -112,6 +104,10 @@ async function init() {
 
   // Talk back button - opens side panel
   talkbackBtn.addEventListener('click', openSidePanel);
+
+  // Share button
+  const shareBtn = document.getElementById('share-btn');
+  shareBtn.addEventListener('click', shareRoast);
 
   // Auto-roast on load
   generateRoast();
@@ -165,7 +161,10 @@ function showJoke(text, mood) {
   const jestyCard = document.getElementById('jesty-card');
 
   jestyCard.classList.remove('loading');
-  jokeText.textContent = text;
+
+  // Fit text to 2 lines without truncation
+  const fittedText = fitTextToTwoLines(jokeText, text);
+  jokeText.textContent = fittedText;
   jokeText.classList.remove('hidden');
   loadingText.classList.add('hidden');
   jestyActions.classList.remove('hidden');
@@ -178,6 +177,51 @@ function showJoke(text, mood) {
   setExpression(mood);
 }
 
+function fitTextToTwoLines(element, text) {
+  const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
+  const maxHeight = lineHeight * 2.1; // 2 lines with small buffer
+
+  // Try full text first
+  element.textContent = text;
+  if (element.scrollHeight <= maxHeight) {
+    return text;
+  }
+
+  // Try trimming at sentence boundaries (. ? !)
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  let trimmed = '';
+
+  for (const sentence of sentences) {
+    const test = trimmed + sentence;
+    element.textContent = test;
+    if (element.scrollHeight <= maxHeight) {
+      trimmed = test;
+    } else {
+      break;
+    }
+  }
+
+  if (trimmed) {
+    return trimmed.trim();
+  }
+
+  // Last resort: trim word by word
+  const words = text.split(' ');
+  trimmed = '';
+
+  for (const word of words) {
+    const test = trimmed ? trimmed + ' ' + word : word;
+    element.textContent = test;
+    if (element.scrollHeight <= maxHeight) {
+      trimmed = test;
+    } else {
+      break;
+    }
+  }
+
+  return trimmed || text;
+}
+
 function shuffleArray(array) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -187,14 +231,114 @@ function shuffleArray(array) {
   return shuffled;
 }
 
+function parseUrlContext(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace('www.', '');
+    const path = u.pathname;
+    const params = u.searchParams;
+
+    // Google search
+    if (host.includes('google.') && params.get('q')) {
+      return `searching "${params.get('q')}"`;
+    }
+
+    // YouTube
+    if (host.includes('youtube.com')) {
+      if (params.get('search_query')) return `searching "${params.get('search_query')}"`;
+      if (path.includes('/watch')) return 'watching video';
+      if (path.includes('/shorts')) return 'watching shorts';
+      if (path.includes('/playlist')) return 'browsing playlist';
+    }
+
+    // Amazon
+    if (host.includes('amazon.')) {
+      if (params.get('k')) return `shopping for "${params.get('k')}"`;
+      if (path.includes('/dp/') || path.includes('/gp/product')) return 'looking at product';
+      if (path.includes('/cart')) return 'cart has items';
+      if (path.includes('/wishlist')) return 'browsing wishlist';
+    }
+
+    // Reddit
+    if (host.includes('reddit.com')) {
+      const subreddit = path.match(/\/r\/([^\/]+)/);
+      if (subreddit) return `browsing r/${subreddit[1]}`;
+    }
+
+    // Twitter/X
+    if (host.includes('twitter.com') || host.includes('x.com')) {
+      const user = path.match(/^\/([^\/]+)/);
+      if (user && !['home', 'explore', 'search', 'notifications'].includes(user[1])) {
+        return `viewing @${user[1]}`;
+      }
+    }
+
+    // LinkedIn
+    if (host.includes('linkedin.com')) {
+      if (path.includes('/jobs')) return 'job hunting';
+      if (path.includes('/in/')) return 'stalking profile';
+      if (path.includes('/feed')) return 'scrolling feed';
+    }
+
+    // Netflix
+    if (host.includes('netflix.com')) {
+      if (path.includes('/watch')) return 'watching something';
+      if (path.includes('/browse')) return 'browsing what to watch';
+    }
+
+    // Spotify
+    if (host.includes('spotify.com') || host.includes('open.spotify')) {
+      if (path.includes('/playlist')) return 'listening to playlist';
+      if (path.includes('/album')) return 'listening to album';
+      if (path.includes('/artist')) return 'checking artist';
+    }
+
+    // Shopping sites
+    if (host.includes('ebay.')) {
+      if (params.get('_nkw')) return `shopping for "${params.get('_nkw')}"`;
+    }
+    if (host.includes('etsy.com') && params.get('q')) {
+      return `shopping for "${params.get('q')}"`;
+    }
+
+    // Dating apps
+    if (host.includes('tinder.com') || host.includes('bumble.com') || host.includes('hinge.co')) {
+      return 'looking for love';
+    }
+
+    // Travel
+    if (host.includes('airbnb.') || host.includes('booking.com') || host.includes('expedia.')) {
+      return 'planning travel';
+    }
+
+    // Food delivery
+    if (host.includes('doordash.com') || host.includes('ubereats.com') || host.includes('grubhub.com')) {
+      return 'ordering food';
+    }
+
+    // General search param fallback
+    const searchTerms = params.get('q') || params.get('query') || params.get('search');
+    if (searchTerms) return `searching "${searchTerms}"`;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function generateRoast() {
   showLoading();
 
   try {
     const tabs = await chrome.tabs.query({});
-    // Shuffle tabs so AI sees them in random order each time
-    const shuffledTabs = shuffleArray(tabs);
-    const tabList = shuffledTabs.map(tab => `- ${tab.title} (${tab.url})`).join('\n');
+    // Shuffle tabs and pick only 12 random ones to force variety
+    const shuffledTabs = shuffleArray(tabs).slice(0, 12);
+    const tabList = shuffledTabs.map(tab => {
+      const extra = parseUrlContext(tab.url);
+      return extra
+        ? `- ${tab.title} (${tab.url}) [Context: ${extra}]`
+        : `- ${tab.title} (${tab.url})`;
+    }).join('\n');
 
     // Get recent roast history to avoid repetition
     const recentTopics = await getRecentRoastTopics();
@@ -217,7 +361,7 @@ async function generateRoast() {
           { role: 'system', content: SYSTEM_PROMPT + avoidList },
           { role: 'user', content: tabList }
         ],
-        max_tokens: 80,
+        max_tokens: 50,
         temperature: 0.9
       })
     });
@@ -248,10 +392,11 @@ async function generateRoast() {
 
     showJoke(joke, mood);
 
-    // Save roast for side panel conversation
+    // Save roast for side panel conversation (include tab count for sharing)
     await chrome.storage.local.set({
       lastRoast: joke,
-      lastRoastTime: Date.now()
+      lastRoastTime: Date.now(),
+      lastTabCount: tabs.length
     });
 
     // Track roast count and save topic to avoid repetition
@@ -261,6 +406,140 @@ async function generateRoast() {
     console.error('Error generating roast:', error);
     showJoke(`Oops! ${error.message}`, 'yikes');
   }
+}
+
+async function shareRoast() {
+  const jokeText = document.getElementById('joke-text').textContent;
+  const character = document.getElementById('character');
+
+  if (!jokeText) return;
+
+  // Get tab count from when the roast was generated
+  const storage = await chrome.storage.local.get(['lastTabCount']);
+  const tabCount = storage.lastTabCount || 0;
+
+  try {
+    // Create canvas for shareable image
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Image dimensions (Instagram story friendly)
+    canvas.width = 1080;
+    canvas.height = 1350;
+
+    // White background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Get the actual SVG content from the symbol definition
+    const useElement = character.querySelector('use');
+    const symbolId = useElement.getAttribute('href').replace('#', '');
+    const symbolElement = document.getElementById(symbolId);
+    const svgContent = symbolElement ? symbolElement.innerHTML : '';
+
+    // Expanded viewBox to capture full character including arms/hands/feet
+    // Characters extend from x=-7 to x=107 and y=0 to y=106
+    const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -5 120 115" width="360" height="345">${svgContent}</svg>`], {type: 'image/svg+xml'});
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = async () => {
+      // Draw character centered
+      const charX = (canvas.width - 360) / 2;
+      const charY = 280;
+      ctx.drawImage(img, charX, charY, 360, 345);
+
+      // Draw quote text
+      ctx.fillStyle = '#2D2A26';
+      ctx.font = 'bold 52px "DM Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      // Word wrap the text
+      const maxWidth = 900;
+      const lineHeight = 70;
+      const words = jokeText.split(' ');
+      let line = '';
+      let lines = [];
+
+      for (const word of words) {
+        const testLine = line + word + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line !== '') {
+          lines.push(line.trim());
+          line = word + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line.trim());
+
+      // Draw lines
+      const textY = 700;
+      lines.forEach((l, i) => {
+        ctx.fillText(l, canvas.width / 2, textY + (i * lineHeight));
+      });
+
+      // Draw tab count below quote
+      if (tabCount > 0) {
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = '500 32px "DM Sans", sans-serif';
+        const tabCountY = textY + (lines.length * lineHeight) + 60;
+        ctx.fillText(`Based on ${tabCount} open tabs`, canvas.width / 2, tabCountY);
+      }
+
+      // Draw branding
+      ctx.fillStyle = '#9CA3AF';
+      ctx.font = '500 28px "DM Sans", sans-serif';
+      ctx.fillText('Jesty', canvas.width / 2, 1250);
+
+      // Small decorative line
+      ctx.strokeStyle = '#FFB499';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(440, 1230);
+      ctx.lineTo(640, 1230);
+      ctx.stroke();
+
+      URL.revokeObjectURL(svgUrl);
+
+      // Convert to blob and share
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'jesty-roast.png', { type: 'image/png' });
+
+        // Try native share first
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file]
+            });
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              downloadImage(blob);
+            }
+          }
+        } else {
+          // Fallback: download image
+          downloadImage(blob);
+        }
+      }, 'image/png');
+    };
+
+    img.src = svgUrl;
+  } catch (error) {
+    console.error('Error sharing:', error);
+  }
+}
+
+function downloadImage(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'jesty-roast.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 async function getApiKey() {
