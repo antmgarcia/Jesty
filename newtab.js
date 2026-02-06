@@ -353,9 +353,8 @@ async function generateRoast() {
     // Get personalized context from user history
     const personalizedContext = await JestyStorage.buildPersonalizedContext();
 
-    // Get API key (user's key or default)
-    const userApiKey = await JestyStorage.getUserApiKey();
-    const apiKey = userApiKey || CONFIG.OPENAI_API_KEY;
+    // Get API key
+    const apiKey = CONFIG.OPENAI_API_KEY;
 
     // Build full system prompt with personalization
     const fullPrompt = personalizedContext

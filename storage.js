@@ -172,7 +172,6 @@ function getDefaultData() {
       }
     },
     settings: {
-      user_api_key: null,
       roast_intensity: "medium",
       favorite_topics: [],
       off_limits: [],
@@ -682,20 +681,6 @@ async function getUserStats() {
 }
 
 /**
- * Get/set user API key
- */
-async function getUserApiKey() {
-  const data = await getJestyData();
-  return data.settings.user_api_key;
-}
-
-async function setUserApiKey(key) {
-  const data = await getJestyData();
-  data.settings.user_api_key = key;
-  await saveJestyData(data);
-}
-
-/**
  * Clear all data (for testing/reset)
  */
 async function clearAllData() {
@@ -719,8 +704,6 @@ if (typeof window !== 'undefined') {
     getLastRoast,
     buildPersonalizedContext,
     getUserStats,
-    getUserApiKey,
-    setUserApiKey,
     checkMilestones,
     getMilestoneMessage,
     clearAllData,

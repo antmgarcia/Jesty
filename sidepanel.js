@@ -210,9 +210,8 @@ async function sendMessage() {
       { role: 'user', content: messageWithContext }
     ];
 
-    // Get API key from storage
-    const userApiKey = await JestyStorage.getUserApiKey();
-    const apiKey = userApiKey || CONFIG.OPENAI_API_KEY;
+    // Get API key
+    const apiKey = CONFIG.OPENAI_API_KEY;
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
