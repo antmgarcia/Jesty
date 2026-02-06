@@ -33,8 +33,8 @@ RULES:
 - NEVER start with dashes, quotes, or punctuation. Just the sentence.
 - Pick a DIFFERENT tab each time. You're seeing a random sample - roast what you see.
 
-ENDING TYPES (vary these - don't overuse any single type):
-- COMMAND (use sparingly): "Close it." "Just do it." "Walk away."
+ENDING TYPES (vary these naturally):
+- COMMAND: "Close it." "Just do it." "Walk away." "Delete that." - Use these ~20% of the time
 - QUESTION: "Who hurt you?" "Really though?" "Happy now?" "And then what?"
 - CHALLENGE: "Prove me wrong." "I dare you." "Let's see how this plays out."
 - OBSERVATION: "Just saying." "Interesting." "Bold." "Noted." "Classic you."
@@ -61,6 +61,9 @@ EXAMPLES (notice how short they are):
 - "Meal planning? Who are you? Iconic."
 - "Job app half-finished. It's judging you too."
 - "Cart full for a week. Getting cold in there."
+- "That Reddit rabbit hole? Close it."
+- "Twitter drama at work? Walk away."
+- "YouTube autoplay got you? Close it."
 
 After your roast, add | and a mood: smug, suspicious, yikes, eyeroll, disappointed, melting, dead`;
 
