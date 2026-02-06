@@ -151,11 +151,17 @@ function setExpression(mood) {
 
 /**
  * Check for pending action celebration (user closed a roasted tab)
+ * Only shows celebrations that originated from new tab roasts
  */
 async function checkPendingCelebration() {
   try {
     const { pendingCelebration } = await chrome.storage.local.get(['pendingCelebration']);
     if (pendingCelebration && pendingCelebration.type === 'action_followed') {
+      // Only show here if it came from a new tab roast (not chat)
+      if (pendingCelebration.source === 'chat') {
+        // Let the sidepanel handle this one
+        return null;
+      }
       // Clear it so it doesn't show again
       await chrome.storage.local.remove(['pendingCelebration']);
       return pendingCelebration;
@@ -501,7 +507,10 @@ async function generateRoast() {
       }))
       .filter(d => d.domain); // Remove empty domains
 
-    await chrome.storage.local.set({ roastedDomains });
+    await chrome.storage.local.set({
+      roastedDomains,
+      lastRoastSource: 'newtab' // Track that this roast came from new tab
+    });
 
   } catch (error) {
     console.error('Error generating roast:', error);

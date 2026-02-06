@@ -64,7 +64,17 @@ async function init() {
     if (changes.lastRoast) {
       loadLastRoast();
     }
+    // Listen for action celebrations meant for the chat
+    if (changes.pendingCelebration && changes.pendingCelebration.newValue) {
+      const celebration = changes.pendingCelebration.newValue;
+      if (celebration.source === 'chat' && celebration.type === 'action_followed') {
+        showChatCelebration(celebration);
+      }
+    }
   });
+
+  // Check for any pending chat celebration on load
+  checkPendingChatCelebration();
 }
 
 async function loadLastRoast() {
@@ -297,6 +307,23 @@ async function sendMessage() {
     // Add to conversation history
     conversationHistory.push({ role: 'assistant', content: jestyResponse });
 
+    // Store roasted domains for action tracking (marks source as chat)
+    const roastedDomains = tabs.slice(0, 12).map(tab => {
+      try {
+        const url = new URL(tab.url);
+        return {
+          domain: url.hostname.replace('www.', ''),
+          timestamp: Date.now(),
+          expiresAt: Date.now() + (10 * 60 * 1000)
+        };
+      } catch { return null; }
+    }).filter(Boolean);
+
+    await chrome.storage.local.set({
+      roastedDomains,
+      lastRoastSource: 'chat'
+    });
+
   } catch (error) {
     console.error('Error:', error);
     hideTypingIndicator();
@@ -308,4 +335,37 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * Check for pending celebration meant for the chat
+ */
+async function checkPendingChatCelebration() {
+  try {
+    const { pendingCelebration } = await chrome.storage.local.get(['pendingCelebration']);
+    if (pendingCelebration && pendingCelebration.source === 'chat' && pendingCelebration.type === 'action_followed') {
+      showChatCelebration(pendingCelebration);
+    }
+  } catch (e) {
+    console.log('Could not check pending chat celebration:', e);
+  }
+}
+
+/**
+ * Show celebration message in the chat
+ */
+async function showChatCelebration(celebration) {
+  // Clear the pending celebration
+  await chrome.storage.local.remove(['pendingCelebration']);
+
+  // Add celebration message from Jesty
+  addMessage(celebration.message, 'jesty');
+
+  // Record the action in storage
+  await JestyStorage.recordActionFollowed(celebration.domain);
+
+  // Add to conversation if we have one
+  if (currentConversationId) {
+    await JestyStorage.addMessage(currentConversationId, 'jesty', celebration.message);
+  }
 }

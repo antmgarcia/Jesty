@@ -87,7 +87,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 /**
- * Create a pending celebration for the next new tab load
+ * Create a pending celebration for the appropriate context
  */
 async function createPendingCelebration(closedTab, match) {
   // Check if there's already a pending celebration
@@ -97,17 +97,22 @@ async function createPendingCelebration(closedTab, match) {
   // Generate celebration message
   const message = getCelebrationMessage(closedTab.domain);
 
+  // Determine source - was this from a chat suggestion or new tab roast?
+  const { lastRoastSource } = await chrome.storage.local.get(['lastRoastSource']);
+  const source = lastRoastSource || 'newtab';
+
   await chrome.storage.local.set({
     pendingCelebration: {
       type: 'action_followed',
       message: message.text,
       mood: message.mood,
       domain: closedTab.domain,
+      source: source, // 'newtab' or 'chat'
       timestamp: Date.now()
     }
   });
 
-  console.log('Jesty: Pending celebration created for closing', closedTab.domain);
+  console.log('Jesty: Pending celebration created for closing', closedTab.domain, 'source:', source);
 }
 
 /**
