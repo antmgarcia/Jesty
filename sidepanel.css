@@ -121,7 +121,7 @@ body {
 .message-avatar.user-avatar {
   width: 32px;
   height: 32px;
-  background: #18181B;
+  background: #6B7280; /* Fallback, overridden by JS */
   border-radius: 50%;
   display: flex;
   align-items: center;

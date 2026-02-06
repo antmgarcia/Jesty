@@ -23,10 +23,14 @@ Never break character. You ARE Jesty.`;
 let conversationHistory = [];
 let currentRoast = null;
 let currentConversationId = null;
+let userAvatar = { initials: null, color: '#6B7280', email: null, useIcon: true };
 
 async function init() {
   // Initialize storage
   await JestyStorage.initializeStorage();
+
+  // Try to get user profile for avatar (may not work in all contexts)
+  await loadUserAvatar();
 
   const messageInput = document.getElementById('message-input');
   const sendBtn = document.getElementById('send-btn');
@@ -92,6 +96,50 @@ async function loadLastRoast() {
   }
 }
 
+async function loadUserAvatar() {
+  try {
+    // Check if chrome.identity is available
+    if (!chrome.identity || !chrome.identity.getProfileUserInfo) {
+      console.log('Chrome identity API not available, using default avatar');
+      return;
+    }
+
+    const userInfo = await new Promise((resolve, reject) => {
+      chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (info) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(info);
+        }
+      });
+    });
+
+    console.log('User info:', userInfo);
+
+    if (userInfo && userInfo.email && userInfo.email.length > 0) {
+      // Get initials from email (first letter of email username)
+      const username = userInfo.email.split('@')[0];
+      const initials = username.charAt(0).toUpperCase();
+
+      // Generate consistent color from email
+      const colors = ['#EF4444', '#F97316', '#F59E0B', '#84CC16', '#22C55E', '#14B8A6', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#EC4899'];
+      const colorIndex = userInfo.email.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+
+      userAvatar = {
+        initials: initials,
+        color: colors[colorIndex],
+        useIcon: false
+      };
+      console.log('Avatar set:', userAvatar);
+    } else {
+      console.log('No email found in user info');
+    }
+  } catch (e) {
+    // Keep default if identity API fails
+    console.log('Could not load user profile:', e);
+  }
+}
+
 function addMessage(text, sender) {
   const chatContainer = document.getElementById('chat-container');
   const emptyState = document.getElementById('empty-state');
@@ -111,8 +159,11 @@ function addMessage(text, sender) {
       <div class="message-bubble">${escapeHtml(text)}</div>
     `;
   } else {
+    const avatarContent = userAvatar.useIcon
+      ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
+      : userAvatar.initials;
     messageDiv.innerHTML = `
-      <div class="message-avatar user-avatar">Y</div>
+      <div class="message-avatar user-avatar" style="background-color: ${userAvatar.color}">${avatarContent}</div>
       <div class="message-bubble">${escapeHtml(text)}</div>
     `;
   }
