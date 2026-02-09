@@ -127,19 +127,10 @@ async function createPendingCelebration(closedTab, match) {
     timestamp: Date.now()
   };
 
-  // Store celebration (sidepanel will pick this up via storage listener)
+  // Store celebration (sidepanel will pick this up via storage listener if open)
   await chrome.storage.local.set({ pendingCelebration: celebration });
 
-  console.log('Jesty: Celebration triggered for closing', closedTab.domain);
-
-  // Try to open sidepanel to show celebration immediately
-  try {
-    const currentWindow = await chrome.windows.getCurrent();
-    await chrome.sidePanel.open({ windowId: currentWindow.id });
-    console.log('Jesty: Opened sidepanel for celebration');
-  } catch (e) {
-    console.log('Jesty: Could not open sidepanel:', e.message);
-  }
+  console.log('Jesty: Celebration stored for', closedTab.domain);
 }
 
 /**
