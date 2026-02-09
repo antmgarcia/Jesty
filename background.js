@@ -3,14 +3,18 @@
  * Monitors tab closures to detect when users follow Jesty's suggestions
  */
 
+console.log('Jesty BG: Service worker starting...');
+
 const ACTION_TRACKING_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 // Listen for tab removals
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  console.log('Jesty BG: Tab removed event fired, tabId:', tabId);
+
   try {
     const { roastedDomains, openTabs } = await chrome.storage.local.get(['roastedDomains', 'openTabs']);
 
-    console.log('Jesty: Tab closed, id:', tabId);
+    console.log('Jesty BG: Tab closed, id:', tabId);
     console.log('Jesty: openTabs:', openTabs ? Object.keys(openTabs).length : 'none');
     console.log('Jesty: roastedDomains:', roastedDomains);
 
