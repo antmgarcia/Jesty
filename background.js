@@ -26,6 +26,8 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     const closedTab = openTabs[tabId];
     if (!closedTab) {
       console.log('Jesty: Closed tab not in openTabs cache');
+      console.log('Jesty: Looking for tabId:', tabId);
+      console.log('Jesty: Available tabIds in cache:', Object.keys(openTabs));
       return;
     }
 
