@@ -326,28 +326,10 @@ async function sendMessage() {
       } catch { return null; }
     }).filter(Boolean);
 
-    // Also refresh openTabs cache so background worker can match
-    const openTabs = {};
-    tabs.forEach(tab => {
-      if (tab.url && !tab.url.startsWith('chrome://')) {
-        try {
-          const url = new URL(tab.url);
-          openTabs[tab.id] = {
-            tabId: tab.id,
-            domain: url.hostname.replace('www.', ''),
-            url: tab.url,
-            title: tab.title || ''
-          };
-        } catch {}
-      }
-    });
-
     console.log('Jesty Chat: Storing roasted domains:', roastedDomains.map(d => d.domain));
-    console.log('Jesty Chat: Storing openTabs:', Object.keys(openTabs).length, 'tabs');
 
     await chrome.storage.local.set({
       roastedDomains,
-      openTabs,
       lastRoastSource: 'chat'
     });
 

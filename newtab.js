@@ -515,25 +515,10 @@ async function generateRoast() {
       }))
       .filter(d => d.domain); // Remove empty domains
 
-    // Also refresh openTabs cache so background worker can match
-    const openTabs = {};
-    tabs.forEach(tab => {
-      if (tab.url && !tab.url.startsWith('chrome://')) {
-        openTabs[tab.id] = {
-          tabId: tab.id,
-          domain: extractDomain(tab.url),
-          url: tab.url,
-          title: tab.title || ''
-        };
-      }
-    });
-
     console.log('Jesty NewTab: Storing roasted domains:', roastedDomains.map(d => d.domain));
-    console.log('Jesty NewTab: Storing openTabs:', Object.keys(openTabs).length, 'tabs');
 
     await chrome.storage.local.set({
       roastedDomains,
-      openTabs,
       lastRoastSource: 'newtab' // Track that this roast came from new tab
     });
 
