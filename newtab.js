@@ -192,7 +192,11 @@ function showActionCelebration(celebration) {
   badge.textContent = 'You listened!';
   heroSection.appendChild(badge);
 
-  // Remove badge after CSS fade completes (5s display + 0.5s fade)
+  // Fade out after 5 seconds, then remove
+  setTimeout(() => {
+    badge.classList.add('fade-out');
+  }, 5000);
+
   setTimeout(() => {
     badge.remove();
     character.classList.remove('celebrating');
