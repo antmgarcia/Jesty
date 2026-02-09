@@ -355,8 +355,11 @@ async function showChatCelebration(celebration) {
   // Add celebration message from Jesty
   addMessage(celebration.message, 'jesty');
 
-  // Show floating thumbs-up celebration
-  showThumbsUpCelebration();
+  // Show floating thumbs-up celebration attached to the last message
+  const lastMessage = document.querySelector('.chat-container .message:last-child');
+  if (lastMessage) {
+    showThumbsUpCelebration(lastMessage);
+  }
 
   // Record the action in storage
   await JestyStorage.recordActionFollowed(celebration.domain);
@@ -368,20 +371,21 @@ async function showChatCelebration(celebration) {
 }
 
 /**
- * Show floating thumbs-up icons animation
+ * Show floating thumbs-up icons animation attached to a message
  */
-function showThumbsUpCelebration() {
-  const chatContainer = document.getElementById('chat-container');
+function showThumbsUpCelebration(messageElement) {
   const thumbCount = 6;
+
+  // Make message position relative for absolute positioning of thumbs
+  messageElement.style.position = 'relative';
 
   for (let i = 0; i < thumbCount; i++) {
     setTimeout(() => {
       const thumb = document.createElement('div');
       thumb.className = 'floating-thumb';
       thumb.innerHTML = `<svg viewBox="0 0 24 24" fill="#22C55E"><path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z"/></svg>`;
-      thumb.style.left = `${20 + Math.random() * 60}%`;
-      thumb.style.animationDelay = `${Math.random() * 0.3}s`;
-      chatContainer.appendChild(thumb);
+      thumb.style.left = `${10 + Math.random() * 80}%`;
+      messageElement.appendChild(thumb);
 
       // Remove after animation
       setTimeout(() => thumb.remove(), 2000);

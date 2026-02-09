@@ -309,9 +309,9 @@ body {
 /* Floating thumbs-up celebration */
 .floating-thumb {
   position: absolute;
-  bottom: 100px;
-  width: 24px;
-  height: 24px;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
   pointer-events: none;
   animation: floatUp 1.5s ease-out forwards;
   z-index: 100;
@@ -329,6 +329,6 @@ body {
   }
   100% {
     opacity: 0;
-    transform: translateY(-150px) scale(0.5);
+    transform: translateY(-80px) scale(0.6);
   }
 }
