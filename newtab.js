@@ -192,11 +192,11 @@ function showActionCelebration(celebration) {
   badge.textContent = 'You listened!';
   heroSection.appendChild(badge);
 
-  // Remove badge after animation
+  // Remove badge after CSS fade completes (5s display + 0.5s fade)
   setTimeout(() => {
     badge.remove();
     character.classList.remove('celebrating');
-  }, 3000);
+  }, 5500);
 
   // Record the action in storage for stats
   JestyStorage.recordActionFollowed(celebration.domain);
