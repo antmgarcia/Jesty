@@ -67,17 +67,12 @@ async function init() {
 
   // Listen for new roasts from newtab
   chrome.storage.onChanged.addListener((changes) => {
-    console.log('Jesty Sidepanel: Storage changed:', Object.keys(changes));
     if (changes.lastRoast) {
       loadLastRoast();
     }
     // Listen for action celebrations - show immediately in chat
-    if (changes.pendingCelebration) {
-      console.log('Jesty Sidepanel: pendingCelebration changed:', changes.pendingCelebration.newValue);
-      if (changes.pendingCelebration.newValue && changes.pendingCelebration.newValue.type === 'action_followed') {
-        console.log('Jesty Sidepanel: Showing celebration!');
-        showChatCelebration(changes.pendingCelebration.newValue);
-      }
+    if (changes.pendingCelebration && changes.pendingCelebration.newValue && changes.pendingCelebration.newValue.type === 'action_followed') {
+      showChatCelebration(changes.pendingCelebration.newValue);
     }
   });
 
@@ -118,7 +113,6 @@ async function loadUserAvatar() {
   try {
     // Check if chrome.identity is available
     if (!chrome.identity || !chrome.identity.getProfileUserInfo) {
-      console.log('Chrome identity API not available, using default avatar');
       return;
     }
 
@@ -131,8 +125,6 @@ async function loadUserAvatar() {
         }
       });
     });
-
-    console.log('User info:', userInfo);
 
     if (userInfo && userInfo.email && userInfo.email.length > 0) {
       // Get initials from email (first letter of email username)
@@ -148,13 +140,9 @@ async function loadUserAvatar() {
         color: colors[colorIndex],
         useIcon: false
       };
-      console.log('Avatar set:', userAvatar);
-    } else {
-      console.log('No email found in user info');
     }
   } catch (e) {
     // Keep default if identity API fails
-    console.log('Could not load user profile:', e);
   }
 }
 
@@ -326,8 +314,6 @@ async function sendMessage() {
       } catch { return null; }
     }).filter(Boolean);
 
-    console.log('Jesty Chat: Storing roasted domains:', roastedDomains.map(d => d.domain));
-
     await chrome.storage.local.set({
       roastedDomains,
       lastRoastSource: 'chat'
@@ -356,7 +342,6 @@ async function checkPendingChatCelebration() {
       showChatCelebration(pendingCelebration);
     }
   } catch (e) {
-    console.log('Could not check pending celebration:', e);
   }
 }
 
@@ -364,14 +349,11 @@ async function checkPendingChatCelebration() {
  * Show celebration message in the chat
  */
 async function showChatCelebration(celebration) {
-  console.log('Jesty Sidepanel: showChatCelebration called with:', celebration);
-
   // Clear the pending celebration
   await chrome.storage.local.remove(['pendingCelebration']);
 
   // Add celebration message from Jesty
   addMessage(celebration.message, 'jesty');
-  console.log('Jesty Sidepanel: Message added to chat');
 
   // Show floating thumbs-up celebration
   showThumbsUpCelebration();

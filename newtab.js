@@ -170,7 +170,6 @@ async function checkPendingCelebration() {
       return pendingCelebration;
     }
   } catch (e) {
-    console.log('Could not check pending celebration:', e);
   }
   return null;
 }
@@ -514,8 +513,6 @@ async function generateRoast() {
         expiresAt: Date.now() + (10 * 60 * 1000) // 10 minutes
       }))
       .filter(d => d.domain); // Remove empty domains
-
-    console.log('Jesty NewTab: Storing roasted domains:', roastedDomains.map(d => d.domain));
 
     await chrome.storage.local.set({
       roastedDomains,

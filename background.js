@@ -3,49 +3,24 @@
  * Monitors tab closures to detect when users follow Jesty's suggestions
  */
 
-console.log('Jesty BG: Service worker starting...');
-
 const ACTION_TRACKING_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 // Listen for tab removals
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
-  console.log('Jesty BG: Tab removed event fired, tabId:', tabId);
-
   try {
     const { roastedDomains, openTabs } = await chrome.storage.local.get(['roastedDomains', 'openTabs']);
 
-    console.log('Jesty BG: Tab closed, id:', tabId);
-    console.log('Jesty: openTabs:', openTabs ? Object.keys(openTabs).length : 'none');
-    console.log('Jesty: roastedDomains:', roastedDomains);
-
-    if (!openTabs || !roastedDomains || roastedDomains.length === 0) {
-      console.log('Jesty: No tracking data available');
-      return;
-    }
+    if (!openTabs || !roastedDomains || roastedDomains.length === 0) return;
 
     const closedTab = openTabs[tabId];
-    if (!closedTab) {
-      console.log('Jesty: Closed tab not in openTabs cache');
-      console.log('Jesty: Looking for tabId:', tabId);
-      console.log('Jesty: Available tabIds in cache:', Object.keys(openTabs));
-      return;
-    }
-
-    console.log('Jesty: Closed tab:', closedTab.domain, closedTab.title);
+    if (!closedTab) return;
 
     // Check if this domain was recently roasted
     const now = Date.now();
-    const match = roastedDomains.find(rd => {
-      const domainMatch = rd.domain === closedTab.domain && now < rd.expiresAt;
-      console.log('Jesty: Comparing', rd.domain, 'vs', closedTab.domain, '=', domainMatch);
-      return domainMatch;
-    });
+    const match = roastedDomains.find(rd => rd.domain === closedTab.domain && now < rd.expiresAt);
 
     if (match) {
-      console.log('Jesty: MATCH FOUND! Creating celebration');
       await createPendingCelebration(closedTab, match);
-    } else {
-      console.log('Jesty: No match found for domain:', closedTab.domain);
     }
 
     // Remove from open tabs cache
@@ -129,8 +104,6 @@ async function createPendingCelebration(closedTab, match) {
 
   // Store celebration (sidepanel will pick this up via storage listener if open)
   await chrome.storage.local.set({ pendingCelebration: celebration });
-
-  console.log('Jesty: Celebration stored for', closedTab.domain);
 }
 
 /**
@@ -177,7 +150,6 @@ async function cleanupExpiredData() {
 
     if (validDomains.length !== roastedDomains.length) {
       await chrome.storage.local.set({ roastedDomains: validDomains });
-      console.log('Jesty: Cleaned up expired roasted domains');
     }
   } catch (e) {
     console.error('Jesty: Error cleaning up expired data:', e);
@@ -204,7 +176,6 @@ async function initializeOpenTabs() {
     }
 
     await chrome.storage.local.set({ openTabs });
-    console.log('Jesty: Initialized open tabs tracking');
   } catch (e) {
     console.error('Jesty: Error initializing open tabs:', e);
   }

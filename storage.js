@@ -235,7 +235,6 @@ async function initializeStorage() {
   if (!existing.jesty_data) {
     const defaultData = getDefaultData();
     await chrome.storage.local.set({ jesty_data: defaultData });
-    console.log('Jesty storage initialized');
     return defaultData;
   }
   return existing.jesty_data;
