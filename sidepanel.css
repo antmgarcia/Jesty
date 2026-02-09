@@ -305,3 +305,24 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Floating thumbs-up celebration */
+.floating-thumb {
+  position: absolute;
+  bottom: 100px;
+  font-size: 24px;
+  pointer-events: none;
+  animation: floatUp 1.5s ease-out forwards;
+  z-index: 100;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-150px) scale(0.5);
+  }
+}

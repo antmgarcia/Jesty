@@ -373,11 +373,36 @@ async function showChatCelebration(celebration) {
   addMessage(celebration.message, 'jesty');
   console.log('Jesty Sidepanel: Message added to chat');
 
+  // Show floating thumbs-up celebration
+  showThumbsUpCelebration();
+
   // Record the action in storage
   await JestyStorage.recordActionFollowed(celebration.domain);
 
   // Add to conversation if we have one
   if (currentConversationId) {
     await JestyStorage.addMessage(currentConversationId, 'jesty', celebration.message);
+  }
+}
+
+/**
+ * Show floating thumbs-up icons animation
+ */
+function showThumbsUpCelebration() {
+  const chatContainer = document.getElementById('chat-container');
+  const thumbCount = 6;
+
+  for (let i = 0; i < thumbCount; i++) {
+    setTimeout(() => {
+      const thumb = document.createElement('div');
+      thumb.className = 'floating-thumb';
+      thumb.textContent = '👍';
+      thumb.style.left = `${20 + Math.random() * 60}%`;
+      thumb.style.animationDelay = `${Math.random() * 0.3}s`;
+      chatContainer.appendChild(thumb);
+
+      // Remove after animation
+      setTimeout(() => thumb.remove(), 2000);
+    }, i * 100);
   }
 }
