@@ -67,14 +67,16 @@ async function init() {
 
   // Listen for new roasts from newtab
   chrome.storage.onChanged.addListener((changes) => {
+    console.log('Jesty Sidepanel: Storage changed:', Object.keys(changes));
     if (changes.lastRoast) {
       loadLastRoast();
     }
     // Listen for action celebrations - show immediately in chat
-    if (changes.pendingCelebration && changes.pendingCelebration.newValue) {
-      const celebration = changes.pendingCelebration.newValue;
-      if (celebration.type === 'action_followed') {
-        showChatCelebration(celebration);
+    if (changes.pendingCelebration) {
+      console.log('Jesty Sidepanel: pendingCelebration changed:', changes.pendingCelebration.newValue);
+      if (changes.pendingCelebration.newValue && changes.pendingCelebration.newValue.type === 'action_followed') {
+        console.log('Jesty Sidepanel: Showing celebration!');
+        showChatCelebration(changes.pendingCelebration.newValue);
       }
     }
   });
@@ -380,11 +382,14 @@ async function checkPendingChatCelebration() {
  * Show celebration message in the chat
  */
 async function showChatCelebration(celebration) {
+  console.log('Jesty Sidepanel: showChatCelebration called with:', celebration);
+
   // Clear the pending celebration
   await chrome.storage.local.remove(['pendingCelebration']);
 
   // Add celebration message from Jesty
   addMessage(celebration.message, 'jesty');
+  console.log('Jesty Sidepanel: Message added to chat');
 
   // Record the action in storage
   await JestyStorage.recordActionFollowed(celebration.domain);
