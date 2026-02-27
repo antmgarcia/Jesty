@@ -72,7 +72,7 @@ body {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #FF7A50;
+  color: #EBF34F;
 }
 
 .stat-label {
@@ -108,15 +108,15 @@ body {
 }
 
 .support-btn.primary {
-  background: #FF7A50;
+  background: #EBF34F;
   color: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(255, 122, 80, 0.3);
+  box-shadow: 0 2px 8px rgba(235, 243, 79, 0.3);
 }
 
 .support-btn.primary:hover {
-  background: #FF6B3D;
+  background: #D8E038;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 122, 80, 0.4);
+  box-shadow: 0 4px 12px rgba(235, 243, 79, 0.4);
 }
 
 .support-btn.secondary {
@@ -148,7 +148,7 @@ body {
 .badge {
   font-size: 10px;
   font-weight: 700;
-  background: #FF7A50;
+  background: #EBF34F;
   color: white;
   padding: 2px 6px;
   border-radius: 4px;
@@ -196,7 +196,7 @@ body {
 
 .api-input:focus {
   outline: none;
-  border-color: #FF7A50;
+  border-color: #EBF34F;
 }
 
 .byok-actions {
@@ -247,7 +247,7 @@ body {
 .footer-heart {
   width: 12px;
   height: 12px;
-  color: #FF7A50;
+  color: #EBF34F;
 }
 
 .hidden {

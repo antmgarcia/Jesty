@@ -8,230 +8,20 @@
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
-  <!-- SVG Character Definitions - Fluid geometric style with arms -->
+  <!-- Page-specific icons (shared character/accessory SVGs injected by characters.js) -->
   <svg style="display: none;">
     <defs>
-      <!-- Smug face - arms crossed, leaning back -->
-      <symbol id="face-smug" viewBox="-10 -5 120 115">
-        <!-- Body - fluid blob shape, leaning -->
-        <path d="M28 18 Q55 12 72 22 Q85 35 82 55 Q80 75 68 82 Q50 90 32 82 Q18 72 18 50 Q18 30 28 18Z" fill="#FF7A50"/>
-        <!-- Legs -->
-        <line x1="38" y1="80" x2="32" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="60" y1="82" x2="66" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="30" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="68" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - crossed smugly -->
-        <line x1="22" y1="48" x2="8" y2="58" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="78" y1="45" x2="92" y2="52" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="6" cy="60" r="5" fill="#E5673D"/>
-        <circle cx="94" cy="54" r="5" fill="#E5673D"/>
-        <!-- Face -->
-        <ellipse cx="38" cy="42" rx="5" ry="2.5" fill="#2D2A26"/>
-        <ellipse cx="60" cy="40" rx="5" ry="2.5" fill="#2D2A26"/>
-        <path d="M55 32 Q65 28 72 34" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M35 58 Q50 70 65 58" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-      </symbol>
-
-      <!-- Suspicious - hand on chin -->
-      <symbol id="face-suspicious" viewBox="-10 -5 120 115">
-        <!-- Body - leaning forward blob -->
-        <path d="M25 22 Q48 10 70 20 Q88 32 85 55 Q82 78 65 85 Q45 92 28 82 Q12 70 15 48 Q17 30 25 22Z" fill="#FF7A50"/>
-        <!-- Legs -->
-        <line x1="35" y1="82" x2="38" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="62" y1="84" x2="58" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="38" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="58" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - one on chin thinking -->
-        <line x1="18" y1="52" x2="8" y2="68" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <path d="M82 48 Q92 42 88 58 Q85 65 78 62" stroke="#E5673D" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <circle cx="6" cy="70" r="5" fill="#E5673D"/>
-        <circle cx="76" cy="64" r="5" fill="#E5673D"/>
-        <!-- Face -->
-        <path d="M30 42 Q40 36 50 44" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <circle cx="65" cy="40" r="6" fill="#FFFFFF"/>
-        <circle cx="67" cy="39" r="3" fill="#2D2A26"/>
-        <path d="M38 62 Q52 58 65 64" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-      </symbol>
-
-      <!-- Yikes - hands up shocked -->
-      <symbol id="face-yikes" viewBox="-10 -5 120 115">
-        <!-- Body - tense, pulled back blob -->
-        <path d="M30 20 Q52 8 72 18 Q90 30 88 52 Q85 75 70 84 Q48 94 28 84 Q10 72 12 48 Q14 28 30 20Z" fill="#FF7A50"/>
-        <!-- Legs - tense spread -->
-        <line x1="32" y1="82" x2="22" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="68" y1="82" x2="78" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="20" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="80" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - raised in shock -->
-        <line x1="15" y1="42" x2="5" y2="22" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="85" y1="38" x2="95" y2="18" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="3" cy="20" r="5" fill="#E5673D"/>
-        <circle cx="97" cy="16" r="5" fill="#E5673D"/>
-        <!-- Face - wide scared eyes -->
-        <circle cx="38" cy="42" r="8" fill="#FFFFFF"/>
-        <circle cx="62" cy="40" r="8" fill="#FFFFFF"/>
-        <circle cx="40" cy="44" r="4" fill="#2D2A26"/>
-        <circle cx="64" cy="42" r="4" fill="#2D2A26"/>
-        <path d="M32 60 L68 58" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M38 60 L38 55 M50 59 L50 54 M62 58 L62 53" stroke="#2D2A26" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <!-- Sweat -->
-        <ellipse cx="78" cy="28" rx="3" ry="5" fill="#87CEEB"/>
-      </symbol>
-
-      <!-- Eyeroll - arms crossed, annoyed -->
-      <symbol id="face-eyeroll" viewBox="-10 -5 120 115">
-        <!-- Body - slouchy blob -->
-        <path d="M22 25 Q50 15 75 25 Q90 38 88 58 Q85 80 65 87 Q42 94 25 85 Q8 74 12 50 Q15 32 22 25Z" fill="#FF7A50"/>
-        <!-- Legs - one straight one bent -->
-        <line x1="35" y1="84" x2="30" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <path d="M65 85 Q78 90 72 100" stroke="#E5673D" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <ellipse cx="28" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="74" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - crossed -->
-        <line x1="15" y1="50" x2="5" y2="62" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="85" y1="48" x2="95" y2="58" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="3" cy="64" r="5" fill="#E5673D"/>
-        <circle cx="97" cy="60" r="5" fill="#E5673D"/>
-        <!-- Face - eyes rolled up -->
-        <circle cx="38" cy="40" r="7" fill="#FFFFFF"/>
-        <circle cx="62" cy="38" r="7" fill="#FFFFFF"/>
-        <circle cx="38" cy="35" r="3.5" fill="#2D2A26"/>
-        <circle cx="62" cy="33" r="3.5" fill="#2D2A26"/>
-        <path d="M35 62 Q50 55 65 60" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-      </symbol>
-
-      <!-- Disappointed - droopy sad -->
-      <symbol id="face-disappointed" viewBox="-10 -5 120 115">
-        <!-- Body - droopy sad blob -->
-        <path d="M25 28 Q50 18 72 28 Q88 42 85 62 Q80 82 62 88 Q42 94 25 85 Q10 75 15 52 Q18 35 25 28Z" fill="#FF7A50"/>
-        <!-- Legs - standing sad -->
-        <line x1="38" y1="86" x2="38" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="62" y1="86" x2="62" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="38" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="62" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - hanging sadly -->
-        <line x1="18" y1="55" x2="10" y2="78" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="82" y1="55" x2="90" y2="78" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="8" cy="80" r="5" fill="#E5673D"/>
-        <circle cx="92" cy="80" r="5" fill="#E5673D"/>
-        <!-- Face - sad -->
-        <ellipse cx="38" cy="45" rx="4" ry="5" fill="#2D2A26"/>
-        <ellipse cx="62" cy="47" rx="4" ry="5" fill="#2D2A26"/>
-        <path d="M28 38 Q38 44 48 40" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M52 42 Q62 48 72 42" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M35 68 Q50 58 65 66" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-      </symbol>
-
-      <!-- Melting - puddle blob -->
-      <symbol id="face-melting" viewBox="-10 -5 120 115">
-        <!-- Body - melting puddle -->
-        <path d="M15 45 Q25 25 50 28 Q78 30 85 50 Q90 70 75 80 Q60 92 40 88 Q20 85 12 70 Q5 55 15 45Z" fill="#FF7A50"/>
-        <ellipse cx="22" cy="88" rx="14" ry="8" fill="#FF7A50"/>
-        <ellipse cx="78" cy="85" rx="12" ry="7" fill="#FF7A50"/>
-        <!-- Arms - limp -->
-        <line x1="18" y1="52" x2="2" y2="68" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="82" y1="55" x2="98" y2="70" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="0" cy="70" r="5" fill="#E5673D"/>
-        <circle cx="100" cy="72" r="5" fill="#E5673D"/>
-        <!-- Face - dizzy -->
-        <circle cx="38" cy="50" r="6" fill="none" stroke="#2D2A26" stroke-width="2.5"/>
-        <circle cx="38" cy="50" r="2" fill="#2D2A26"/>
-        <circle cx="62" cy="52" r="6" fill="none" stroke="#2D2A26" stroke-width="2.5"/>
-        <circle cx="62" cy="52" r="2" fill="#2D2A26"/>
-        <path d="M40 68 Q50 74 60 68" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <ellipse cx="76" cy="40" rx="3" ry="5" fill="#87CEEB"/>
-      </symbol>
-
-      <!-- Dead - flat dramatic -->
-      <symbol id="face-dead" viewBox="-10 -5 120 115">
-        <!-- Body - flat splat -->
-        <path d="M10 55 Q20 40 50 42 Q80 44 90 58 Q95 75 80 82 Q55 92 30 85 Q10 78 8 65 Q5 58 10 55Z" fill="#FF7A50"/>
-        <!-- Legs - spread out -->
-        <line x1="25" y1="80" x2="12" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="75" y1="82" x2="88" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="10" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="90" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - spread dramatic -->
-        <line x1="12" y1="58" x2="0" y2="50" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="88" y1="60" x2="100" y2="52" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="-2" cy="48" r="5" fill="#E5673D"/>
-        <circle cx="102" cy="50" r="5" fill="#E5673D"/>
-        <!-- Face - X eyes, tongue -->
-        <path d="M32 52 L44 64 M44 52 L32 64" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M56 52 L68 64 M68 52 L56 64" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M42 75 L58 75" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <ellipse cx="62" cy="80" rx="4" ry="6" fill="#FF5A5A"/>
-        <!-- Ghost -->
-        <path d="M50 30 Q55 20 50 12 Q52 5 48 0" stroke="#FFB499" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>
-      </symbol>
-
-      <!-- Thinking - curious lean -->
-      <symbol id="face-thinking" viewBox="-10 -5 120 115">
-        <!-- Body - curious leaning blob -->
-        <path d="M22 20 Q48 10 72 22 Q88 38 85 58 Q80 80 62 87 Q40 94 22 82 Q8 68 12 45 Q15 28 22 20Z" fill="#FF7A50"/>
-        <!-- Legs -->
-        <line x1="35" y1="85" x2="32" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="62" y1="86" x2="65" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="30" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="67" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - one on chin -->
-        <line x1="15" y1="52" x2="5" y2="68" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <path d="M82 48 Q95 38 90 55 L80 62" stroke="#E5673D" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <circle cx="3" cy="70" r="5" fill="#E5673D"/>
-        <circle cx="78" cy="64" r="5" fill="#E5673D"/>
-        <!-- Face - looking up thinking -->
-        <circle cx="38" cy="40" r="6" fill="#FFFFFF"/>
-        <circle cx="62" cy="38" r="5" fill="#FFFFFF"/>
-        <circle cx="41" cy="38" r="3" fill="#2D2A26"/>
-        <circle cx="64" cy="36" r="2.5" fill="#2D2A26"/>
-        <path d="M28 32 Q40 24 52 32" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <ellipse cx="50" cy="62" rx="5" ry="6" fill="#2D2A26"/>
-      </symbol>
-
-      <!-- Happy/Fed face - arms up celebrating -->
-      <symbol id="face-happy" viewBox="-10 -5 120 115">
-        <!-- Body - bouncy fluid blob -->
-        <path d="M25 22 Q52 10 75 22 Q92 38 88 58 Q82 82 62 88 Q40 95 22 85 Q8 70 12 48 Q15 30 25 22Z" fill="#FF7A50"/>
-        <!-- Legs - bouncy -->
-        <line x1="35" y1="85" x2="28" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="65" y1="86" x2="72" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="26" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="74" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <!-- Arms - raised celebrating -->
-        <line x1="15" y1="45" x2="2" y2="25" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="85" y1="42" x2="98" y2="22" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="0" cy="23" r="5" fill="#E5673D"/>
-        <circle cx="100" cy="20" r="5" fill="#E5673D"/>
-        <!-- Face -->
-        <path d="M30 42 Q40 32 50 42" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M52 40 Q62 30 72 40" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M32 60 Q50 78 68 60" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <!-- Rosy cheeks -->
-        <circle cx="25" cy="55" r="5" fill="#FF8FA3" opacity="0.6"/>
-        <circle cx="75" cy="52" r="5" fill="#FF8FA3" opacity="0.6"/>
-        <!-- Sparkles -->
-        <path d="M10 35 L13 32 L10 29 L7 32 Z" fill="#FFD93D"/>
-        <path d="M90 30 L93 27 L90 24 L87 27 Z" fill="#FFD93D"/>
-      </symbol>
-
-      <!-- Search icon -->
       <symbol id="icon-search" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
         <path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </symbol>
-
-      <!-- Refresh icon -->
       <symbol id="icon-refresh" viewBox="0 0 24 24">
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 3v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </symbol>
-
-      <!-- Chat icon -->
       <symbol id="icon-chat" viewBox="0 0 24 24">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </symbol>
-
-      <!-- Share icon -->
       <symbol id="icon-share" viewBox="0 0 24 24">
         <circle cx="18" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
         <circle cx="6" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -251,12 +41,31 @@
     <!-- Hero Jesty Section -->
     <div class="hero-section">
       <div class="hero-character" id="character">
-        <svg><use href="#face-thinking"/></svg>
+        <svg viewBox="-15 -10 150 140"><use href="#face-thinking"/></svg>
       </div>
 
       <div class="hero-content" id="jesty-card">
         <p id="joke-text" class="hero-quote hidden"></p>
+        <p id="hero-cta" class="hero-cta hidden">Plead Guilty for unlimited roasts</p>
         <p id="loading-text" class="hero-loading">Reading your tabs...</p>
+
+        <!-- Welcome prompt (shown once on first launch) -->
+        <div id="welcome-prompt" class="welcome-prompt hidden">
+          <p class="welcome-heading">What should I call you?</p>
+          <div class="welcome-row">
+            <input type="text" id="welcome-name" class="welcome-name-input" placeholder="Your name" autocomplete="off" maxlength="20" autofocus>
+            <button id="welcome-submit" class="welcome-submit">Go</button>
+          </div>
+          <div class="welcome-colors" id="welcome-colors">
+            <button class="color-dot active" data-body="#EBF34F" data-limb="#C8D132" data-shadow="#8A9618" data-highlight="#F8FBCE" style="background:#EBF34F" title="Lime"></button>
+            <button class="color-dot" data-body="#FF8FA3" data-limb="#E0637A" data-shadow="#B84D60" data-highlight="#FFD4DC" style="background:#FF8FA3" title="Pink"></button>
+            <button class="color-dot" data-body="#87CEEB" data-limb="#5BAED4" data-shadow="#3A8CB5" data-highlight="#C8E8F5" style="background:#87CEEB" title="Sky"></button>
+            <button class="color-dot" data-body="#A78BFA" data-limb="#7C5FD6" data-shadow="#5B3FB5" data-highlight="#D4C8FD" style="background:#A78BFA" title="Purple"></button>
+            <button class="color-dot" data-body="#34D399" data-limb="#1EB57F" data-shadow="#15875F" data-highlight="#A7F0D4" style="background:#34D399" title="Mint"></button>
+            <button class="color-dot" data-body="#FDBA74" data-limb="#E09550" data-shadow="#B87638" data-highlight="#FEE0C0" style="background:#FDBA74" title="Peach"></button>
+          </div>
+          <button id="welcome-skip" class="welcome-skip">Skip</button>
+        </div>
       </div>
 
       <div class="hero-actions hidden" id="jesty-actions">
@@ -271,7 +80,6 @@
         </button>
       </div>
 
-      <p class="tab-count" id="tab-count"></p>
     </div>
 
     <!-- Search Section (minimal, bottom) -->
@@ -289,10 +97,25 @@
         </div>
       </form>
     </div>
+
+    <div class="tab-info">
+      <p class="tab-count" id="tab-count"></p>
+      <span class="info-dot">·</span>
+      <p class="roasts-remaining" id="roasts-remaining"></p>
+    </div>
   </div>
 
+  <footer class="privacy-footer">
+    Your tabs are processed locally and never stored.
+    <a href="privacy.html" target="_blank">Privacy Policy</a>
+  </footer>
+
+  <script src="characters.js"></script>
   <script src="config.js"></script>
   <script src="storage.js"></script>
+  <script src="premium.js"></script>
+  <script src="accessories.js"></script>
+  <script src="calendar.js"></script>
   <script src="newtab.js"></script>
 </body>
 </html>

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <clipPath id="rounded-clip">
+      <rect width="120" height="120" rx="20" ry="20"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#rounded-clip)">
+  <!-- Black square background -->
+  <rect width="120" height="120" fill="#18181B"/>
+  <g transform="translate(-132, -105) scale(3.3)">
+    <!-- Blob body -->
+    <path d="M48 18 C30 18, 22 30, 24 48 C25 60, 20 72, 22 84 C24 96, 38 104, 60 106 C82 108, 98 98, 100 84 C102 72, 96 60, 94 48 C92 32, 82 18, 72 18 Z" fill="#A78BFA"/>
+    <!-- Belly shadow -->
+    <ellipse cx="60" cy="90" rx="30" ry="18" fill="#5B3FB5" opacity="0.15"/>
+    <!-- Head highlight -->
+    <ellipse cx="58" cy="30" rx="22" ry="14" fill="#D4C8FD" opacity="0.22"/>
+    <!-- Left eye white -->
+    <ellipse cx="46" cy="50" rx="9" ry="5" fill="#FFFFFF"/>
+    <!-- Left pupil -->
+    <circle cx="48" cy="50" r="3.5" fill="#2D2A26"/>
+    <circle cx="49.5" cy="49" r="1.4" fill="#FFFFFF"/>
+    <!-- Right eye white -->
+    <ellipse cx="72" cy="50" rx="9" ry="5" fill="#FFFFFF"/>
+    <!-- Right pupil -->
+    <circle cx="74" cy="50" r="3.5" fill="#2D2A26"/>
+    <circle cx="75.5" cy="49" r="1.4" fill="#FFFFFF"/>
+    <!-- Left eyebrow -->
+    <path d="M36 41 C40 39, 50 39, 54 41" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- Right eyebrow (raised) -->
+    <path d="M64 37 C68 33, 76 33, 80 37" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- Smirk -->
+    <path d="M46 66 C52 63, 60 63, 70 70" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+  </g>
+</svg>

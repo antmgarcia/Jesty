@@ -3,9 +3,87 @@
  * Handles all persistent data for personalization
  */
 
-const SCHEMA_VERSION = "1.0";
+const SCHEMA_VERSION = "1.2";
 const MAX_ROASTS = 100;
 const MAX_CONVERSATIONS = 50;
+
+/** Local date string (YYYY-MM-DD) for daily cap resets at user's midnight */
+function getLocalDate() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Schema migration chain
+ * Each migration upgrades data from one version to the next.
+ */
+const MIGRATIONS = {
+  "1.0_to_1.1": (data) => {
+    // P1.4: Daily cap tracking
+    if (!data.settings.daily_cap) data.settings.daily_cap = 12;
+    if (data.settings.roasts_today === undefined) data.settings.roasts_today = 0;
+    if (!data.settings.roast_cap_date) data.settings.roast_cap_date = null;
+
+    // P1.6: Shame score tracking
+    if (data.profile.last_shame_score === undefined) data.profile.last_shame_score = 0;
+
+    // P2.4: Chat daily cap
+    if (data.settings.chats_today === undefined) data.settings.chats_today = 0;
+    if (!data.settings.chat_cap_date) data.settings.chat_cap_date = null;
+
+    data.version = "1.1";
+    return data;
+  },
+  "1.1_to_1.2": (data) => {
+    // P2.8: Progression / Tamagotchi
+    if (!data.progression) {
+      data.progression = { level: 1, xp: 0, xp_to_next: 100, total_xp: 0, evolution_stage: 'baby' };
+    }
+
+    // P2.9: Records
+    if (!data.records) {
+      data.records = { wall_of_shame: [], hall_of_fame: [] };
+    }
+
+    // P2.10: Daily reports
+    if (!data.daily_reports) {
+      data.daily_reports = [];
+    }
+
+    // P3.1: Subscription fields
+    if (!data.settings.subscription_tier) data.settings.subscription_tier = null;
+    if (!data.settings.subscription_status) data.settings.subscription_status = null;
+    if (!data.settings.subscription_id) data.settings.subscription_id = null;
+    if (!data.settings.subscription_expires) data.settings.subscription_expires = null;
+
+    data.version = "1.2";
+    return data;
+  }
+};
+
+/**
+ * Run migrations if stored version < current version
+ */
+function migrateData(data) {
+  const versions = ["1.0", "1.1", "1.2"];
+  let currentIdx = versions.indexOf(data.version || "1.0");
+  const targetIdx = versions.indexOf(SCHEMA_VERSION);
+
+  if (currentIdx === -1) currentIdx = 0;
+
+  while (currentIdx < targetIdx) {
+    const from = versions[currentIdx];
+    const to = versions[currentIdx + 1];
+    const key = `${from}_to_${to}`;
+    if (MIGRATIONS[key]) {
+      data = MIGRATIONS[key](data);
+    }
+    currentIdx++;
+  }
+
+  data.version = SCHEMA_VERSION;
+  return data;
+}
 
 // Action followed celebration messages
 const ACTION_MESSAGES = {
@@ -87,7 +165,7 @@ function getMilestoneMessage(milestone) {
 const TAB_CATEGORIES = {
   social_media: [
     'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
-    'linkedin.com', 'reddit.com', 'tiktok.com', 'threads.net',
+    'reddit.com', 'tiktok.com', 'threads.net',
     'mastodon', 'bluesky'
   ],
   streaming: [
@@ -135,7 +213,7 @@ const TAB_CATEGORIES = {
     'skillshare', 'linkedin.com/learning', 'edx.org'
   ],
   gaming: [
-    'twitch.tv', 'steampowered', 'playstation.com', 'xbox.com',
+    'steampowered', 'playstation.com', 'xbox.com',
     'epicgames', 'itch.io', 'roblox.com', 'discord.com'
   ],
   ai: [
@@ -180,6 +258,8 @@ function getDefaultData() {
         impulse_shopper_score: 0,
         tab_hoarder_score: 0
       },
+      user_name: null,
+      last_shame_score: 0,
       updated_at: new Date().toISOString()
     },
     roasts: [],
@@ -222,8 +302,29 @@ function getDefaultData() {
       off_limits: [],
       daily_roast_reminder: false,
       is_premium: false,
-      premium_since: null
-    }
+      premium_since: null,
+      daily_cap: 12,
+      roasts_today: 0,
+      roast_cap_date: null,
+      chats_today: 0,
+      chat_cap_date: null,
+      subscription_tier: null,
+      subscription_status: null,
+      subscription_id: null,
+      subscription_expires: null
+    },
+    progression: {
+      level: 1,
+      xp: 0,
+      xp_to_next: 100,
+      total_xp: 0,
+      evolution_stage: 'baby'
+    },
+    records: {
+      wall_of_shame: [],
+      hall_of_fame: []
+    },
+    daily_reports: []
   };
 }
 
@@ -237,7 +338,27 @@ async function initializeStorage() {
     await chrome.storage.local.set({ jesty_data: defaultData });
     return defaultData;
   }
-  return existing.jesty_data;
+
+  // Run migrations if schema version is outdated
+  let data = existing.jesty_data;
+  let dirty = false;
+
+  if (data.version !== SCHEMA_VERSION) {
+    data = migrateData(data);
+    dirty = true;
+  }
+
+  // Ensure user_name field exists (for existing users before this feature)
+  if (data.profile.user_name === undefined) {
+    data.profile.user_name = null;
+    dirty = true;
+  }
+
+  if (dirty) {
+    await chrome.storage.local.set({ jesty_data: data });
+  }
+
+  return data;
 }
 
 /**
@@ -660,11 +781,38 @@ async function getLastRoast() {
 }
 
 /**
+ * Get the user's stored name (or null)
+ */
+async function getUserName() {
+  const data = await getJestyData();
+  return data.profile.user_name || null;
+}
+
+/**
+ * Manually set the user's name (overrides auto-detection)
+ */
+async function setUserName(name) {
+  const data = await getJestyData();
+  data.profile.user_name = name || null;
+  await saveJestyData(data);
+}
+
+/**
  * Build personalized context for API
  */
 async function buildPersonalizedContext() {
   const data = await getJestyData();
   const context = [];
+
+  // User's name
+  if (data.profile.user_name) {
+    const totalRoasts = data.profile.total_roasts;
+    if (totalRoasts < 5) {
+      context.push(`User's name is ${data.profile.user_name}. This is one of their first roasts — USE their name in this roast to make it feel personal and welcoming (e.g. "${data.profile.user_name}, really?" or "Oh ${data.profile.user_name}...").`);
+    } else {
+      context.push(`User's name is ${data.profile.user_name}. Almost NEVER use their name — only about 1 in 8 roasts. Most roasts should NOT include it. When you do drop it, it should land like a surprise punch (e.g. "${data.profile.user_name}, really?").`);
+    }
+  }
 
   // User patterns
   if (data.profile.traits.night_owl_score > 0.7) {
@@ -812,6 +960,61 @@ function getActionCelebrationMessage(actions, domain) {
 }
 
 /**
+ * Check daily roast cap. Resets if new day.
+ * Returns { allowed: boolean, remaining: number }
+ */
+async function checkDailyCap() {
+  const data = await getJestyData();
+  const today = getLocalDate();
+
+  // Reset if new day
+  if (data.settings.roast_cap_date !== today) {
+    data.settings.roasts_today = 0;
+    data.settings.roast_cap_date = today;
+    await saveJestyData(data);
+  }
+
+  const remaining = data.settings.daily_cap - data.settings.roasts_today;
+  return {
+    allowed: remaining > 0,
+    remaining: Math.max(0, remaining)
+  };
+}
+
+/**
+ * Increment daily roast count
+ */
+async function incrementDailyRoast() {
+  const data = await getJestyData();
+  const today = getLocalDate();
+
+  if (data.settings.roast_cap_date !== today) {
+    data.settings.roasts_today = 0;
+    data.settings.roast_cap_date = today;
+  }
+
+  data.settings.roasts_today++;
+  await saveJestyData(data);
+}
+
+/**
+ * Check chat cap per conversation (12 messages for free, unlimited for premium).
+ * Returns { allowed: boolean, remaining: number, messageCount: number }
+ */
+async function checkChatCap(conversationId) {
+  const data = await getJestyData();
+  const conv = data.conversations.find(c => c.id === conversationId);
+  const count = conv ? conv.message_count : 0;
+  const cap = data.settings.is_premium ? Infinity : 12;
+  const remaining = cap - count;
+  return {
+    allowed: remaining > 0,
+    remaining: Math.max(0, remaining),
+    messageCount: count
+  };
+}
+
+/**
  * Clear all data (for testing/reset)
  */
 async function clearAllData() {
@@ -824,6 +1027,7 @@ if (typeof window !== 'undefined') {
   window.JestyStorage = {
     initializeStorage,
     getJestyData,
+    saveJestyData,
     saveRoast,
     markRoastShared,
     markRoastRefreshed,
@@ -835,10 +1039,15 @@ if (typeof window !== 'undefined') {
     getLastRoast,
     buildPersonalizedContext,
     getUserStats,
+    getUserName,
+    setUserName,
     checkMilestones,
     getMilestoneMessage,
     recordActionFollowed,
     getActionCelebrationMessage,
+    checkDailyCap,
+    incrementDailyRoast,
+    checkChatCap,
     clearAllData,
     categorizeUrl,
     categorizeTabs

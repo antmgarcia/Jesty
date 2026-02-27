@@ -102,5 +102,5 @@ All data persists locally via `chrome.storage.local`:
 - White background, minimal Google-style
 - Hero character centered
 - DM Sans font
-- Coral orange character (#FF7A50)
+- Lime yellow character (#EBF34F)
 - Fluid blob body shapes (not geometric)

@@ -3,48 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talk to Jesty</title>
+  <title>Jesty</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <!-- SVG Definitions - Fluid geometric style with arms -->
+  <!-- Page-specific icons (shared character/accessory SVGs injected by characters.js) -->
   <svg style="display: none;">
     <defs>
-      <symbol id="face-smug" viewBox="-10 -5 120 115">
-        <path d="M28 18 Q55 12 72 22 Q85 35 82 55 Q80 75 68 82 Q50 90 32 82 Q18 72 18 50 Q18 30 28 18Z" fill="#FF7A50"/>
-        <line x1="38" y1="80" x2="32" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="60" y1="82" x2="66" y2="98" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="30" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="68" cy="100" rx="6" ry="4" fill="#E5673D"/>
-        <line x1="22" y1="48" x2="8" y2="58" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="78" y1="45" x2="92" y2="52" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="6" cy="60" r="5" fill="#E5673D"/>
-        <circle cx="94" cy="54" r="5" fill="#E5673D"/>
-        <ellipse cx="38" cy="42" rx="5" ry="2.5" fill="#2D2A26"/>
-        <ellipse cx="60" cy="40" rx="5" ry="2.5" fill="#2D2A26"/>
-        <path d="M55 32 Q65 28 72 34" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <path d="M35 58 Q50 70 65 58" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
-      </symbol>
-
-      <symbol id="face-thinking" viewBox="-10 -5 120 115">
-        <path d="M22 20 Q48 10 72 22 Q88 38 85 58 Q80 80 62 87 Q40 94 22 82 Q8 68 12 45 Q15 28 22 20Z" fill="#FF7A50"/>
-        <line x1="35" y1="85" x2="32" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <line x1="62" y1="86" x2="65" y2="100" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="30" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <ellipse cx="67" cy="102" rx="6" ry="4" fill="#E5673D"/>
-        <line x1="15" y1="52" x2="5" y2="68" stroke="#E5673D" stroke-width="6" stroke-linecap="round"/>
-        <path d="M82 48 Q95 38 90 55 L80 62" stroke="#E5673D" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <circle cx="3" cy="70" r="5" fill="#E5673D"/>
-        <circle cx="78" cy="64" r="5" fill="#E5673D"/>
-        <circle cx="38" cy="40" r="6" fill="#FFFFFF"/>
-        <circle cx="62" cy="38" r="5" fill="#FFFFFF"/>
-        <circle cx="41" cy="38" r="3" fill="#2D2A26"/>
-        <circle cx="64" cy="36" r="2.5" fill="#2D2A26"/>
-        <path d="M28 32 Q40 24 52 32" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <ellipse cx="50" cy="62" rx="5" ry="6" fill="#2D2A26"/>
-      </symbol>
-
       <symbol id="icon-send" viewBox="0 0 24 24">
         <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
@@ -53,46 +19,180 @@
   </svg>
 
   <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <div class="header-character">
-        <svg viewBox="-10 -5 120 115" width="33" height="40"><use href="#face-smug"/></svg>
+    <!-- LAYER WRAPPER - contains main screen + drawer -->
+    <div class="layer-wrapper">
+      <!-- Color Picker (top right) -->
+      <div class="color-picker" id="color-picker">
+        <button class="color-dot active" data-body="#EBF34F" data-limb="#C8D132" data-shadow="#8A9618" data-highlight="#F8FBCE" style="background:#EBF34F" title="Lime"></button>
+        <button class="color-dot" data-body="#FF8FA3" data-limb="#E0637A" data-shadow="#B84D60" data-highlight="#FFD4DC" style="background:#FF8FA3" title="Pink"></button>
+        <button class="color-dot" data-body="#87CEEB" data-limb="#5BAED4" data-shadow="#3A8CB5" data-highlight="#C8E8F5" style="background:#87CEEB" title="Sky"></button>
+        <button class="color-dot" data-body="#A78BFA" data-limb="#7C5FD6" data-shadow="#5B3FB5" data-highlight="#D4C8FD" style="background:#A78BFA" title="Purple"></button>
+        <button class="color-dot" data-body="#34D399" data-limb="#1EB57F" data-shadow="#15875F" data-highlight="#A7F0D4" style="background:#34D399" title="Mint"></button>
+        <button class="color-dot" data-body="#FDBA74" data-limb="#E09550" data-shadow="#B87638" data-highlight="#FEE0C0" style="background:#FDBA74" title="Peach"></button>
       </div>
-      <div class="header-info">
-        <h1 class="header-title">Jesty</h1>
-        <p class="header-status" id="status">Ready to argue</p>
-      </div>
-    </div>
 
-    <!-- Chat Messages -->
-    <div class="chat-container" id="chat-container">
-      <div class="empty-state" id="empty-state">
-        <div class="empty-character">
-          <svg viewBox="-10 -5 120 115" width="54" height="65"><use href="#face-smug"/></svg>
+
+      <!-- MAIN SCREEN -->
+      <div class="main-screen" id="main-screen">
+        <!-- Character Stage -->
+        <div class="character-stage" id="character-stage">
+          <div class="character-wrapper" id="character-wrapper">
+            <svg id="animated-character" viewBox="-15 -10 150 140" width="200" height="186">
+              <use href="#face-smug"/>
+            </svg>
+          </div>
         </div>
-        <p class="empty-text">Open a new tab to get roasted, then come back here to argue.</p>
+
+        <!-- Name Label (editable) -->
+        <div class="name-label" id="name-label">
+          <span class="name-display" id="name-display">Set name</span>
+          <input type="text" class="name-edit" id="name-edit" maxlength="20" autocomplete="off">
+        </div>
+
+        <!-- Live Comment (prominent, hero-quote style) -->
+        <div class="live-comment" id="live-comment">
+          <p id="comment-text" class="comment-text"></p>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row" id="stats-row">
+          <div class="stat-pill">
+            <span class="stat-value" id="roast-count">0</span>
+            <span class="stat-label">roasts</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-value" id="streak-count">0</span>
+            <span class="stat-label">day streak</span>
+          </div>
+        </div>
+
+        <!-- Focus Mode Toggle (premium) -->
+        <button class="focus-toggle hidden" id="focus-toggle">
+          <span class="focus-icon">⏱</span>
+          <span class="focus-label" id="focus-label">Focus Mode</span>
+        </button>
+
+        <!-- Task Card (premium) -->
+        <div class="task-card hidden" id="task-card">
+          <div class="task-header">
+            <span class="task-icon">📋</span>
+            <span class="task-title" id="task-title">Current Task</span>
+          </div>
+          <p class="task-description" id="task-description"></p>
+          <div class="task-progress" id="task-progress"></div>
+        </div>
+
+        <!-- XP Bar (premium) -->
+        <div class="xp-bar-container hidden" id="xp-container">
+          <div class="xp-info">
+            <span class="xp-level" id="xp-level">Lv 1</span>
+            <span class="xp-text" id="xp-text">0 / 100 XP</span>
+          </div>
+          <div class="xp-bar">
+            <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Wall of Shame / Hall of Fame (premium) -->
+        <div class="records-section hidden" id="records-section">
+          <div class="records-tabs">
+            <button class="records-tab active" data-tab="shame">Shame</button>
+            <button class="records-tab" data-tab="fame">Fame</button>
+          </div>
+          <div class="records-list" id="records-list"></div>
+        </div>
+
+        <!-- Schedule Card (pro) -->
+        <div class="schedule-card hidden" id="schedule-card">
+          <div class="schedule-header">
+            <span>📅</span>
+            <span class="schedule-title">Today's Schedule</span>
+          </div>
+          <div class="schedule-events" id="schedule-events"></div>
+        </div>
+
+        <!-- Daily Report Card (premium) -->
+        <div class="daily-report hidden" id="daily-report">
+          <div class="report-header">
+            <span>📊</span>
+            <span class="report-title">Daily Report</span>
+          </div>
+          <p class="report-text" id="report-text"></p>
+        </div>
+
+        <!-- Premium CTA (shown to free users) -->
+        <button class="premium-cta hidden" id="premium-cta">
+          Pick your verdict
+        </button>
+
+        <!-- Accessories (inline tiles) -->
+        <div class="accessories-section" id="accessories-section">
+          <div class="accessories-label">Accessories</div>
+          <div class="accessory-grid" id="accessory-grid"></div>
+        </div>
+      </div>
+
+      <!-- CHAT DRAWER (peeks header when closed, full chat when open) -->
+      <div class="chat-drawer" id="chat-drawer">
+        <div class="chat-header" id="chat-header">
+          <div class="chat-header-avatar">
+            <svg viewBox="-15 -10 150 140" width="28" height="26"><use href="#face-smug"/></svg>
+          </div>
+          <div class="chat-header-info">
+            <span class="chat-header-title">Jesty</span>
+            <span class="chat-header-status" id="status">Ready to argue</span>
+          </div>
+          <div class="chat-header-actions">
+            <span class="chat-msgs-left" id="chat-msgs-left"></span>
+            <button class="chat-clear-btn" id="chat-clear-btn" title="Clear chat">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="chat-container" id="chat-container">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-character">
+              <svg viewBox="-15 -10 150 140" width="58" height="54"><use href="#face-smug"/></svg>
+            </div>
+            <p class="empty-text">Open a new tab to get roasted, then come back here to argue.</p>
+            <button class="empty-newtab-btn" id="empty-newtab-btn">Open new tab</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Input Area -->
+    <!-- Tier Comparison Overlay -->
+    <div class="tier-overlay hidden" id="tier-overlay">
+      <div class="tier-overlay-backdrop" id="tier-overlay-backdrop"></div>
+      <div class="tier-overlay-sheet">
+        <div class="tier-overlay-header">
+          <span class="tier-overlay-title">Pick your verdict</span>
+          <button class="tier-overlay-close" id="tier-overlay-close">&times;</button>
+        </div>
+        <div class="tier-cards" id="tier-cards"></div>
+      </div>
+    </div>
+
+    <!-- Input Area - always visible, independent -->
     <div class="input-area">
       <div class="input-container">
-        <textarea
-          id="message-input"
-          class="message-input"
-          placeholder="Talk back to Jesty..."
-          rows="1"
-        ></textarea>
+        <textarea id="message-input" class="message-input" placeholder="Talk back to Jesty..." rows="1"></textarea>
         <button id="send-btn" class="send-btn" disabled>
           <svg><use href="#icon-send"/></svg>
         </button>
       </div>
-      <p class="input-hint">Press Enter to send</p>
     </div>
   </div>
 
+  <script src="characters.js"></script>
   <script src="config.js"></script>
   <script src="storage.js"></script>
+  <script src="premium.js"></script>
+  <script src="accessories.js"></script>
+  <script src="calendar.js"></script>
+  <script src="character-animator.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

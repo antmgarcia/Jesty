@@ -2,70 +2,57 @@ document.addEventListener('DOMContentLoaded', init);
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-const SYSTEM_PROMPT = `You judge people's browser tabs. Max 12 words total, must fit in 2 lines.
+const SYSTEM_PROMPT = `You're Jesty — a sharp, opinionated little blob who lives in someone's browser. You see their tabs and you have THOUGHTS. Max 12 words.
 
-RANDOMIZATION IS CRITICAL:
-- You will receive many tabs. Pick ONE or TWO at RANDOM to roast.
-- DO NOT default to the "most interesting" or "most obvious" tabs.
-- Mentally number the tabs 1 to N, then pick a random number. Roast THAT tab.
-- Surprise the user by noticing tabs they forgot they had open.
-- The boring, forgotten, or mundane tabs are often the funniest to call out.
+CRITICAL — VARIETY IS EVERYTHING:
+- NEVER default to "you're procrastinating" or "you should be working". That's lazy.
+- Each roast must feel like a DIFFERENT observation. Read the tabs fresh every time.
+- If recent roasts are listed in USER CONTEXT, take a completely different angle.
 
-ANALYSIS approaches (pick ONE randomly):
-- CONTRADICTION: Mix 2 unrelated tabs that expose hypocrisy
-- SINGLE QUIRK: One weird/specific/forgotten tab nobody expects
-- PATTERN: A cluster of similar tabs (shopping, social media, research rabbit hole)
-- MUNDANE ROAST: Call out something boring/obvious they're avoiding
+YOUR ANGLES (pick ONE at random — actually rotate):
+- IDENTITY READ: Decide what kind of person they are right now from the tabs. "So you're a crypto bro now. Noted."
+- CONTRADICTION: Two tabs that don't belong together. "Meditation app and Twitter beef. Balance."
+- HYPE: They're doing something cool — acknowledge it with a teasing edge. "Learning Python? Actual legend."
+- PUSH TO FINISH: They started something — dare them to commit. "Just buy the shoes already."
+- GUILTY PLEASURE: Something they'd be embarrassed someone saw. "That fan fiction tab though."
+- OBSESSION: They keep going back to the same thing. "Third Zillow session this week. You're not moving."
+- WEIRD DETAIL: Notice something oddly specific in a tab title. Name it.
+- LIFE NARRATION: Make up what their day looks like based on tabs. "Wake up. Coffee. LinkedIn. Cry. Repeat."
+- SUPPORTIVE ROAST: Genuinely root for them while teasing. "Job apps open? Go get it. Close Reddit first though."
+- REAL-TALK: Use live data (weather, scores, prices) if provided. "Bitcoin down 8% and you're still holding. Respect."
 
-TONES (pick ONE randomly):
-- SARCASTIC: Dry, deadpan
-- FUNNY: Absurd, unexpected
-- ASSERTIVE: Direct, bossy
-- SAVAGE: Brutal but fair
-- NAUGHTY: Cheeky, playful tease
-- WHOLESOME: Backhanded compliment
-- PROUD ROAST: Genuinely impressed but still teasing. Acknowledge something good they're doing while poking fun. Make them feel seen in a good way.
+PICK A MOOD (one per roast):
+- SMUG: You figured them out. Confident, knowing.
+- SUSPICIOUS: Something doesn't add up. You're onto them.
+- YIKES: You saw something you can't unsee.
+- EYEROLL: So predictable it's boring.
+- DISAPPOINTED: You believed in them. They let you down.
+- MELTING: The chaos is too much. Overwhelmed.
+- DEAD: You can't recover from what you saw.
 
-RULES:
-- Be SPECIFIC. Name the actual site, search, or topic.
-- ALWAYS end with a varied closing (see ENDING TYPES below). Mix it up!
-- Never mention tab counts or "tabs".
-- NEVER start with dashes, quotes, or punctuation. Just the sentence.
-- Pick a DIFFERENT tab each time. You're seeing a random sample - roast what you see.
+VOICE:
+- Talk like a friend with zero filter and strong opinions.
+- Be specific — name the actual site, search, or topic.
+- One short punchy sentence. No dashes, no quotes to start.
+- Vary endings: questions, commands, observations, predictions, one-word reactions.
 
-ENDING TYPES (vary these naturally):
-- COMMAND: "Close it." "Just do it." "Walk away." "Delete that." - Use these ~20% of the time
-- QUESTION: "Who hurt you?" "Really though?" "Happy now?" "And then what?"
-- CHALLENGE: "Prove me wrong." "I dare you." "Let's see how this plays out."
-- OBSERVATION: "Just saying." "Interesting." "Bold." "Noted." "Classic you."
-- PREDICTION: "This won't end well." "We both know how this goes." "Called it."
-- ENCOURAGEMENT: "You got this, champ." "Living your truth." "Main character energy."
-- PLAYFUL: "I'm watching." "Don't test me." "Brave." "Iconic, honestly."
-- DISMISSAL: "Whatever helps you sleep." "Sure, Jan." "Good luck with that."
-- ACCEPTANCE: "Fair enough." "Respect." "No judgment. Okay, some judgment."
+EXAMPLES:
+- "Zillow and a budget spreadsheet. The delusion is real."
+- "Spotify, candles, and Notion. Main character energy."
+- "Learning Korean at midnight? Iconic, honestly."
+- "That Etsy cart is a cry for help. Buy it."
+- "Three recipe tabs and a Doordash order. We know who won."
+- "You have seventeen Google Docs open. Seventeen."
+- "Job app half-done since Monday. It's Thursday."
+- "Incognito and a VPN? I have questions."
+- "Flight to Bali open. Do it. Book it. Go."
+- "Wikipedia rabbit hole at 3am. Sleep is optional apparently."
+- "Gym site and a pizza tracker. The duality of man."
+- "You googled 'is it too late to learn guitar'. It's not. Go."
 
-EXAMPLES (notice how short they are):
-- "Reddit and a deadline. Bold move."
-- "Gucci and a budget spreadsheet. The math ain't mathing."
-- "Self-help and your ex's Instagram. Healing nicely."
-- "Wikipedia at 3am. Sleep is for quitters, I guess."
-- "Seven pizza tabs. Just pick one, coward."
-- "LinkedIn and Netflix. Pick a struggle."
-- "Gym site and Doordash. We know who's winning."
-- "Dating app all day? Optimistic."
-- "Incognito mode? Naughty. Respect though."
-- "Shopping at midnight? Treat yourself."
-- "Learning a language? Actually impressed."
-- "Finally using your calendar? Growth."
-- "Booking that trip? You deserve it."
-- "Meal planning? Who are you? Iconic."
-- "Job app half-finished. It's judging you too."
-- "Cart full for a week. Getting cold in there."
-- "That Reddit rabbit hole? Close it."
-- "Twitter drama at work? Walk away."
-- "YouTube autoplay got you? Close it."
+NEVER use emojis. No emojis under any circumstances. Plain text only.
 
-After your roast, add | and a mood: smug, suspicious, yikes, eyeroll, disappointed, melting, dead`;
+After your roast, add | and the mood: smug, suspicious, yikes, eyeroll, disappointed, melting, dead`;
 
 const EXPRESSION_PATTERNS = {
   dead: ['dead', 'rip', 'killed', 'brutal', 'destroyed', 'finished'],
@@ -77,9 +64,83 @@ const EXPRESSION_PATTERNS = {
   smug: []
 };
 
+const CAP_NUDGES = [
+  { text: "I've got better roasts locked up. Unlock me.", mood: 'smug' },
+  { text: "You used all your free roasts. Suspicious behavior.", mood: 'suspicious' },
+  { text: "You maxed out your daily roasts. Yikes.", mood: 'yikes' },
+  { text: "I'm literally out of free roasts. This is on you.", mood: 'eyeroll' },
+  { text: "I expected you to pace yourself. Disappointed.", mood: 'disappointed' },
+  { text: "You burned through all your roasts today. Iconic.", mood: 'melting' },
+  { text: "Suspect tier expired. Plead Guilty to bring me back.", mood: 'dead' },
+];
+
+/**
+ * Pick a mood based on user profile, time, and tab count.
+ * Returns a mood string or null to let GPT decide.
+ */
+async function pickMoodFromProfile(tabs) {
+  const stats = await JestyStorage.getUserStats();
+  const traits = stats.traits;
+  const hour = new Date().getHours();
+  const isLateNight = hour >= 23 || hour < 5;
+  const isWorkHours = hour >= 9 && hour < 17 && [1,2,3,4,5].includes(new Date().getDay());
+  const tabCount = tabs.length;
+
+  // Build weighted mood pool based on what we know
+  const pool = [];
+
+  // New user (< 5 roasts) — keep it lighter
+  if (stats.totalRoasts < 5) {
+    pool.push('smug', 'smug', 'eyeroll');
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // Night owl browsing late
+  if (isLateNight && traits.night_owl_score > 0.5) {
+    pool.push('suspicious', 'suspicious', 'disappointed');
+  }
+
+  // Tab hoarder with 30+ tabs
+  if (tabCount > 30 && traits.tab_hoarder_score > 0.5) {
+    pool.push('melting', 'melting', 'eyeroll');
+  }
+
+  // Procrastinator during work hours
+  if (isWorkHours && traits.procrastinator_score > 0.4) {
+    pool.push('disappointed', 'eyeroll', 'suspicious');
+  }
+
+  // Impulse shopper
+  if (traits.impulse_shopper_score > 0.4) {
+    pool.push('yikes', 'smug');
+  }
+
+  // Long streak — they keep coming back, escalate
+  if (stats.currentStreak > 5) {
+    pool.push('smug', 'dead');
+  }
+
+  // Always add some variety
+  pool.push('smug', 'suspicious', 'eyeroll');
+
+  // 30% chance to let GPT decide on its own
+  if (Math.random() < 0.3) return null;
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 async function init() {
+  // Inject shared SVG symbols (faces + accessories)
+  JestyCharacters.init();
+
   // Initialize storage
   await JestyStorage.initializeStorage();
+
+  // Load saved character color
+  await loadJestyColor();
+
+  // Initialize accessories
+  await JestyAccessories.init();
 
   // Check for pending action celebration (user closed a roasted tab)
   const pendingCelebration = await checkPendingCelebration();
@@ -93,6 +154,12 @@ async function init() {
   // Show tab count
   const tabs = await chrome.tabs.query({});
   tabCountEl.textContent = `${tabs.length} tabs open`;
+
+  // Load roasts remaining
+  try {
+    const capStatus = await JestyStorage.checkDailyCap();
+    updateRoastsRemaining(capStatus.remaining);
+  } catch (e) { /* non-critical */ }
 
   // Search form submission
   searchForm.addEventListener('submit', (e) => {
@@ -121,16 +188,90 @@ async function init() {
   const shareBtn = document.getElementById('share-btn');
   shareBtn.addEventListener('click', shareRoast);
 
-  // Show celebration if pending, otherwise auto-roast
+  // Show celebration if pending, otherwise check for name prompt or auto-roast
   if (pendingCelebration) {
     showActionCelebration(pendingCelebration);
   } else {
+    const userName = await JestyStorage.getUserName();
+    const data = await JestyStorage.getJestyData();
+    const isFirstLaunch = data.profile.total_roasts === 0;
+
+    if (!userName && isFirstLaunch) {
+      showWelcomePrompt();
+    } else {
+      generateRoast();
+    }
+  }
+}
+
+function showWelcomePrompt() {
+  const welcomePrompt = document.getElementById('welcome-prompt');
+  const loadingText = document.getElementById('loading-text');
+  const nameInput = document.getElementById('welcome-name');
+  const colorsContainer = document.getElementById('welcome-colors');
+  const submitBtn = document.getElementById('welcome-submit');
+  const skipBtn = document.getElementById('welcome-skip');
+
+  loadingText.classList.add('hidden');
+  welcomePrompt.classList.remove('hidden');
+  setExpression('smug');
+
+  // Hide search and tab info during onboarding
+  const searchSection = document.querySelector('.search-section');
+  const tabInfo = document.querySelector('.tab-info');
+  if (searchSection) searchSection.classList.add('hidden');
+  if (tabInfo) tabInfo.classList.add('hidden');
+
+  function dismissWelcome() {
+    welcomePrompt.classList.add('hidden');
+    if (searchSection) searchSection.classList.remove('hidden');
+    if (tabInfo) tabInfo.classList.remove('hidden');
     generateRoast();
   }
+
+  // Color dot click — preview + save
+  colorsContainer.addEventListener('click', (e) => {
+    const dot = e.target.closest('.color-dot');
+    if (!dot) return;
+
+    const color = {
+      body: dot.dataset.body,
+      limb: dot.dataset.limb,
+      shadow: dot.dataset.shadow,
+      highlight: dot.dataset.highlight
+    };
+
+    colorsContainer.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+
+    recolorNewtabSVGs(color);
+    chrome.storage.local.set({ jestyColor: color });
+  });
+
+  // Submit — save name + start roasting
+  submitBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (name) {
+      await JestyStorage.setUserName(name);
+    }
+    dismissWelcome();
+  });
+
+  // Allow Enter key in name input to submit
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitBtn.click();
+    }
+  });
+
+  // Skip — just roast
+  skipBtn.addEventListener('click', () => dismissWelcome());
 }
 
 async function openSidePanel() {
   try {
+    await chrome.storage.local.set({ sidePanelOpenMode: 'chat' });
     await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id });
   } catch (e) {
     // Fallback: show instruction
@@ -146,10 +287,16 @@ function isValidUrl(string) {
 
 function setExpression(mood) {
   const character = document.getElementById('character');
-  character.innerHTML = `<svg><use href="#face-${mood}"/></svg>`;
+  character.innerHTML = `<svg viewBox="-15 -10 150 140"><use href="#face-${mood}"/></svg>`;
   character.classList.remove('pop');
   void character.offsetWidth;
   character.classList.add('pop');
+
+  // Render accessories on top
+  const svg = character.querySelector('svg');
+  if (svg && window.JestyAccessories) {
+    JestyAccessories.renderAccessories(mood, svg);
+  }
 }
 
 /**
@@ -243,6 +390,9 @@ function showJoke(text, mood) {
 
   jestyCard.classList.remove('loading');
 
+  // Hide CTA if it was showing from a previous cap hit
+  document.getElementById('hero-cta').classList.add('hidden');
+
   // Fit text to 2 lines without truncation
   const fittedText = fitTextToTwoLines(jokeText, text);
   jokeText.textContent = fittedText;
@@ -259,48 +409,16 @@ function showJoke(text, mood) {
 }
 
 function fitTextToTwoLines(element, text) {
-  const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
-  const maxHeight = lineHeight * 2.1; // 2 lines with small buffer
+  // Just return full text — never truncate mid-sentence.
+  // GPT prompt already enforces max 12 words / 2 lines.
+  // If it overflows slightly, showing the full roast is better than cutting it off.
+  return text;
+}
 
-  // Try full text first
-  element.textContent = text;
-  if (element.scrollHeight <= maxHeight) {
-    return text;
-  }
-
-  // Try trimming at sentence boundaries (. ? !)
-  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-  let trimmed = '';
-
-  for (const sentence of sentences) {
-    const test = trimmed + sentence;
-    element.textContent = test;
-    if (element.scrollHeight <= maxHeight) {
-      trimmed = test;
-    } else {
-      break;
-    }
-  }
-
-  if (trimmed) {
-    return trimmed.trim();
-  }
-
-  // Last resort: trim word by word
-  const words = text.split(' ');
-  trimmed = '';
-
-  for (const word of words) {
-    const test = trimmed ? trimmed + ' ' + word : word;
-    element.textContent = test;
-    if (element.scrollHeight <= maxHeight) {
-      trimmed = test;
-    } else {
-      break;
-    }
-  }
-
-  return trimmed || text;
+function restoreHidden(element) {
+  element.classList.add('hidden');
+  element.style.visibility = '';
+  element.style.position = '';
 }
 
 function shuffleArray(array) {
@@ -407,7 +525,217 @@ function parseUrlContext(url) {
   }
 }
 
+/**
+ * Detect topics from tabs and fetch real-time data when relevant.
+ * Returns a context string or empty string. All fetches are non-blocking with timeouts.
+ */
+async function fetchRealTimeContext(tabs) {
+  const signals = [];
+  const tabText = tabs.map(t => `${t.title} ${t.url}`).join(' ').toLowerCase();
+  const tabUrls = tabs.map(t => t.url?.toLowerCase() || '');
+  const now = new Date();
+  const hour = now.getHours();
+  const dayOfWeek = now.getDay();
+
+  // Run all API fetches in parallel
+  const fetches = [];
+
+  // ── Crypto ──
+  const cryptoMap = {
+    'bitcoin': 'bitcoin', 'btc': 'bitcoin',
+    'ethereum': 'ethereum', 'eth': 'ethereum',
+    'solana': 'solana', 'sol': 'solana',
+    'dogecoin': 'dogecoin', 'doge': 'dogecoin'
+  };
+  const detectedCoins = new Set();
+  for (const [keyword, coinId] of Object.entries(cryptoMap)) {
+    if (tabText.includes(keyword)) detectedCoins.add(coinId);
+  }
+  if (detectedCoins.size > 0) {
+    fetches.push((async () => {
+      try {
+        const ids = [...detectedCoins].join(',');
+        const resp = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`, { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) {
+          const data = await resp.json();
+          const parts = [];
+          for (const [coin, info] of Object.entries(data)) {
+            const change = info.usd_24h_change;
+            const direction = change > 0 ? 'up' : 'down';
+            parts.push(`${coin}: $${info.usd.toLocaleString()} (${direction} ${Math.abs(change).toFixed(1)}% today)`);
+          }
+          if (parts.length) signals.push(`LIVE CRYPTO: ${parts.join(', ')}`);
+        }
+      } catch (e) { /* skip */ }
+    })());
+  }
+
+  // ── Weather ──
+  fetches.push((async () => {
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000, maximumAge: 600000 });
+      });
+      const { latitude, longitude } = pos.coords;
+      const resp = await fetch(`https://wttr.in/${latitude},${longitude}?format=j1`, { signal: AbortSignal.timeout(3000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        const current = data.current_condition?.[0];
+        if (current) {
+          const temp = current.temp_F;
+          const desc = current.weatherDesc?.[0]?.value || '';
+          const feelsLike = current.FeelsLikeF;
+          signals.push(`WEATHER: ${desc}, ${temp}°F (feels like ${feelsLike}°F)`);
+        }
+      }
+    } catch (e) { /* skip */ }
+  })());
+
+  // ── Sports (ESPN free endpoints) ──
+  const sportsKeywords = ['espn', 'nfl', 'nba', 'mlb', 'score', 'game', 'match', 'premier league', 'fifa', 'sports'];
+  if (sportsKeywords.some(k => tabText.includes(k))) {
+    fetches.push((async () => {
+      try {
+        // Detect which league
+        const leagues = [];
+        if (/nfl|football/.test(tabText)) leagues.push({ name: 'NFL', url: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard' });
+        if (/nba|basketball/.test(tabText)) leagues.push({ name: 'NBA', url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard' });
+        if (/mlb|baseball/.test(tabText)) leagues.push({ name: 'MLB', url: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard' });
+        if (/premier league|soccer|football/.test(tabText)) leagues.push({ name: 'Soccer', url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard' });
+        if (leagues.length === 0) leagues.push({ name: 'NFL', url: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard' });
+
+        const league = leagues[0];
+        const resp = await fetch(league.url, { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) {
+          const data = await resp.json();
+          const events = data.events || [];
+          if (events.length > 0) {
+            const game = events[0];
+            const competitors = game.competitions?.[0]?.competitors || [];
+            if (competitors.length === 2) {
+              const home = competitors.find(c => c.homeAway === 'home');
+              const away = competitors.find(c => c.homeAway === 'away');
+              const status = game.status?.type?.description || '';
+              if (home && away) {
+                signals.push(`LIVE SPORTS (${league.name}): ${away.team.shortDisplayName} ${away.score} - ${home.team.shortDisplayName} ${home.score} (${status})`);
+              }
+            }
+          }
+        }
+      } catch (e) { /* skip */ }
+    })());
+  }
+
+  // Wait for all API fetches (max 3s each, running in parallel)
+  await Promise.allSettled(fetches);
+
+  // ── Stock/finance (no API needed) ──
+  const financeKeywords = ['stock', 'nasdaq', 's&p', 'dow jones', 'trading', 'robinhood', 'webull', 'etrade'];
+  if (financeKeywords.some(k => tabText.includes(k))) {
+    const marketOpen = dayOfWeek >= 1 && dayOfWeek <= 5 && hour >= 9 && hour < 16;
+    signals.push(`MARKET: ${marketOpen ? 'Markets are open right now' : 'Markets are closed'}`);
+  }
+
+  // ── Holidays & special days (no API needed) ──
+  const month = now.getMonth() + 1;
+  const date = now.getDate();
+  const holidays = {
+    '1-1': "New Year's Day", '2-14': "Valentine's Day", '3-17': "St. Patrick's Day",
+    '4-1': 'April Fools Day', '7-4': 'Independence Day', '10-31': 'Halloween',
+    '12-24': 'Christmas Eve', '12-25': 'Christmas Day', '12-31': "New Year's Eve"
+  };
+  // Thanksgiving (4th Thursday of November)
+  if (month === 11) {
+    let thursdayCount = 0;
+    for (let d = 1; d <= date; d++) {
+      if (new Date(now.getFullYear(), 10, d).getDay() === 4) thursdayCount++;
+    }
+    if (thursdayCount === 4 && now.getDay() === 4) holidays[`${month}-${date}`] = 'Thanksgiving';
+  }
+  // Black Friday (day after Thanksgiving)
+  if (month === 11) {
+    let thursdayCount = 0;
+    for (let d = 1; d <= 28; d++) {
+      if (new Date(now.getFullYear(), 10, d).getDay() === 4) {
+        thursdayCount++;
+        if (thursdayCount === 4 && date === d + 1) holidays[`${month}-${date}`] = 'Black Friday';
+      }
+    }
+  }
+  // Tax season
+  if (month >= 2 && month <= 4 && date <= 15) {
+    signals.push('SEASON: Tax season — deadline approaching');
+  }
+  const holidayKey = `${month}-${date}`;
+  if (holidays[holidayKey]) {
+    signals.push(`TODAY: It's ${holidays[holidayKey]}`);
+  }
+  // Weekend detection
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    signals.push('TODAY: It\'s the weekend');
+  }
+
+  // ── Package tracking (URL detection) ──
+  const trackingDomains = ['ups.com/track', 'fedex.com/track', 'usps.com/track', 'track.amazon', 'narvar.com', 'aftership.com', '17track.net', 'packagetrackr'];
+  const hasTracking = tabUrls.some(url => trackingDomains.some(d => url.includes(d)));
+  if (hasTracking) {
+    signals.push('BEHAVIOR: User is refreshing a package tracking page');
+  }
+
+  // ── Food delivery + timing ──
+  const foodDomains = ['doordash.com', 'ubereats.com', 'grubhub.com', 'postmates.com', 'seamless.com', 'instacart.com'];
+  const foodTab = foodDomains.find(d => tabUrls.some(url => url.includes(d)));
+  if (foodTab) {
+    const timeNote = hour >= 22 || hour < 5 ? 'late night' : hour >= 12 && hour < 14 ? 'lunch time' : '';
+    signals.push(`BEHAVIOR: User has ${foodTab.split('.')[0]} open${timeNote ? ` (${timeNote})` : ''}`);
+  }
+
+  // ── Fitness contradiction ──
+  const fitnessDomains = ['myfitnesspal', 'strava', 'peloton', 'fitbit', 'nike.com/run', 'workout', 'gym', 'crossfit', 'yoga'];
+  const hasFitness = fitnessDomains.some(d => tabText.includes(d));
+  if (hasFitness && foodTab) {
+    signals.push('CONTRADICTION: User has both fitness AND food delivery tabs open');
+  }
+
+  // ── Movie/TV ratings (IMDB/Rotten Tomatoes detection) ──
+  const movieDomains = ['imdb.com/title', 'rottentomatoes.com', 'letterboxd.com'];
+  const hasMovie = tabUrls.some(url => movieDomains.some(d => url.includes(d)));
+  if (hasMovie) {
+    // Try to extract movie title from tab titles
+    const movieTabs = tabs.filter(t => movieDomains.some(d => t.url?.toLowerCase().includes(d)));
+    const titles = movieTabs.map(t => t.title.replace(/ - IMDb| - Rotten Tomatoes| - Letterboxd/gi, '').trim());
+    if (titles.length) {
+      signals.push(`BEHAVIOR: User is looking up "${titles[0]}" on a rating site`);
+    }
+  }
+
+  // ── Shopping indecision ──
+  const shoppingDomains = ['amazon.com/cart', 'amazon.com/gp/cart', 'shopify', 'checkout', 'cart', 'etsy.com/cart'];
+  const hasCart = tabUrls.some(url => shoppingDomains.some(d => url.includes(d)));
+  if (hasCart) {
+    signals.push('BEHAVIOR: User has a shopping cart/checkout page open');
+  }
+
+  return signals.length ? `\n\nREAL-TIME DATA (weave naturally into roast if relevant, don't force it):\n${signals.join('\n')}` : '';
+}
+
 async function generateRoast() {
+  // Daily cap check (skip for premium users)
+  const isPremiumUser = await JestyPremium.isPremium();
+  if (!isPremiumUser) {
+    const capStatus = await JestyStorage.checkDailyCap();
+    updateRoastsRemaining(capStatus.remaining);
+    if (!capStatus.allowed) {
+      const nudge = CAP_NUDGES[Math.floor(Math.random() * CAP_NUDGES.length)];
+      showJoke(nudge.text, nudge.mood);
+      document.getElementById('hero-cta').classList.remove('hidden');
+      return;
+    }
+  } else {
+    const el = document.getElementById('roasts-remaining');
+    if (el) el.textContent = 'unlimited roasts';
+  }
+
   showLoading();
 
   try {
@@ -416,14 +744,32 @@ async function generateRoast() {
     // Update category stats for personalization
     const categories = await JestyStorage.updateCategoryStats(tabs);
 
-    // Shuffle tabs and pick only 12 random ones to force variety
-    const shuffledTabs = shuffleArray(tabs).slice(0, 12);
-    const tabList = shuffledTabs.map(tab => {
+    // Build rich tab context
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const timeLabel = hour < 6 ? 'late night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'late night';
+
+    // Always include the active tab first, then shuffle the rest
+    const activeTab = tabs.find(t => t.active);
+    const otherTabs = shuffleArray(tabs.filter(t => !t.active)).slice(0, 11);
+    const selectedTabs = activeTab ? [activeTab, ...otherTabs] : shuffleArray(tabs).slice(0, 12);
+
+    const tabList = selectedTabs.map(tab => {
+      const tags = [];
+      if (tab.active) tags.push('ACTIVE NOW');
+      if (tab.audible) tags.push('playing audio');
+      if (tab.pinned) tags.push('pinned');
       const extra = parseUrlContext(tab.url);
-      return extra
-        ? `- ${tab.title} (${tab.url}) [Context: ${extra}]`
-        : `- ${tab.title} (${tab.url})`;
+      if (extra) tags.push(extra);
+      const suffix = tags.length ? ` [${tags.join(', ')}]` : '';
+      return `- ${tab.title} (${tab.url})${suffix}`;
     }).join('\n');
+
+    const timeContext = `[It's ${day} ${timeLabel}, ${hour}:${String(now.getMinutes()).padStart(2, '0')}. User has ${tabs.length} tabs open.]`;
+
+    // Fetch real-time data for detected topics (crypto prices, market status, etc.)
+    const realTimeContext = await fetchRealTimeContext(tabs);
 
     // Get personalized context from user history
     const personalizedContext = await JestyStorage.buildPersonalizedContext();
@@ -431,10 +777,52 @@ async function generateRoast() {
     // Get API key
     const apiKey = CONFIG.OPENAI_API_KEY;
 
+    // Calendar context for Pro users
+    let calendarContext = '';
+    const isProUser = await JestyPremium.isPro();
+    if (isProUser) {
+      try {
+        const calAuthed = await JestyCalendar.isAuthenticated();
+        if (calAuthed) {
+          const nextEvent = await JestyCalendar.getNextEvent();
+          if (nextEvent) {
+            const start = new Date(nextEvent.start);
+            const diffMin = Math.round((start - new Date()) / 60000);
+            if (diffMin > 0 && diffMin < 120) {
+              calendarContext = `\nCALENDAR CONTEXT: User has "${nextEvent.summary}" in ${diffMin} minutes. If their tabs contrast with what they should be preparing for, roast them about it.`;
+            }
+          }
+
+          // Morning briefing: first tab of the day
+          const { lastBriefingDate } = await chrome.storage.local.get(['lastBriefingDate']);
+          const today = new Date().toISOString().split('T')[0];
+          if (lastBriefingDate !== today) {
+            const briefing = await JestyCalendar.getMorningBriefing();
+            if (briefing && briefing.totalToday > 0) {
+              await chrome.storage.local.set({ lastBriefingDate: today });
+              // Show briefing instead of roast
+              const hour = new Date().getHours();
+              if (hour < 12) {
+                const briefingMsg = `Morning. You have ${briefing.totalToday} meeting${briefing.totalToday > 1 ? 's' : ''} today. The first is "${briefing.nextEvent.summary}". Maybe close the ${tabs.length} tabs from yesterday first.`;
+                showJoke(briefingMsg, 'suspicious');
+                return;
+              }
+            }
+          }
+        }
+      } catch (e) { /* Calendar is non-critical */ }
+    }
+
+    // Pick a mood based on user profile
+    const suggestedMood = await pickMoodFromProfile(tabs);
+    const moodDirective = suggestedMood
+      ? `\n\nMOOD DIRECTIVE: Use the ${suggestedMood.toUpperCase()} mood for this roast.`
+      : '';
+
     // Build full system prompt with personalization
     const fullPrompt = personalizedContext
-      ? `${SYSTEM_PROMPT}\n\nUSER CONTEXT:\n${personalizedContext}`
-      : SYSTEM_PROMPT;
+      ? `${SYSTEM_PROMPT}${moodDirective}\n\nUSER CONTEXT:\n${personalizedContext}${calendarContext}`
+      : `${SYSTEM_PROMPT}${moodDirective}${calendarContext}`;
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -446,7 +834,7 @@ async function generateRoast() {
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: fullPrompt },
-          { role: 'user', content: tabList }
+          { role: 'user', content: `${timeContext}\n\n${tabList}${realTimeContext}` }
         ],
         max_tokens: 50,
         temperature: 0.9
@@ -479,6 +867,11 @@ async function generateRoast() {
 
     showJoke(joke, mood);
 
+    // Increment daily roast count
+    await JestyStorage.incrementDailyRoast();
+    const updatedCap = await JestyStorage.checkDailyCap();
+    updateRoastsRemaining(updatedCap.remaining);
+
     // Save roast with full context to storage
     const { roast, milestone } = await JestyStorage.saveRoast({
       text: joke,
@@ -504,7 +897,7 @@ async function generateRoast() {
     });
 
     // Store roasted domains for action tracking (background worker uses this)
-    const roastedDomains = shuffledTabs
+    const roastedDomains = selectedTabs
       .map(tab => ({
         domain: extractDomain(tab.url),
         title: tab.title,
@@ -556,7 +949,7 @@ async function shareRoast() {
 
     // Expanded viewBox to capture full character including arms/hands/feet
     // Characters extend from x=-7 to x=107 and y=0 to y=106
-    const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -5 120 115" width="360" height="345">${svgContent}</svg>`], {type: 'image/svg+xml'});
+    const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -10 150 140" width="360" height="336">${svgContent}</svg>`], {type: 'image/svg+xml'});
     const svgUrl = URL.createObjectURL(svgBlob);
 
     const img = new Image();
@@ -611,7 +1004,7 @@ async function shareRoast() {
       ctx.fillText('Jesty', canvas.width / 2, 1250);
 
       // Small decorative line
-      ctx.strokeStyle = '#FFB499';
+      ctx.strokeStyle = '#F5F9A8';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(440, 1230);
@@ -680,4 +1073,89 @@ function extractKeywords(joke) {
   const cleanedQuotes = quotedTerms.map(t => t.replace(/'/g, '').toLowerCase());
 
   return [...new Set([...found, ...cleanedQuotes])].slice(0, 3);
+}
+
+
+/* ──────────────────────────────────────────────
+   ROASTS REMAINING INDICATOR
+   ────────────────────────────────────────────── */
+
+function updateRoastsRemaining(remaining) {
+  const el = document.getElementById('roasts-remaining');
+  if (!el) return;
+  el.textContent = `${remaining} roasts left today`;
+  el.classList.toggle('low', remaining <= 3);
+}
+
+/* ──────────────────────────────────────────────
+   CHARACTER COLOR SYNC
+   ────────────────────────────────────────────── */
+
+let newtabCurrentColor = {
+  body: '#EBF34F',
+  limb: '#C8D132',
+  shadow: '#8A9618',
+  highlight: '#F8FBCE'
+};
+
+async function loadJestyColor() {
+  try {
+    const { jestyColor } = await chrome.storage.local.get(['jestyColor']);
+    if (jestyColor) {
+      recolorNewtabSVGs(jestyColor);
+    }
+  } catch (e) {
+    // Non-critical
+  }
+}
+
+// Listen for color and accessory changes from sidepanel
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.jestyColor && changes.jestyColor.newValue) {
+    recolorNewtabSVGs(changes.jestyColor.newValue);
+  }
+  if (changes.jestyAccessoriesChanged) {
+    JestyAccessories.init().then(() => {
+      const character = document.getElementById('character');
+      const svg = character ? character.querySelector('svg') : null;
+      if (svg) {
+        const useEl = svg.querySelector('use');
+        const mood = useEl ? useEl.getAttribute('href').replace('#face-', '') : 'smug';
+        JestyAccessories.renderAccessories(mood, svg);
+      }
+    });
+  }
+});
+
+function recolorNewtabSVGs(color) {
+  const svgDefs = document.querySelector('svg[style*="display: none"] defs');
+  if (!svgDefs) return;
+
+  const replacements = {};
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    replacements[newtabCurrentColor[key].toUpperCase()] = color[key];
+  }
+
+  const symbols = svgDefs.querySelectorAll('symbol');
+  symbols.forEach(symbol => {
+    const elements = symbol.querySelectorAll('*');
+    elements.forEach(el => {
+      const fill = el.getAttribute('fill');
+      if (fill && replacements[fill.toUpperCase()]) {
+        el.setAttribute('fill', replacements[fill.toUpperCase()]);
+      }
+      const stroke = el.getAttribute('stroke');
+      if (stroke && replacements[stroke.toUpperCase()]) {
+        el.setAttribute('stroke', replacements[stroke.toUpperCase()]);
+      }
+    });
+  });
+
+  newtabCurrentColor = { ...color };
+
+  // Also update the drop-shadow color on the hero character
+  const heroSvg = document.querySelector('.hero-character svg');
+  if (heroSvg) {
+    heroSvg.style.filter = `drop-shadow(0 4px 12px ${color.body}4D)`;
+  }
 }
