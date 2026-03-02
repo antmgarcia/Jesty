@@ -151,7 +151,35 @@ const GENERIC_COMMENTS = [
   "Fascinating. Truly.",
   "You're being surprisingly productive. Suspicious.",
   "That's a lot of tabs for someone with nothing to do.",
-  "I wonder what your boss would think of these tabs."
+  "I wonder what your boss would think of these tabs.",
+  "Still here? Commitment.",
+  "Your tabs tell a whole story.",
+  "I know what you did five tabs ago.",
+  "Bold browsing strategy. Let's see if it pays off.",
+  "You call this multitasking?",
+  "I've been taking notes. You should be worried.",
+  "Another day, another tab crisis.",
+  "Somewhere, your RAM is crying.",
+  "You browse like nobody's watching. But I am.",
+  "Plot twist: I remember yesterday too.",
+  "That's a choice. Not a good one, but a choice.",
+  "Your screen time report would be devastating.",
+  "The tabs keep growing. The ambition doesn't.",
+  "This is fine. Everything is fine.",
+  "Do you even close tabs?",
+  "I've seen your patterns. No judgment. Okay, some judgment.",
+  "One more tab and your laptop files for divorce.",
+  "You're in your procrastination era.",
+  "Tell me you're avoiding work without telling me.",
+  "Peak performance. And by peak I mean the opposite.",
+  "Your browsing says a lot about you. None of it good.",
+  "I'm not mad. I'm disappointed.",
+  "Every tab is a broken promise to yourself.",
+  "The internet was a mistake. You're proving it.",
+  "At least you're consistent. Consistently distracted.",
+  "This is what rock bottom looks like in tab form.",
+  "Your future self will judge you for this.",
+  "Open a new tab. I dare you.",
 ];
 
 /* ──────────────────────────────────────────────
@@ -181,14 +209,13 @@ async function init() {
   const messageInput = document.getElementById('message-input');
   const sendBtn = document.getElementById('send-btn');
 
-  // Read and clear open mode signal
-  const { sidePanelOpenMode } = await chrome.storage.local.get(['sidePanelOpenMode']);
-  await chrome.storage.local.remove(['sidePanelOpenMode']);
+  // Read and clear open mode signals
+  const { sidePanelOpenMode, loadRoastIntoChat: pendingRoast } = await chrome.storage.local.get(['sidePanelOpenMode', 'loadRoastIntoChat']);
+  await chrome.storage.local.remove(['sidePanelOpenMode', 'loadRoastIntoChat']);
 
   // Initialize subsystems
   initDrawer();
-  initColorPicker();
-  initNameLabel();
+  initSettings();
   await loadStats();
   await loadLastRoast();
   startLiveComments();
@@ -221,13 +248,34 @@ async function init() {
   updateMsgsLeft();
   initTierOverlay();
   initEmptyNewTabBtn();
+  initRoastMeBtn();
+
+  // Re-check daily cap when user returns (e.g. left computer overnight)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      updateMsgsLeft();
+      unlockChatIfCapReset();
+    }
+  });
+
+  // Sync counter in real-time when storage changes (e.g. new tab roast consumed a use)
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.jesty_data) {
+      updateMsgsLeft();
+      loadStats();
+    }
+    // Newtab "Talk back" button was clicked while sidepanel is already open
+    if (changes.loadRoastIntoChat && changes.loadRoastIntoChat.newValue) {
+      handleLoadRoastIntoChat(changes.loadRoastIntoChat.newValue);
+    }
+  });
 
   // Initialize premium features
   await initPremiumFeatures();
 
-  // If opened from "Argue back", auto-open drawer
-  if (sidePanelOpenMode === 'chat') {
-    openDrawer();
+  // If opened from "Talk back" button, load roast into chat and open drawer
+  if (sidePanelOpenMode === 'chat' && pendingRoast && pendingRoast.text) {
+    await handleLoadRoastIntoChat(pendingRoast);
   }
 
   // Auto-resize textarea
@@ -340,6 +388,12 @@ function openDrawer() {
   // Hide live comment when drawer is open
   const commentText = document.getElementById('comment-text');
   if (commentText) commentText.classList.remove('visible');
+
+  // Show remaining counter above input
+  const inputRemaining = document.getElementById('input-remaining');
+  if (inputRemaining && !inputRemaining.dataset.premium) {
+    inputRemaining.classList.remove('hidden');
+  }
 }
 
 function closeDrawer() {
@@ -347,23 +401,42 @@ function closeDrawer() {
   if (!drawer) return;
   drawer.classList.remove('open');
   drawerOpen = false;
+
+  // Hide remaining counter when drawer closes
+  const inputRemaining = document.getElementById('input-remaining');
+  if (inputRemaining) inputRemaining.classList.add('hidden');
 }
 
 async function updateMsgsLeft() {
-  const el = document.getElementById('chat-msgs-left');
-  if (!el) return;
+  const pill = document.getElementById('remaining-pill');
+  const countEl = document.getElementById('remaining-count');
+  const inputRemaining = document.getElementById('input-remaining');
 
   const isPremium = await JestyPremium.isPremium();
   if (isPremium) {
-    el.textContent = '';
+    if (pill) pill.style.display = 'none';
+    if (inputRemaining) {
+      inputRemaining.classList.add('hidden');
+      inputRemaining.dataset.premium = 'true';
+    }
     return;
   }
 
-  if (currentConversationId) {
-    const cap = await JestyStorage.checkChatCap(currentConversationId);
-    el.textContent = `${cap.remaining} left`;
-  } else {
-    el.textContent = '12 left';
+  if (inputRemaining) delete inputRemaining.dataset.premium;
+
+  const cap = await JestyStorage.checkDailyCap();
+  console.log('[Jesty] Daily cap check:', cap, '| Local date:', new Date().toLocaleDateString());
+  if (pill && countEl) {
+    countEl.textContent = cap.remaining;
+    pill.style.display = '';
+  }
+  if (inputRemaining) {
+    inputRemaining.textContent = `${cap.remaining} left today`;
+    if (drawerOpen) {
+      inputRemaining.classList.remove('hidden');
+    } else {
+      inputRemaining.classList.add('hidden');
+    }
   }
 }
 
@@ -399,6 +472,82 @@ function initEmptyNewTabBtn() {
       e.stopPropagation();
       chrome.tabs.create({});
     });
+  }
+}
+
+function initRoastMeBtn() {
+  const btn = document.getElementById('roast-me-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      chrome.tabs.create({ active: true });
+    });
+  }
+}
+
+// Kept for live real roasts that prime the chat drawer
+async function generateSidepanelRoast() {
+  const btn = document.getElementById('roast-me-btn');
+  const commentText = document.getElementById('comment-text');
+
+  // Disable button and show thinking state
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Thinking...';
+  }
+  JestyAnimator.setExpression('thinking');
+
+  try {
+    const result = await RoastEngine.generate();
+
+    if (result.capped) {
+      // Show nudge in live comment
+      if (commentText) {
+        commentText.textContent = result.nudge.text;
+        commentText.classList.add('visible');
+      }
+      JestyAnimator.setExpression(result.nudge.mood);
+    } else {
+      // Update live comment with roast
+      if (commentText) {
+        commentText.textContent = result.joke;
+        commentText.classList.add('visible');
+      }
+      JestyAnimator.setExpression(result.mood);
+
+      // Start a new conversation with the roast as first message
+      currentRoast = result.joke;
+      conversationHistory = [
+        { role: 'system', content: JESTY_PERSONALITY },
+        { role: 'assistant', content: result.joke }
+      ];
+
+      const conversation = await JestyStorage.startConversation(result.roast.id);
+      currentConversationId = conversation.id;
+      await JestyStorage.addMessage(currentConversationId, 'jesty', result.joke);
+
+      // Clear chat container and add roast message
+      const chatContainer = document.getElementById('chat-container');
+      if (chatContainer) {
+        chatContainer.innerHTML = '';
+        addMessage(result.joke, 'jesty');
+      }
+
+      // Update stats
+      await loadStats();
+      await updateMsgsLeft();
+    }
+  } catch (error) {
+    if (commentText) {
+      commentText.textContent = 'My brain broke. Try again.';
+      commentText.classList.add('visible');
+    }
+    JestyAnimator.setExpression('yikes');
+  } finally {
+    // Re-enable button
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Roast me now';
+    }
   }
 }
 
@@ -473,43 +622,189 @@ function onDragEnd(e) {
 }
 
 /* ──────────────────────────────────────────────
-   COLOR PICKER
+   SETTINGS PANEL
    ────────────────────────────────────────────── */
 
-function initColorPicker() {
-  const picker = document.getElementById('color-picker');
-  if (!picker) return;
+const SETTINGS_COLORS = [
+  { color: { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' }, label: 'Lime' },
+  { color: { body: '#FF8FA3', limb: '#E0637A', shadow: '#B84D60', highlight: '#FFD4DC' }, label: 'Pink' },
+  { color: { body: '#87CEEB', limb: '#5BAED4', shadow: '#3A8CB5', highlight: '#C8E8F5' }, label: 'Sky' },
+  { color: { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' }, label: 'Purple' },
+  { color: { body: '#34D399', limb: '#1EB57F', shadow: '#15875F', highlight: '#A7F0D4' }, label: 'Mint' },
+  { color: { body: '#FDBA74', limb: '#E09550', shadow: '#B87638', highlight: '#FEE0C0' }, label: 'Peach' },
+];
 
-  // Load saved color
-  chrome.storage.local.get(['jestyColor'], (result) => {
-    if (result.jestyColor) {
-      applyColor(result.jestyColor);
-      // Set active dot
-      const dots = picker.querySelectorAll('.color-dot');
-      dots.forEach(dot => {
-        dot.classList.toggle('active', dot.dataset.body === result.jestyColor.body);
-      });
+const SETTINGS_EXPRESSION_POOL = [
+  'smug', 'suspicious', 'yikes', 'eyeroll', 'disappointed', 'melting', 'dead',
+  'thinking', 'happy', 'impressed', 'manic', 'petty', 'chaotic', 'dramatic', 'tender'
+];
+
+function pickRandomExpressions(count) {
+  const shuffled = [...SETTINGS_EXPRESSION_POOL];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
+
+function renderSettingsColorFaces(activeBodyColor) {
+  const container = document.getElementById('settings-color-faces');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  const expressions = pickRandomExpressions(SETTINGS_COLORS.length);
+
+  SETTINGS_COLORS.forEach((entry, i) => {
+    const expression = expressions[i];
+    const symbol = document.getElementById(`face-${expression}`);
+    if (!symbol) return;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '-15 -10 150 140');
+    svg.setAttribute('width', '46');
+    svg.setAttribute('height', '44');
+
+    let content = symbol.innerHTML;
+    content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-settings-${i}`);
+    content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-settings-${i})`);
+    svg.innerHTML = content;
+
+    // Recolor to this color
+    const SOURCE = { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' };
+    const replacements = {};
+    for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+      replacements[SOURCE[key].toUpperCase()] = entry.color[key];
+      replacements[currentColor[key].toUpperCase()] = entry.color[key];
+    }
+
+    svg.querySelectorAll('*').forEach(el => {
+      for (const attr of ['fill', 'stroke']) {
+        const val = el.getAttribute(attr);
+        if (val && replacements[val.toUpperCase()]) {
+          el.setAttribute(attr, replacements[val.toUpperCase()]);
+        }
+      }
+    });
+
+    const btn = document.createElement('button');
+    btn.className = 'settings-color-face';
+    btn.title = entry.label;
+    btn.dataset.colorIndex = i;
+    if (entry.color.body.toUpperCase() === activeBodyColor.toUpperCase()) {
+      btn.classList.add('active');
+    }
+    btn.appendChild(svg);
+    container.appendChild(btn);
+  });
+}
+
+function initSettings() {
+  const toggle = document.getElementById('settings-toggle');
+  const panel = document.getElementById('settings-panel');
+  const nameInput = document.getElementById('settings-name-input');
+  const facesContainer = document.getElementById('settings-color-faces');
+  const planEl = document.getElementById('settings-plan');
+  if (!toggle || !panel || !nameInput) return;
+
+  let settingsOpen = false;
+
+  // Load saved name
+  JestyStorage.getUserName().then(name => {
+    if (name) {
+      nameInput.value = name;
     }
   });
 
-  // Click handlers for dots
-  picker.addEventListener('click', (e) => {
-    const dot = e.target.closest('.color-dot');
-    if (!dot) return;
-
-    const color = {
-      body: dot.dataset.body,
-      limb: dot.dataset.limb,
-      shadow: dot.dataset.shadow,
-      highlight: dot.dataset.highlight
-    };
-
-    // Update active state
-    picker.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
-    dot.classList.add('active');
-
+  // Load saved color, default to purple
+  const SIDEPANEL_DEFAULT_PURPLE = { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' };
+  chrome.storage.local.get(['jestyColor'], (result) => {
+    const color = result.jestyColor || SIDEPANEL_DEFAULT_PURPLE;
     applyColor(color);
-    chrome.storage.local.set({ jestyColor: color });
+    renderSettingsColorFaces(color.body);
+  });
+
+  // Load current plan
+  JestyPremium.getTier().then(tier => {
+    const displayName = JestyPremium.getTierDisplayName(tier);
+    const tierLabel = tier === 'free' ? 'Free' : tier === 'premium' ? '$5' : '$3/mo';
+    if (planEl) {
+      planEl.textContent = `${displayName} · ${tierLabel}`;
+    }
+  });
+
+  function openSettings() {
+    settingsOpen = true;
+    // Re-render faces with fresh random expressions each time
+    const activeColor = currentColor.body || '#A78BFA';
+    renderSettingsColorFaces(activeColor);
+    panel.classList.remove('hidden');
+    panel.offsetHeight;
+    panel.classList.add('visible');
+    toggle.classList.add('active');
+    nameInput.focus();
+  }
+
+  function closeSettings(save = true) {
+    if (!settingsOpen) return;
+    settingsOpen = false;
+    panel.classList.remove('visible');
+    toggle.classList.remove('active');
+    setTimeout(() => {
+      if (!settingsOpen) panel.classList.add('hidden');
+    }, 300);
+
+    if (save) {
+      const name = nameInput.value.trim();
+      JestyStorage.setUserName(name || '');
+    }
+  }
+
+  // Toggle button
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (settingsOpen) {
+      closeSettings(true);
+    } else {
+      openSettings();
+    }
+  });
+
+  // Enter saves + closes, Escape closes without saving
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      closeSettings(true);
+    }
+    if (e.key === 'Escape') {
+      closeSettings(false);
+    }
+  });
+
+  // Color face click handler
+  if (facesContainer) {
+    facesContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.settings-color-face');
+      if (!btn) return;
+
+      const idx = parseInt(btn.dataset.colorIndex);
+      const entry = SETTINGS_COLORS[idx];
+      if (!entry) return;
+
+      facesContainer.querySelectorAll('.settings-color-face').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      applyColor(entry.color);
+      chrome.storage.local.set({ jestyColor: entry.color });
+    });
+  }
+
+  // Click outside panel to close + save
+  document.addEventListener('click', (e) => {
+    if (settingsOpen && !panel.contains(e.target) && !toggle.contains(e.target)) {
+      closeSettings(true);
+    }
   });
 }
 
@@ -546,60 +841,6 @@ function recolorSVGs(color) {
   currentColor = { ...color };
 }
 
-/* ──────────────────────────────────────────────
-   NAME LABEL
-   ────────────────────────────────────────────── */
-
-function initNameLabel() {
-  const label = document.getElementById('name-label');
-  const display = document.getElementById('name-display');
-  const edit = document.getElementById('name-edit');
-  if (!label || !display || !edit) return;
-
-  // Load current name
-  JestyStorage.getUserName().then(name => {
-    if (name) {
-      display.textContent = name;
-      display.classList.add('has-name');
-    }
-  });
-
-  // Click to enter edit mode
-  display.addEventListener('click', () => {
-    const current = display.classList.contains('has-name') ? display.textContent : '';
-    edit.value = current;
-    label.classList.add('editing');
-    edit.focus();
-    edit.select();
-  });
-
-  // Save on blur
-  edit.addEventListener('blur', () => saveName());
-
-  // Save on Enter
-  edit.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      edit.blur();
-    }
-    if (e.key === 'Escape') {
-      label.classList.remove('editing');
-    }
-  });
-
-  function saveName() {
-    const name = edit.value.trim();
-    label.classList.remove('editing');
-    if (name) {
-      display.textContent = name;
-      display.classList.add('has-name');
-      JestyStorage.setUserName(name);
-    } else {
-      display.textContent = 'Set name';
-      display.classList.remove('has-name');
-    }
-  }
-}
 
 /* ──────────────────────────────────────────────
    ACCESSORY PICKER
@@ -750,8 +991,50 @@ async function loadStats() {
    ────────────────────────────────────────────── */
 
 function startLiveComments() {
-  // Show first comment after a short delay
-  setTimeout(() => showLiveComment(), 4000 + Math.random() * 3000);
+  // Show an initial comment immediately so the space is never empty
+  const initial = GENERIC_COMMENTS[Math.floor(Math.random() * GENERIC_COMMENTS.length)];
+  showComment(initial);
+  // Then start the rotation cycle
+  setTimeout(() => showLiveComment(), 30000 + Math.random() * 30000);
+}
+
+async function tryLiveRealRoast() {
+  try {
+    const result = await RoastEngine.generate({ short: true, free: true });
+
+    if (result.capped) return null;
+
+    // Show the roast as a live comment
+    showComment(result.joke);
+    // Override expression with the AI's mood
+    JestyAnimator.setExpression(result.mood, 6000);
+
+    // Prime the chat drawer with this roast (don't open it)
+    currentRoast = result.joke;
+    conversationHistory = [
+      { role: 'system', content: JESTY_PERSONALITY },
+      { role: 'assistant', content: result.joke }
+    ];
+
+    const conversation = await JestyStorage.startConversation(result.roast.id);
+    currentConversationId = conversation.id;
+    await JestyStorage.addMessage(currentConversationId, 'jesty', result.joke);
+
+    // Pre-populate chat container so it's ready if user opens drawer
+    const chatContainer = document.getElementById('chat-container');
+    if (chatContainer) {
+      chatContainer.innerHTML = '';
+      addMessage(result.joke, 'jesty');
+    }
+
+    // Update stats & msgs left
+    await loadStats();
+    await updateMsgsLeft();
+
+    return result.joke;
+  } catch (e) {
+    return null;
+  }
 }
 
 async function showLiveComment() {
@@ -759,6 +1042,13 @@ async function showLiveComment() {
   if (drawerOpen) {
     scheduleNextComment();
     return;
+  }
+
+  // ~20% chance to show a real AI roast
+  if (Math.random() < 0.2) {
+    const realRoast = await tryLiveRealRoast();
+    if (realRoast) { scheduleNextComment(); return; }
+    // else fall through to stored comments
   }
 
   try {
@@ -829,20 +1119,21 @@ function scheduleNextComment() {
 function showComment(text) {
   const commentText = document.getElementById('comment-text');
 
-  if (!commentText || drawerOpen) return;
+  if (!commentText) return;
 
-  commentText.textContent = text;
-  commentText.classList.add('visible');
-
-  // Set a temporary expression
-  const expressions = ['smug', 'suspicious', 'eyeroll'];
-  const expr = expressions[Math.floor(Math.random() * expressions.length)];
-  JestyAnimator.setExpression(expr, 6000);
-
-  // Hide after 5 seconds
+  // Crossfade: fade out, swap text, fade in
+  commentText.style.opacity = '0';
   setTimeout(() => {
-    commentText.classList.remove('visible');
-  }, 5000);
+    commentText.textContent = text;
+    commentText.style.opacity = '1';
+  }, 400);
+
+  // Set a temporary expression (only when drawer is closed)
+  if (!drawerOpen) {
+    const expressions = ['smug', 'suspicious', 'eyeroll'];
+    const expr = expressions[Math.floor(Math.random() * expressions.length)];
+    JestyAnimator.setExpression(expr, 6000);
+  }
 }
 
 /* ──────────────────────────────────────────────
@@ -859,7 +1150,9 @@ async function initPremiumFeatures() {
       cta.classList.add('hidden');
     } else {
       cta.classList.remove('hidden');
-      cta.addEventListener('click', showTierOverlay);
+      renderPromoFaces();
+      const promoBtn = cta.querySelector('.promo-card-btn');
+      if (promoBtn) promoBtn.addEventListener('click', showTierOverlay);
     }
   }
 
@@ -871,6 +1164,60 @@ async function initPremiumFeatures() {
     await initCalendarSchedule();
     await initDailyReport();
   }
+}
+
+/* ──────────────────────────────────────────────
+   PROMO CARD FACES
+   ────────────────────────────────────────────── */
+
+const PROMO_FACES = [
+  { expression: 'smug',       color: { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' } },   // Lime
+  { expression: 'suspicious', color: { body: '#FF8FA3', limb: '#E0637A', shadow: '#B84D60', highlight: '#FFD4DC' } },   // Pink
+  { expression: 'yikes',      color: { body: '#87CEEB', limb: '#5BAED4', shadow: '#3A8CB5', highlight: '#C8E8F5' } },   // Sky
+  { expression: 'eyeroll',    color: { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' } },   // Purple
+  { expression: 'dead',       color: { body: '#34D399', limb: '#1EB57F', shadow: '#15875F', highlight: '#A7F0D4' } },   // Mint
+];
+
+function renderPromoFaces() {
+  const container = document.getElementById('promo-card-faces');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  PROMO_FACES.forEach((face, i) => {
+    const symbol = document.getElementById(`face-${face.expression}`);
+    if (!symbol) return;
+
+    // Clone symbol content into a standalone SVG
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '-15 -10 150 140');
+
+    // Make clipPath IDs unique to avoid collisions with the shared symbols
+    let content = symbol.innerHTML;
+    content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-promo-${i}`);
+    content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-promo-${i})`);
+    svg.innerHTML = content;
+
+    // Recolor: replace current global color → this face's target color
+    const replacements = {};
+    for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+      replacements[currentColor[key].toUpperCase()] = face.color[key];
+    }
+
+    svg.querySelectorAll('*').forEach(el => {
+      for (const attr of ['fill', 'stroke']) {
+        const val = el.getAttribute(attr);
+        if (val && replacements[val.toUpperCase()]) {
+          el.setAttribute(attr, replacements[val.toUpperCase()]);
+        }
+      }
+    });
+
+    const wrap = document.createElement('div');
+    wrap.className = `promo-face promo-face-${i + 1}`;
+    wrap.appendChild(svg);
+    container.appendChild(wrap);
+  });
 }
 
 /* ──────────────────────────────────────────────
@@ -1386,6 +1733,39 @@ async function generateDailyReport(pending) {
    CHAT - PRESERVED LOGIC
    ────────────────────────────────────────────── */
 
+async function handleLoadRoastIntoChat(signal) {
+  // Clear the signal so it doesn't replay
+  await chrome.storage.local.remove(['loadRoastIntoChat']);
+
+  if (!signal || !signal.text) return;
+
+  // Start a fresh conversation with this roast
+  currentRoast = signal.text;
+  conversationHistory = [
+    { role: 'system', content: JESTY_PERSONALITY },
+    { role: 'assistant', content: signal.text }
+  ];
+
+  const conversation = await JestyStorage.startConversation(signal.roastId || null);
+  currentConversationId = conversation.id;
+  await JestyStorage.addMessage(currentConversationId, 'jesty', signal.text);
+
+  // Add roast as a new Jesty message in the chat (keep existing messages visible)
+  const chatContainer = document.getElementById('chat-container');
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) emptyState.classList.add('hidden');
+
+  addMessage(signal.text, 'jesty');
+
+  // Open the drawer and scroll to the new message
+  openDrawer();
+  if (chatContainer) {
+    setTimeout(() => {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 350);
+  }
+}
+
 async function loadLastRoast() {
   const result = await chrome.storage.local.get(['lastRoast', 'lastRoastTime', 'lastRoastId']);
 
@@ -1558,10 +1938,11 @@ async function sendMessage() {
     }
   }
 
-  // Chat cap check (free = 12 messages per conversation)
-  if (currentConversationId) {
-    const chatCapResult = await JestyStorage.checkChatCap(currentConversationId);
-    if (!chatCapResult.allowed) {
+  // Daily cap check (unified: roasts + chat messages share the same pool)
+  const isPremium = await JestyPremium.isPremium();
+  if (!isPremium) {
+    const capStatus = await JestyStorage.checkDailyCap();
+    if (!capStatus.allowed) {
       showChatLock();
       return;
     }
@@ -1632,6 +2013,11 @@ async function sendMessage() {
     }
 
     conversationHistory.push({ role: 'assistant', content: jestyResponse });
+
+    // Increment unified daily cap for chat messages (free users only)
+    if (!await JestyPremium.isPremium()) {
+      await JestyStorage.incrementDailyRoast();
+    }
     updateMsgsLeft();
 
     // Store roasted domains for action tracking
@@ -1680,7 +2066,7 @@ const TIER_DATA = [
   {
     key: 'premium',
     name: 'Guilty',
-    tagline: 'Full judgement unlocked',
+    tagline: 'Full judgement',
     price: '$5',
     priceSub: 'once',
     features: [
@@ -1712,41 +2098,291 @@ const TIER_DATA = [
   }
 ];
 
-async function showTierOverlay() {
-  const overlay = document.getElementById('tier-overlay');
-  const cards = document.getElementById('tier-cards');
-  if (!overlay || !cards) return;
+/* ── Slot Machine Combos & Colors ── */
+const SLOT_COMBOS = [
+  { expression: 'smug', hat: null, glasses: null, color: 'lime', tier: 'free' },
+  { expression: 'eyeroll', hat: null, glasses: null, color: 'peach', tier: 'free' },
+  { expression: 'suspicious', hat: null, glasses: 'acc-monocle', color: 'purple', tier: 'premium' },
+  { expression: 'happy', hat: 'acc-crown', glasses: null, color: 'pink', tier: 'premium' },
+  { expression: 'smug', hat: 'acc-detective-hat', glasses: null, color: 'sky', tier: 'premium' },
+  { expression: 'smug', hat: 'acc-flame-crown', glasses: null, color: 'mint', tier: 'pro' },
+  { expression: 'suspicious', hat: null, glasses: 'acc-neon-shades', color: 'purple', tier: 'pro' },
+  { expression: 'happy', hat: 'acc-wizard-hat', glasses: null, color: 'sky', tier: 'pro' },
+];
+
+const SLOT_COLORS = {
+  lime:   { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' },
+  pink:   { body: '#FF8FA3', limb: '#E0637A', shadow: '#B84D60', highlight: '#FFD4DC' },
+  sky:    { body: '#87CEEB', limb: '#5BAED4', shadow: '#3A8CB5', highlight: '#C8E8F5' },
+  purple: { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' },
+  mint:   { body: '#34D399', limb: '#1EB57F', shadow: '#15875F', highlight: '#A7F0D4' },
+  peach:  { body: '#FDBA74', limb: '#E09550', shadow: '#B87638', highlight: '#FEE0C0' },
+};
+
+const SLOT_ANCHORS = {
+  hat:     { x: 38, y: -2 },
+  glasses: { x: 32, y: 42 }
+};
+
+const SLOT_VIEWBOXES = {
+  'acc-party-hat': '0 0 44 30', 'acc-beanie': '0 0 52 26',
+  'acc-sunglasses': '0 0 56 20', 'acc-monocle': '0 0 24 24',
+  'acc-crown': '0 0 48 28', 'acc-detective-hat': '0 0 56 28',
+  'acc-top-hat': '0 0 44 36', 'acc-halo': '0 0 44 14',
+  'acc-flame-crown': '0 0 48 32', 'acc-neon-shades': '0 0 56 20',
+  'acc-wizard-hat': '0 0 48 40'
+};
+
+const SLOT_ROASTS = {
+  free: [
+    "Look at you, freeloading. Classic Suspect behavior.",
+    "Free tier? Even your browser history is judging you.",
+    "Still a Suspect? Your tabs deserve better legal counsel.",
+  ],
+  premium: [
+    "One payment. Unlimited judgement. You know you want it.",
+    "$5 to unlock my full roast potential? Cheaper than your coffee habit.",
+    "For $5 I'll judge you forever. That's a bargain and you know it.",
+  ],
+  pro: [
+    "The full sentence. No parole. No mercy. No limits.",
+    "I'll roast your meetings too. Calendar integration hits different.",
+    "Exclusive drip, evolution stages, and I haunt your Google Calendar.",
+  ],
+};
+
+let slotSpinning = false;
+
+function pickWeightedCombo() {
+  const r = Math.random();
+  let pool;
+  if (r < 0.15) pool = SLOT_COMBOS.filter(c => c.tier === 'free');
+  else if (r < 0.70) pool = SLOT_COMBOS.filter(c => c.tier === 'premium');
+  else pool = SLOT_COMBOS.filter(c => c.tier === 'pro');
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function renderSlotCombo(svg, combo) {
+  const color = SLOT_COLORS[combo.color];
+
+  // Clone face symbol content into the slot SVG directly (avoids touching shared symbols)
+  const faceSymbol = document.getElementById(`face-${combo.expression}`);
+  if (!faceSymbol) return;
+
+  let content = faceSymbol.innerHTML;
+  // Make clipPath IDs unique to the slot
+  content = content.replace(/id="clip-([^"]+)"/g, 'id="clip-$1-slot"');
+  content = content.replace(/url\(#clip-([^)]+)\)/g, 'url(#clip-$1-slot)');
+
+  // Build accessories markup
+  let accsHtml = '';
+  if (combo.hat) {
+    const a = SLOT_ANCHORS.hat;
+    const hatSymbol = document.getElementById(combo.hat);
+    if (hatSymbol) {
+      accsHtml += `<g transform="translate(${a.x},${a.y})">${hatSymbol.innerHTML}</g>`;
+    }
+  }
+  if (combo.glasses) {
+    const a = SLOT_ANCHORS.glasses;
+    const glassesSymbol = document.getElementById(combo.glasses);
+    if (glassesSymbol) {
+      accsHtml += `<g transform="translate(${a.x},${a.y})">${glassesSymbol.innerHTML}</g>`;
+    }
+  }
+
+  svg.innerHTML = content + accsHtml;
+
+  // Recolor this SVG's elements to the target color (local only)
+  if (color) {
+    const replacements = {};
+    for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+      replacements[currentColor[key].toUpperCase()] = color[key];
+    }
+    svg.querySelectorAll('*').forEach(el => {
+      for (const attr of ['fill', 'stroke']) {
+        const val = el.getAttribute(attr);
+        if (val && replacements[val.toUpperCase()]) {
+          el.setAttribute(attr, replacements[val.toUpperCase()]);
+        }
+      }
+    });
+  }
+}
+
+function startSlotShuffle() {
+  if (slotSpinning) return;
+  slotSpinning = true;
+
+  const svg = document.querySelector('.slot-character');
+  const spinBtn = document.getElementById('slot-spin-btn');
+  const result = document.getElementById('slot-result');
+  if (!svg || !spinBtn) return;
+
+  // Reset result
+  if (result) result.classList.remove('visible');
+
+  // Hide buttons while spinning
+  spinBtn.style.display = 'none';
+  const plansLink = document.getElementById('slot-plans-link');
+  if (plansLink) plansLink.style.display = 'none';
+
+  // Add spinning animation
+  svg.classList.remove('landing');
+  svg.classList.add('spinning');
+
+  const target = pickWeightedCombo();
+
+  // Phase 1: fast shuffle (0-1.2s) — every 80ms
+  // Phase 2: decelerate (1.2-2s) — 120, 200, 350ms
+  // Phase 3: land on target
+
+  const phase1Count = 15; // ~1.2s at 80ms each
+  const phase2Delays = [120, 200, 350];
+  let step = 0;
+
+  function shuffleStep() {
+    const randomCombo = SLOT_COMBOS[Math.floor(Math.random() * SLOT_COMBOS.length)];
+    renderSlotCombo(svg, randomCombo);
+    step++;
+
+    if (step < phase1Count) {
+      setTimeout(shuffleStep, 80);
+    } else if (step < phase1Count + phase2Delays.length) {
+      const delay = phase2Delays[step - phase1Count];
+      setTimeout(shuffleStep, delay);
+    } else {
+      // Land on target
+      renderSlotCombo(svg, target);
+      svg.classList.remove('spinning');
+      svg.classList.add('landing');
+
+      setTimeout(() => {
+        revealSlotResult(target.tier);
+        spinBtn.style.display = '';
+        const pl = document.getElementById('slot-plans-link');
+        if (pl) pl.style.display = '';
+        slotSpinning = false;
+      }, 350);
+    }
+  }
+
+  setTimeout(shuffleStep, 80);
+}
+
+function revealSlotResult(tierKey) {
+  const result = document.getElementById('slot-result');
+  if (!result) return;
+
+  const tier = TIER_DATA.find(t => t.key === tierKey);
+  if (!tier) return;
+
+  // Pick a random roast for this tier
+  const roasts = SLOT_ROASTS[tierKey] || SLOT_ROASTS.free;
+  const roast = roasts[Math.floor(Math.random() * roasts.length)];
+
+  const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
+  let ctaHtml = '';
+  if (tier.cta) {
+    ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`;
+  }
+
+  result.innerHTML = `
+    <h1 class="slot-roast">${roast}</h1>
+    <div class="tier-card highlighted">
+      <div class="tier-card-header">
+        <span class="tier-card-name">${tier.name}</span>
+        <span class="tier-card-badge badge-${tier.key}">${tier.tagline}</span>
+      </div>
+      <div class="tier-card-price">${tier.price} <span>${tier.priceSub}</span></div>
+      <ul class="tier-card-features">${featuresHtml}</ul>
+      ${ctaHtml}
+    </div>
+  `;
+
+  const ctaBtn = result.querySelector('.tier-card-cta');
+  if (ctaBtn) {
+    ctaBtn.addEventListener('click', () => {
+      hideTierOverlay();
+      openPremiumCheckout();
+    });
+  }
+
+  result.classList.add('visible');
+}
+
+// One representative combo per tier for the "See all plans" view
+const TIER_COMBOS = {
+  free:    { expression: 'smug', hat: null, glasses: null, color: 'lime' },
+  premium: { expression: 'happy', hat: 'acc-crown', glasses: null, color: 'pink' },
+  pro:     { expression: 'smug', hat: 'acc-flame-crown', glasses: null, color: 'mint' },
+};
+
+function buildTierCharacterSvg(combo) {
+  const color = SLOT_COLORS[combo.color];
+  let accsHtml = '';
+  if (combo.hat) {
+    const a = SLOT_ANCHORS.hat;
+    accsHtml += `<use href="#${combo.hat}" x="${a.x}" y="${a.y}"/>`;
+  }
+  if (combo.glasses) {
+    const a = SLOT_ANCHORS.glasses;
+    accsHtml += `<use href="#${combo.glasses}" x="${a.x}" y="${a.y}"/>`;
+  }
+
+  // We use a CSS filter to tint the character. Since SVG <use> references
+  // shared symbols whose fills we can't change per-instance, we apply
+  // a background circle in the tier color behind the character as a badge.
+  return `
+    <div class="tier-card-character">
+      <div class="tier-card-character-bg" style="background:${color.body}"></div>
+      <svg viewBox="-15 -10 150 140" width="52" height="48">
+        <use href="#face-${combo.expression}"/>
+        ${accsHtml}
+      </svg>
+    </div>
+  `;
+}
+
+async function showAllPlans() {
+  const container = document.getElementById('tier-cards');
+  if (!container) return;
+
+  const title = document.querySelector('.tier-overlay-title');
+  if (title) title.textContent = 'Pick your verdict';
 
   const currentTier = await JestyPremium.getTier();
+  const tierOrder = ['free', 'premium', 'pro'];
+  const currentIdx = tierOrder.indexOf(currentTier);
+  const nextTier = currentIdx < tierOrder.length - 1 ? tierOrder[currentIdx + 1] : null;
 
-  cards.innerHTML = '';
+  container.innerHTML = '';
+
+  // Render all 3 tier cards
   for (const tier of TIER_DATA) {
-    const isCurrent = tier.key === currentTier;
-    const isRecommended = tier.key === 'premium' && currentTier === 'free';
-
+    const combo = TIER_COMBOS[tier.key];
     const card = document.createElement('div');
     card.className = 'tier-card';
-    if (isCurrent) card.classList.add('current');
-    if (isRecommended) card.classList.add('highlighted');
+    if (tier.key === nextTier) card.classList.add('highlighted');
 
-    let badgeHtml = '';
-    if (isCurrent) badgeHtml = '<span class="tier-card-badge current-badge">You are here</span>';
-    else if (isRecommended) badgeHtml = '<span class="tier-card-badge recommended-badge">Recommended</span>';
-
+    const characterHtml = combo ? buildTierCharacterSvg(combo) : '';
     const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
-
     let ctaHtml = '';
-    if (tier.cta && !isCurrent) {
+    if (tier.cta) {
       ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`;
     }
 
     card.innerHTML = `
-      <div class="tier-card-header">
-        <span class="tier-card-name">${tier.name}</span>
-        ${badgeHtml}
+      <div class="tier-card-top">
+        ${characterHtml}
+        <div class="tier-card-top-info">
+          <div class="tier-card-header">
+            <span class="tier-card-name">${tier.name}</span>
+            <span class="tier-card-badge badge-${tier.key}">${tier.tagline}</span>
+          </div>
+          <div class="tier-card-price">${tier.price} <span>${tier.priceSub}</span></div>
+        </div>
       </div>
-      <div class="tier-card-tagline">${tier.tagline}</div>
-      <div class="tier-card-price">${tier.price} <span>${tier.priceSub}</span></div>
       <ul class="tier-card-features">${featuresHtml}</ul>
       ${ctaHtml}
     `;
@@ -1759,9 +2395,55 @@ async function showTierOverlay() {
       });
     }
 
-    cards.appendChild(card);
+    container.appendChild(card);
   }
+}
 
+function showSlotMachine() {
+  const container = document.getElementById('tier-cards');
+  if (!container) return;
+
+  const title = document.querySelector('.tier-overlay-title');
+  if (title) title.textContent = 'Your verdict';
+
+  container.innerHTML = `
+    <div class="slot-stage">
+      <svg class="slot-character" viewBox="-15 -10 150 140" width="160" height="150">
+        <use href="#face-smug"/>
+      </svg>
+    </div>
+    <div class="slot-result" id="slot-result"></div>
+    <button class="slot-plans-link" id="slot-plans-link">See all plans</button>
+    <button class="slot-tertiary-btn" id="slot-spin-btn" title="Spin again">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+        <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+      </svg>
+    </button>
+  `;
+
+  slotSpinning = false;
+
+  document.getElementById('slot-spin-btn').addEventListener('click', startSlotShuffle);
+  document.getElementById('slot-plans-link').addEventListener('click', showAllPlans);
+}
+
+async function showTierOverlay() {
+  const overlay = document.getElementById('tier-overlay');
+  if (!overlay) return;
+
+  showSlotMachine();
+  overlay.classList.remove('hidden');
+
+  // Auto-spin after a brief moment for the overlay animation to land
+  setTimeout(() => startSlotShuffle(), 350);
+}
+
+async function showTierOverlayPlans() {
+  const overlay = document.getElementById('tier-overlay');
+  if (!overlay) return;
+
+  await showAllPlans();
   overlay.classList.remove('hidden');
 }
 
@@ -1771,14 +2453,12 @@ function hideTierOverlay() {
 }
 
 function initTierOverlay() {
-  const msgsLeft = document.getElementById('chat-msgs-left');
-  if (msgsLeft) {
-    msgsLeft.style.cursor = 'pointer';
-    msgsLeft.addEventListener('click', (e) => {
+  document.querySelectorAll('.stat-pill').forEach(pill => {
+    pill.addEventListener('click', (e) => {
       e.stopPropagation();
-      showTierOverlay();
+      showTierOverlayPlans();
     });
-  }
+  });
 
   const backdrop = document.getElementById('tier-overlay-backdrop');
   if (backdrop) {
@@ -1788,6 +2468,27 @@ function initTierOverlay() {
   const closeBtn = document.getElementById('tier-overlay-close');
   if (closeBtn) {
     closeBtn.addEventListener('click', hideTierOverlay);
+  }
+}
+
+async function unlockChatIfCapReset() {
+  const isPremium = await JestyPremium.isPremium();
+  if (isPremium) return;
+
+  const cap = await JestyStorage.checkDailyCap();
+  if (cap.allowed) {
+    // Remove lock message if present
+    const lock = document.querySelector('.premium-lock');
+    if (lock) lock.remove();
+
+    // Re-enable input
+    const input = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    if (input) {
+      input.disabled = false;
+      input.placeholder = 'Talk back to Jesty...';
+    }
+    if (sendBtn) sendBtn.disabled = !input?.value?.trim();
   }
 }
 
@@ -1802,7 +2503,7 @@ function showChatLock() {
       <svg viewBox="-15 -10 150 140" width="58" height="54"><use href="#face-disappointed"/></svg>
     </div>
     <p class="premium-title">I have so much more to say.</p>
-    <p class="premium-text">Suspects get 3 messages per roast. Plead Guilty for $5 to chat unlimited.</p>
+    <p class="premium-text">You've used all your daily roasts. Come back tomorrow or plead Guilty for $5 for unlimited.</p>
     <button class="premium-btn" id="chat-premium-btn">Plead Guilty — $5</button>
   `;
   chatContainer.appendChild(lockDiv);

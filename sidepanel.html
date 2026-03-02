@@ -21,14 +21,18 @@
   <div class="container">
     <!-- LAYER WRAPPER - contains main screen + drawer -->
     <div class="layer-wrapper">
-      <!-- Color Picker (top right) -->
-      <div class="color-picker" id="color-picker">
-        <button class="color-dot active" data-body="#EBF34F" data-limb="#C8D132" data-shadow="#8A9618" data-highlight="#F8FBCE" style="background:#EBF34F" title="Lime"></button>
-        <button class="color-dot" data-body="#FF8FA3" data-limb="#E0637A" data-shadow="#B84D60" data-highlight="#FFD4DC" style="background:#FF8FA3" title="Pink"></button>
-        <button class="color-dot" data-body="#87CEEB" data-limb="#5BAED4" data-shadow="#3A8CB5" data-highlight="#C8E8F5" style="background:#87CEEB" title="Sky"></button>
-        <button class="color-dot" data-body="#A78BFA" data-limb="#7C5FD6" data-shadow="#5B3FB5" data-highlight="#D4C8FD" style="background:#A78BFA" title="Purple"></button>
-        <button class="color-dot" data-body="#34D399" data-limb="#1EB57F" data-shadow="#15875F" data-highlight="#A7F0D4" style="background:#34D399" title="Mint"></button>
-        <button class="color-dot" data-body="#FDBA74" data-limb="#E09550" data-shadow="#B87638" data-highlight="#FEE0C0" style="background:#FDBA74" title="Peach"></button>
+      <!-- Settings Toggle (top right) -->
+      <button class="settings-toggle" id="settings-toggle" title="Edit">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+        </svg>
+      </button>
+
+      <!-- Settings Panel -->
+      <div class="settings-panel hidden" id="settings-panel">
+        <input class="settings-name-input" id="settings-name-input" placeholder="Your name" maxlength="20" autocomplete="off">
+        <div class="settings-color-faces" id="settings-color-faces"></div>
+        <div class="settings-plan" id="settings-plan"></div>
       </div>
 
 
@@ -43,16 +47,13 @@
           </div>
         </div>
 
-        <!-- Name Label (editable) -->
-        <div class="name-label" id="name-label">
-          <span class="name-display" id="name-display">Set name</span>
-          <input type="text" class="name-edit" id="name-edit" maxlength="20" autocomplete="off">
-        </div>
-
         <!-- Live Comment (prominent, hero-quote style) -->
         <div class="live-comment" id="live-comment">
           <p id="comment-text" class="comment-text"></p>
         </div>
+
+        <!-- Roast Me Now -->
+        <button class="roast-me-btn" id="roast-me-btn">Roast me now</button>
 
         <!-- Stats -->
         <div class="stats-row" id="stats-row">
@@ -63,6 +64,10 @@
           <div class="stat-pill">
             <span class="stat-value" id="streak-count">0</span>
             <span class="stat-label">day streak</span>
+          </div>
+          <div class="stat-pill stat-pill-remaining" id="remaining-pill">
+            <span class="stat-value" id="remaining-count"></span>
+            <span class="stat-label">left today</span>
           </div>
         </div>
 
@@ -120,10 +125,17 @@
           <p class="report-text" id="report-text"></p>
         </div>
 
-        <!-- Premium CTA (shown to free users) -->
-        <button class="premium-cta hidden" id="premium-cta">
-          Pick your verdict
-        </button>
+        <!-- Premium CTA / Promo Card (shown to free users) -->
+        <div class="promo-card hidden" id="premium-cta">
+          <div class="promo-card-faces" id="promo-card-faces"></div>
+          <div class="promo-card-btn">
+            <div class="promo-card-text">
+              <span class="promo-card-title">Unlock the full verdict</span>
+              <span class="promo-card-desc">Unlimited roasts & more</span>
+            </div>
+            <svg class="promo-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </div>
 
         <!-- Accessories (inline tiles) -->
         <div class="accessories-section" id="accessories-section">
@@ -143,7 +155,6 @@
             <span class="chat-header-status" id="status">Ready to argue</span>
           </div>
           <div class="chat-header-actions">
-            <span class="chat-msgs-left" id="chat-msgs-left"></span>
             <button class="chat-clear-btn" id="chat-clear-btn" title="Clear chat">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -177,6 +188,7 @@
 
     <!-- Input Area - always visible, independent -->
     <div class="input-area">
+      <span class="input-remaining hidden" id="input-remaining"></span>
       <div class="input-container">
         <textarea id="message-input" class="message-input" placeholder="Talk back to Jesty..." rows="1"></textarea>
         <button id="send-btn" class="send-btn" disabled>
@@ -193,6 +205,7 @@
   <script src="accessories.js"></script>
   <script src="calendar.js"></script>
   <script src="character-animator.js"></script>
+  <script src="roast-engine.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

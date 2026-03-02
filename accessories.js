@@ -52,7 +52,13 @@ const JestyAccessories = (() => {
       melting:      { x: 38, y: 0, rotate: 0 },
       dead:         { x: 38, y: 2, rotate: 8 },
       thinking:     { x: 38, y: -2, rotate: -5 },
-      happy:        { x: 38, y: -8, rotate: 0 }
+      happy:        { x: 38, y: -8, rotate: 0 },
+      impressed:    { x: 38, y: -4, rotate: 0 },
+      manic:        { x: 38, y: -6, rotate: -4 },
+      petty:        { x: 38, y: 0, rotate: 3 },
+      chaotic:      { x: 40, y: -4, rotate: -8 },
+      dramatic:     { x: 38, y: -2, rotate: 5 },
+      tender:       { x: 38, y: -2, rotate: 0 }
     },
     glasses: {
       smug:         { x: 32, y: 42, rotate: 0 },
@@ -63,7 +69,13 @@ const JestyAccessories = (() => {
       melting:      { x: 32, y: 42, rotate: 0 },
       dead:         { x: 32, y: 44, rotate: 5 },
       thinking:     { x: 34, y: 40, rotate: -3 },
-      happy:        { x: 32, y: 40, rotate: 0 }
+      happy:        { x: 32, y: 40, rotate: 0 },
+      impressed:    { x: 32, y: 42, rotate: 0 },
+      manic:        { x: 32, y: 40, rotate: -3 },
+      petty:        { x: 32, y: 42, rotate: 2 },
+      chaotic:      { x: 34, y: 40, rotate: -8 },
+      dramatic:     { x: 32, y: 42, rotate: 5 },
+      tender:       { x: 32, y: 40, rotate: 0 }
     }
   };
 
@@ -200,15 +212,23 @@ const JestyAccessories = (() => {
       const anchors = ANCHORS[slot];
       const anchor = anchors[expressionId] || anchors['smug'];
 
-      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-      use.setAttribute('href', `#${accessory.symbolId}`);
-      use.setAttribute('x', anchor.x);
-      use.setAttribute('y', anchor.y);
-      use.classList.add('jesty-accessory');
+      const symbol = document.getElementById(accessory.symbolId);
+      if (!symbol) continue;
+
+      // Clone symbol innerHTML into a <g> with translate (same approach as spinner)
+      // Using <use> with symbols creates a separate viewport that scales inconsistently
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.classList.add('jesty-accessory');
+
+      let transform = `translate(${anchor.x}, ${anchor.y})`;
       if (anchor.rotate) {
-        use.setAttribute('transform', `rotate(${anchor.rotate}, ${anchor.x + 22}, ${anchor.y + 12})`);
+        const vb = symbol.getAttribute('viewBox');
+        const [, , symW, symH] = vb ? vb.split(/\s+/).map(Number) : [0, 0, 44, 30];
+        transform += ` rotate(${anchor.rotate}, ${symW / 2}, ${symH / 2})`;
       }
-      svgContainer.appendChild(use);
+      g.setAttribute('transform', transform);
+      g.innerHTML = symbol.innerHTML;
+      svgContainer.appendChild(g);
     }
   }
 
@@ -280,6 +300,38 @@ const JestyAccessories = (() => {
   }
 
   /**
+   * Get raw SVG markup for equipped accessories at a given expression.
+   * Used for share image generation (canvas rendering).
+   * @param {string} expressionId
+   * @returns {string} SVG markup string
+   */
+  function getAccessorySvgContent(expressionId) {
+    let markup = '';
+    for (const slot of ['hat', 'glasses']) {
+      const accId = equipped[slot];
+      if (!accId) continue;
+
+      const accessory = CATALOG.find(a => a.id === accId);
+      if (!accessory) continue;
+
+      const anchors = ANCHORS[slot];
+      const anchor = anchors[expressionId] || anchors['smug'];
+
+      const symbol = document.getElementById(accessory.symbolId);
+      if (!symbol) continue;
+
+      let transform = `translate(${anchor.x}, ${anchor.y})`;
+      if (anchor.rotate) {
+        const vb = symbol.getAttribute('viewBox');
+        const [, , symW, symH] = vb ? vb.split(/\s+/).map(Number) : [0, 0, 44, 30];
+        transform += ` rotate(${anchor.rotate}, ${symW / 2}, ${symH / 2})`;
+      }
+      markup += `<g transform="${transform}">${symbol.innerHTML}</g>`;
+    }
+    return markup;
+  }
+
+  /**
    * Save equipped state to storage
    */
   async function saveEquipped() {
@@ -298,7 +350,7 @@ const JestyAccessories = (() => {
 
   return {
     init, getCatalog, equipAccessory, unequipAccessory, getEquipped,
-    renderAccessories, getEvolutionStage, isUnlocked, getStageForLevel
+    renderAccessories, getAccessorySvgContent, getEvolutionStage, isUnlocked, getStageForLevel
   };
 })();
 

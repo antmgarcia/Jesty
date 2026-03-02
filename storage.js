@@ -806,12 +806,7 @@ async function buildPersonalizedContext() {
 
   // User's name
   if (data.profile.user_name) {
-    const totalRoasts = data.profile.total_roasts;
-    if (totalRoasts < 5) {
-      context.push(`User's name is ${data.profile.user_name}. This is one of their first roasts — USE their name in this roast to make it feel personal and welcoming (e.g. "${data.profile.user_name}, really?" or "Oh ${data.profile.user_name}...").`);
-    } else {
-      context.push(`User's name is ${data.profile.user_name}. Almost NEVER use their name — only about 1 in 8 roasts. Most roasts should NOT include it. When you do drop it, it should land like a surprise punch (e.g. "${data.profile.user_name}, really?").`);
-    }
+    context.push(`User's name is ${data.profile.user_name}. Almost NEVER use their name — only about 1 in 8 roasts. Most roasts should NOT include it. When you do drop it, it should land like a surprise punch (e.g. "${data.profile.user_name}, really?").`);
   }
 
   // User patterns
@@ -960,17 +955,28 @@ function getActionCelebrationMessage(actions, domain) {
 }
 
 /**
- * Check daily roast cap. Resets if new day.
+ * Check daily cap. Resets at user's local midnight.
  * Returns { allowed: boolean, remaining: number }
  */
 async function checkDailyCap() {
   const data = await getJestyData();
   const today = getLocalDate();
 
-  // Reset if new day
+  // Ensure daily_cap is valid
+  if (!data.settings.daily_cap || data.settings.daily_cap < 1) {
+    data.settings.daily_cap = 12;
+  }
+
+  // Reset if new day (or if date was never set)
   if (data.settings.roast_cap_date !== today) {
     data.settings.roasts_today = 0;
     data.settings.roast_cap_date = today;
+    await saveJestyData(data);
+  }
+
+  // Guard against corrupted values
+  if (typeof data.settings.roasts_today !== 'number' || data.settings.roasts_today < 0) {
+    data.settings.roasts_today = 0;
     await saveJestyData(data);
   }
 
@@ -994,6 +1000,16 @@ async function incrementDailyRoast() {
   }
 
   data.settings.roasts_today++;
+  await saveJestyData(data);
+}
+
+/**
+ * Force-reset daily cap (for testing / debugging)
+ */
+async function resetDailyCap() {
+  const data = await getJestyData();
+  data.settings.roasts_today = 0;
+  data.settings.roast_cap_date = getLocalDate();
   await saveJestyData(data);
 }
 
@@ -1047,6 +1063,7 @@ if (typeof window !== 'undefined') {
     getActionCelebrationMessage,
     checkDailyCap,
     incrementDailyRoast,
+    resetDailyCap,
     checkChatCap,
     clearAllData,
     categorizeUrl,

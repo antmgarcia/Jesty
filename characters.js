@@ -322,6 +322,255 @@ const JestyCharacters = (function () {
         <circle cx="-6" cy="44" r="1.5" fill="#87CEEB" opacity="0.4"/>
       </symbol>
 
+      <!-- Premium mood: Impressed - wide eyes, jaw dropped, one hand raised -->
+      <symbol id="face-impressed" viewBox="-15 -10 150 140">
+        <defs>
+          <clipPath id="clip-impressed">
+            <path d="M46 16 C28 18, 18 32, 20 50 C21 62, 18 74, 20 86 C24 100, 40 108, 60 110 C80 108, 96 100, 100 86 C102 74, 99 62, 100 50 C102 32, 92 18, 74 16 Z"/>
+          </clipPath>
+        </defs>
+        <path d="M46 16 C28 18, 18 32, 20 50 C21 62, 18 74, 20 86 C24 100, 40 108, 60 110 C80 108, 96 100, 100 86 C102 74, 99 62, 100 50 C102 32, 92 18, 74 16 Z" fill="#EBF34F"/>
+        <g clip-path="url(#clip-impressed)">
+          <ellipse cx="60" cy="94" rx="32" ry="18" fill="#8A9618" opacity="0.15"/>
+          <ellipse cx="58" cy="28" rx="24" ry="14" fill="#F8FBCE" opacity="0.22"/>
+        </g>
+        <!-- Left arm hanging relaxed -->
+        <path d="M24 60 C14 64, 8 76, 14 86" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="14" cy="86" rx="7" ry="5" fill="#C8D132" transform="rotate(-10, 14, 86)"/>
+        <!-- Right arm raised, pointing up -->
+        <path d="M96 58 C108 50, 114 36, 108 24" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="108" cy="24" rx="7" ry="5" fill="#C8D132" transform="rotate(25, 108, 24)"/>
+        <!-- Legs -->
+        <path d="M44 106 C40 112, 38 116, 40 120" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="40" cy="120" rx="7" ry="4" fill="#C8D132"/>
+        <path d="M76 106 C80 112, 82 116, 80 120" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="80" cy="120" rx="7" ry="4" fill="#C8D132"/>
+        <!-- Wide eyes -->
+        <circle cx="46" cy="50" r="11" fill="#FFFFFF"/>
+        <circle cx="47" cy="51" r="5.5" fill="#2D2A26"/>
+        <circle cx="44" cy="47" r="2.5" fill="#FFFFFF"/>
+        <circle cx="74" cy="50" r="11" fill="#FFFFFF"/>
+        <circle cx="75" cy="51" r="5.5" fill="#2D2A26"/>
+        <circle cx="72" cy="47" r="2.5" fill="#FFFFFF"/>
+        <!-- Raised eyebrows -->
+        <path d="M34 34 C40 28, 50 28, 56 32" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M64 32 C70 28, 80 28, 86 34" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <!-- Open mouth (impressed O) -->
+        <ellipse cx="60" cy="72" rx="8" ry="10" fill="#2D2A26"/>
+        <ellipse cx="60" cy="70" rx="5" ry="4" fill="#FF6B6B" opacity="0.4"/>
+      </symbol>
+
+      <!-- Premium mood: Manic - wide eyes, both arms up, squiggly energy -->
+      <symbol id="face-manic" viewBox="-15 -10 150 140">
+        <defs>
+          <clipPath id="clip-manic">
+            <path d="M42 14 C22 18, 14 34, 18 52 C20 64, 14 78, 18 88 C24 104, 42 110, 60 112 C78 110, 96 104, 102 88 C106 78, 100 64, 102 52 C106 34, 98 18, 78 14 Z"/>
+          </clipPath>
+        </defs>
+        <path d="M42 14 C22 18, 14 34, 18 52 C20 64, 14 78, 18 88 C24 104, 42 110, 60 112 C78 110, 96 104, 102 88 C106 78, 100 64, 102 52 C106 34, 98 18, 78 14 Z" fill="#EBF34F"/>
+        <g clip-path="url(#clip-manic)">
+          <ellipse cx="60" cy="96" rx="34" ry="18" fill="#8A9618" opacity="0.15"/>
+          <ellipse cx="56" cy="26" rx="26" ry="14" fill="#F8FBCE" opacity="0.22"/>
+        </g>
+        <!-- Left arm flailing up-left -->
+        <path d="M22 56 C8 42, -2 28, 4 14 C6 10, 12 8, 10 16" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="10" cy="16" rx="7" ry="5" fill="#C8D132" transform="rotate(-30, 10, 16)"/>
+        <!-- Right arm flailing up-right -->
+        <path d="M98 56 C112 42, 122 28, 116 14 C114 10, 108 8, 110 16" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="110" cy="16" rx="7" ry="5" fill="#C8D132" transform="rotate(30, 110, 16)"/>
+        <!-- Legs wide -->
+        <path d="M42 108 C34 114, 28 118, 30 122" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="30" cy="122" rx="7" ry="4" fill="#C8D132" transform="rotate(-15, 30, 122)"/>
+        <path d="M78 108 C86 114, 92 118, 90 122" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="90" cy="122" rx="7" ry="4" fill="#C8D132" transform="rotate(15, 90, 122)"/>
+        <!-- Uneven crazy eyes -->
+        <circle cx="44" cy="48" r="10" fill="#FFFFFF"/>
+        <circle cx="45" cy="49" r="5" fill="#2D2A26"/>
+        <circle cx="42" cy="45" r="2" fill="#FFFFFF"/>
+        <circle cx="76" cy="46" r="12" fill="#FFFFFF"/>
+        <circle cx="77" cy="47" r="6" fill="#2D2A26"/>
+        <circle cx="74" cy="43" r="2.5" fill="#FFFFFF"/>
+        <!-- Squiggly eyebrows -->
+        <path d="M32 34 C36 30, 40 34, 44 30 C48 26, 52 30, 56 28" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M64 28 C68 30, 72 26, 76 30 C80 34, 84 30, 88 34" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Big grin -->
+        <path d="M38 68 C46 80, 74 80, 82 68" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M42 70 C48 76, 72 76, 78 70" fill="#2D2A26"/>
+        <!-- Energy sparks -->
+        <path d="M-4 30 L0 26 L2 32 L6 28 Z" fill="#FFD93D" opacity="0.6"/>
+        <path d="M116 28 L120 24 L122 30 L126 26 Z" fill="#FFD93D" opacity="0.6"/>
+        <circle cx="4" cy="8" r="2" fill="#FFD93D" opacity="0.5"/>
+        <circle cx="116" cy="6" r="2" fill="#FFD93D" opacity="0.5"/>
+      </symbol>
+
+      <!-- Premium mood: Petty - squinting, one arm pointing accusingly -->
+      <symbol id="face-petty" viewBox="-15 -10 150 140">
+        <defs>
+          <clipPath id="clip-petty">
+            <path d="M48 20 C30 20, 22 32, 24 50 C25 62, 22 74, 24 84 C26 96, 40 104, 60 106 C80 104, 94 96, 96 84 C98 74, 95 62, 96 50 C98 32, 90 20, 72 20 Z"/>
+          </clipPath>
+        </defs>
+        <path d="M48 20 C30 20, 22 32, 24 50 C25 62, 22 74, 24 84 C26 96, 40 104, 60 106 C80 104, 94 96, 96 84 C98 74, 95 62, 96 50 C98 32, 90 20, 72 20 Z" fill="#EBF34F"/>
+        <g clip-path="url(#clip-petty)">
+          <ellipse cx="60" cy="90" rx="30" ry="16" fill="#8A9618" opacity="0.15"/>
+          <ellipse cx="58" cy="32" rx="22" ry="12" fill="#F8FBCE" opacity="0.22"/>
+        </g>
+        <!-- Left arm on hip -->
+        <path d="M28 60 C18 62, 14 72, 22 78 C28 82, 36 76, 38 68" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="38" cy="68" rx="6" ry="5" fill="#C8D132" transform="rotate(-15, 38, 68)"/>
+        <!-- Right arm pointing forward -->
+        <path d="M92 56 C106 52, 118 50, 126 48" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="126" cy="48" rx="7" ry="4" fill="#C8D132" transform="rotate(-5, 126, 48)"/>
+        <!-- Legs -->
+        <path d="M44 102 C40 108, 38 114, 40 118" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="40" cy="118" rx="7" ry="4" fill="#C8D132"/>
+        <path d="M72 104 C76 110, 78 114, 76 118" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="76" cy="118" rx="7" ry="4" fill="#C8D132"/>
+        <!-- Squinting eyes -->
+        <path d="M38 52 L56 50" stroke="#2D2A26" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="47" cy="51" r="3" fill="#FFFFFF"/>
+        <circle cx="47" cy="51" r="1.5" fill="#2D2A26"/>
+        <path d="M64 50 L82 52" stroke="#2D2A26" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="73" cy="51" r="3" fill="#FFFFFF"/>
+        <circle cx="73" cy="51" r="1.5" fill="#2D2A26"/>
+        <!-- Skeptical furrowed brows -->
+        <path d="M36 42 C42 38, 50 40, 54 42" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M66 42 C70 40, 78 38, 84 42" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <!-- Tight pursed mouth -->
+        <path d="M50 68 C54 72, 66 72, 70 68" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="72" cy="66" r="1.5" fill="#2D2A26"/>
+      </symbol>
+
+      <!-- Pro mood: Chaotic - tilted body, tongue out, wild pose -->
+      <symbol id="face-chaotic" viewBox="-15 -10 150 140">
+        <defs>
+          <clipPath id="clip-chaotic">
+            <path d="M44 16 C24 20, 16 36, 20 54 C22 66, 16 78, 20 90 C26 106, 44 112, 62 114 C80 112, 96 106, 100 90 C104 78, 98 66, 100 54 C104 36, 96 20, 76 16 Z"/>
+          </clipPath>
+        </defs>
+        <g transform="rotate(-8, 60, 65)">
+          <path d="M44 16 C24 20, 16 36, 20 54 C22 66, 16 78, 20 90 C26 106, 44 112, 62 114 C80 112, 96 106, 100 90 C104 78, 98 66, 100 54 C104 36, 96 20, 76 16 Z" fill="#EBF34F"/>
+          <g clip-path="url(#clip-chaotic)">
+            <ellipse cx="62" cy="98" rx="34" ry="18" fill="#8A9618" opacity="0.15"/>
+            <ellipse cx="58" cy="28" rx="24" ry="14" fill="#F8FBCE" opacity="0.22"/>
+          </g>
+          <!-- Arms going every which way -->
+          <path d="M24 56 C8 44, -4 30, 2 18" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="2" cy="18" rx="7" ry="5" fill="#C8D132" transform="rotate(-20, 2, 18)"/>
+          <path d="M96 52 C112 58, 120 72, 114 84" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="114" cy="84" rx="7" ry="5" fill="#C8D132" transform="rotate(30, 114, 84)"/>
+          <!-- Legs -->
+          <path d="M42 110 C36 116, 30 120, 32 124" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="32" cy="124" rx="7" ry="4" fill="#C8D132"/>
+          <path d="M78 110 C84 116, 90 118, 88 122" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="88" cy="122" rx="7" ry="4" fill="#C8D132"/>
+          <!-- Derpy mismatched eyes -->
+          <circle cx="44" cy="48" r="10" fill="#FFFFFF"/>
+          <circle cx="46" cy="52" r="5" fill="#2D2A26"/>
+          <circle cx="43" cy="46" r="2" fill="#FFFFFF"/>
+          <circle cx="76" cy="46" r="9" fill="#FFFFFF"/>
+          <circle cx="74" cy="44" r="4.5" fill="#2D2A26"/>
+          <circle cx="72" cy="42" r="2" fill="#FFFFFF"/>
+          <!-- Wild eyebrows -->
+          <path d="M32 34 C38 26, 48 30, 56 28" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M64 28 C72 30, 82 26, 88 34" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <!-- Tongue sticking out -->
+          <path d="M42 68 C50 76, 70 76, 78 68" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M52 72 C54 76, 56 82, 60 84 C64 82, 66 76, 68 72" fill="#FF6B6B"/>
+        </g>
+        <!-- Chaos particles -->
+        <path d="M-6 36 L-2 32 L0 38 L4 34 Z" fill="#FFD93D" opacity="0.5"/>
+        <path d="M120 30 L124 26 L126 32 L130 28 Z" fill="#FFD93D" opacity="0.5"/>
+        <circle cx="8" cy="6" r="2.5" fill="#FF8FA3" opacity="0.5"/>
+        <circle cx="112" cy="8" r="2.5" fill="#87CEEB" opacity="0.5"/>
+        <circle cx="124" cy="60" r="2" fill="#FFD93D" opacity="0.4"/>
+      </symbol>
+
+      <!-- Pro mood: Dramatic - hand on forehead, swooning back -->
+      <symbol id="face-dramatic" viewBox="-15 -10 150 140">
+        <defs>
+          <clipPath id="clip-dramatic">
+            <path d="M46 18 C28 20, 20 34, 22 52 C23 64, 18 76, 22 86 C26 100, 42 108, 60 110 C78 108, 94 100, 98 86 C102 76, 97 64, 98 52 C100 34, 92 20, 74 18 Z"/>
+          </clipPath>
+        </defs>
+        <g transform="rotate(5, 60, 65)">
+          <path d="M46 18 C28 20, 20 34, 22 52 C23 64, 18 76, 22 86 C26 100, 42 108, 60 110 C78 108, 94 100, 98 86 C102 76, 97 64, 98 52 C100 34, 92 20, 74 18 Z" fill="#EBF34F"/>
+          <g clip-path="url(#clip-dramatic)">
+            <ellipse cx="60" cy="94" rx="32" ry="18" fill="#8A9618" opacity="0.15"/>
+            <ellipse cx="56" cy="30" rx="24" ry="14" fill="#F8FBCE" opacity="0.22"/>
+          </g>
+          <!-- Left arm draped down dramatically -->
+          <path d="M26 60 C14 68, 6 80, 12 90" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="12" cy="90" rx="7" ry="5" fill="#C8D132" transform="rotate(-10, 12, 90)"/>
+          <!-- Right arm on forehead -->
+          <path d="M92 54 C100 44, 98 30, 86 24 C78 20, 68 22, 62 28" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="62" cy="28" rx="7" ry="5" fill="#C8D132" transform="rotate(20, 62, 28)"/>
+          <!-- Legs -->
+          <path d="M44 106 C40 112, 38 116, 40 120" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="40" cy="120" rx="7" ry="4" fill="#C8D132"/>
+          <path d="M76 106 C80 112, 82 116, 80 120" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <ellipse cx="80" cy="120" rx="7" ry="4" fill="#C8D132"/>
+          <!-- Closed dramatic eyes -->
+          <path d="M38 50 C44 46, 52 46, 56 50" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M64 50 C70 46, 78 46, 82 50" stroke="#2D2A26" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <!-- Swooning eyebrows -->
+          <path d="M36 42 C42 38, 50 38, 56 42" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M64 42 C70 38, 78 38, 84 42" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <!-- Open gasp mouth -->
+          <ellipse cx="60" cy="68" rx="10" ry="8" fill="#2D2A26"/>
+          <!-- Blush -->
+          <ellipse cx="34" cy="58" rx="7" ry="4" fill="#FF8FA3" opacity="0.5"/>
+          <ellipse cx="86" cy="58" rx="7" ry="4" fill="#FF8FA3" opacity="0.5"/>
+        </g>
+        <!-- Dramatic sparkle -->
+        <path d="M-2 20 L0 14 L2 20 L6 18 L2 20 L3 24 L0 20 L-3 22 Z" fill="#FFD93D" opacity="0.5"/>
+        <path d="M118 16 L120 10 L122 16 L126 14 L122 16 L123 20 L120 16 L117 18 Z" fill="#FFD93D" opacity="0.5"/>
+      </symbol>
+
+      <!-- Pro mood: Tender - blushing, hands together, soft eyes -->
+      <symbol id="face-tender" viewBox="-15 -10 150 140">
+        <defs>
+          <clipPath id="clip-tender">
+            <path d="M46 18 C28 20, 20 34, 22 52 C23 64, 18 76, 22 88 C26 102, 42 108, 60 110 C78 108, 94 102, 98 88 C102 76, 97 64, 98 52 C100 34, 92 20, 74 18 Z"/>
+          </clipPath>
+        </defs>
+        <path d="M46 18 C28 20, 20 34, 22 52 C23 64, 18 76, 22 88 C26 102, 42 108, 60 110 C78 108, 94 102, 98 88 C102 76, 97 64, 98 52 C100 34, 92 20, 74 18 Z" fill="#EBF34F"/>
+        <g clip-path="url(#clip-tender)">
+          <ellipse cx="60" cy="94" rx="32" ry="18" fill="#8A9618" opacity="0.15"/>
+          <ellipse cx="56" cy="30" rx="24" ry="14" fill="#F8FBCE" opacity="0.22"/>
+        </g>
+        <!-- Arms together in front (holding hands gesture) -->
+        <path d="M30 58 C24 64, 28 74, 40 78 C48 80, 52 78, 56 74" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M90 58 C96 64, 92 74, 80 78 C72 80, 68 78, 64 74" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="58" cy="76" rx="8" ry="5" fill="#C8D132"/>
+        <ellipse cx="62" cy="76" rx="8" ry="5" fill="#C8D132"/>
+        <!-- Legs -->
+        <path d="M44 106 C40 112, 38 116, 40 120" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="40" cy="120" rx="7" ry="4" fill="#C8D132"/>
+        <path d="M76 106 C80 112, 82 116, 80 120" stroke="#C8D132" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="80" cy="120" rx="7" ry="4" fill="#C8D132"/>
+        <!-- Soft round eyes with sparkle -->
+        <circle cx="46" cy="48" r="9" fill="#FFFFFF"/>
+        <circle cx="47" cy="49" r="4.5" fill="#2D2A26"/>
+        <circle cx="44" cy="45" r="2.5" fill="#FFFFFF"/>
+        <circle cx="49" cy="47" r="1" fill="#FFFFFF"/>
+        <circle cx="74" cy="48" r="9" fill="#FFFFFF"/>
+        <circle cx="75" cy="49" r="4.5" fill="#2D2A26"/>
+        <circle cx="72" cy="45" r="2.5" fill="#FFFFFF"/>
+        <circle cx="77" cy="47" r="1" fill="#FFFFFF"/>
+        <!-- Gentle raised brows -->
+        <path d="M36 36 C42 32, 50 32, 56 36" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M64 36 C70 32, 78 32, 84 36" stroke="#2D2A26" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Heavy blush -->
+        <ellipse cx="34" cy="58" rx="9" ry="5" fill="#FF8FA3" opacity="0.6"/>
+        <ellipse cx="86" cy="58" rx="9" ry="5" fill="#FF8FA3" opacity="0.6"/>
+        <!-- Small shy smile -->
+        <path d="M48 66 C54 72, 66 72, 72 66" stroke="#2D2A26" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Tiny hearts -->
+        <path d="M10 22 C8 18, 2 18, 2 24 C2 28, 10 34, 10 34 C10 34, 18 28, 18 24 C18 18, 12 18, 10 22 Z" fill="#FF8FA3" opacity="0.4"/>
+        <path d="M108 18 C106 14, 100 14, 100 20 C100 24, 108 30, 108 30 C108 30, 116 24, 116 20 C116 14, 110 14, 108 18 Z" fill="#FF8FA3" opacity="0.4"/>
+      </symbol>
+
       <!-- Accessory: Party Hat -->
       <symbol id="acc-party-hat" viewBox="0 0 44 30">
         <polygon points="22,0 4,28 40,28" fill="#FF6B6B"/>

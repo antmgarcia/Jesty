@@ -245,7 +245,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
   animation: fadeInUp 0.4s ease-out;
 }
 
@@ -295,33 +295,37 @@ body {
   background: #3C4043;
 }
 
-.welcome-colors {
+.welcome-color-faces {
   display: flex;
-  gap: 8px;
-  margin-top: 2px;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 8px;
 }
 
-.welcome-colors .color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1.5px solid transparent;
+.welcome-color-face {
   cursor: pointer;
+  border-radius: 10px;
+  padding: 4px;
+  border: 2px solid transparent;
   transition: all 0.2s;
-  padding: 0;
-  outline: none;
-  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
 }
 
-.welcome-colors .color-dot:hover {
-  opacity: 1;
-  transform: scale(1.15);
+.welcome-color-face:hover {
+  transform: scale(1.1);
 }
 
-.welcome-colors .color-dot.active {
-  opacity: 1;
+.welcome-color-face.active {
   border-color: #2D2A26;
-  box-shadow: 0 0 0 1px #FFFFFF, 0 0 0 2.5px #2D2A26;
+  background: rgba(0,0,0,0.04);
+}
+
+.welcome-color-face svg {
+  display: block;
 }
 
 .welcome-skip {

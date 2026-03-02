@@ -50,7 +50,9 @@ chrome.tabs.onCreated.addListener(async (tab) => {
       tabId: tab.id,
       domain: extractDomain(tab.url),
       url: tab.url,
-      title: tab.title || ''
+      title: tab.title || '',
+      firstSeen: Date.now(),
+      lastActivated: null
     };
 
     await chrome.storage.local.set({ openTabs });
@@ -73,17 +75,31 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
     const { openTabs = {} } = await chrome.storage.local.get(['openTabs']);
 
+    const existing = openTabs[tabId];
     openTabs[tabId] = {
       tabId: tabId,
       domain: extractDomain(changeInfo.url),
       url: changeInfo.url,
-      title: tab.title || ''
+      title: tab.title || '',
+      firstSeen: existing?.firstSeen || Date.now(),
+      lastActivated: existing?.lastActivated || null
     };
 
     await chrome.storage.local.set({ openTabs });
   } catch (e) {
     console.error('Jesty: Error updating tab:', e);
   }
+});
+
+// Track tab activations for staleness detection
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const { openTabs = {} } = await chrome.storage.local.get(['openTabs']);
+    if (openTabs[activeInfo.tabId]) {
+      openTabs[activeInfo.tabId].lastActivated = Date.now();
+      await chrome.storage.local.set({ openTabs });
+    }
+  } catch (e) { /* non-critical */ }
 });
 
 // Clean up expired roasted domains periodically
@@ -373,20 +389,27 @@ async function checkSubscriptionStatus() {
 async function initializeOpenTabs() {
   try {
     const tabs = await chrome.tabs.query({});
+    const now = Date.now();
+
+    // Preserve existing firstSeen timestamps if available
+    const { openTabs: existingTabs = {} } = await chrome.storage.local.get(['openTabs']);
     const openTabs = {};
 
     for (const tab of tabs) {
       if (tab.url && !tab.url.startsWith('chrome://')) {
+        const existing = existingTabs[tab.id];
         openTabs[tab.id] = {
           tabId: tab.id,
           domain: extractDomain(tab.url),
           url: tab.url,
-          title: tab.title || ''
+          title: tab.title || '',
+          firstSeen: existing?.firstSeen || now,
+          lastActivated: existing?.lastActivated || (tab.active ? now : null)
         };
       }
     }
 
-    await chrome.storage.local.set({ openTabs });
+    await chrome.storage.local.set({ openTabs, sessionStartTime: now });
   } catch (e) {
     console.error('Jesty: Error initializing open tabs:', e);
   }
