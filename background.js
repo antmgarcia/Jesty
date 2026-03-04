@@ -27,7 +27,7 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     const match = roastedDomains.find(rd => rd.domain === closedTab.domain && now < rd.expiresAt);
 
     if (match) {
-      await createPendingCelebration(closedTab, match);
+      await createPendingXPGain(closedTab, match);
     }
 
     // Remove from open tabs cache
@@ -91,7 +91,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-// Track tab activations for staleness detection
+// Track tab activations for staleness detection + focus session tracking
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const { openTabs = {} } = await chrome.storage.local.get(['openTabs']);
@@ -100,6 +100,9 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
       await chrome.storage.local.set({ openTabs });
     }
   } catch (e) { /* non-critical */ }
+
+  // Focus Time: track tab switch during active session
+  await trackFocusTabSwitch(activeInfo.tabId);
 });
 
 // Clean up expired roasted domains periodically
@@ -108,8 +111,6 @@ chrome.alarms.create('cleanupExpired', { periodInMinutes: 5 });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'cleanupExpired') {
     await cleanupExpiredData();
-  } else if (alarm.name === 'focusModeCheck') {
-    await checkFocusMode();
   } else if (alarm.name === 'dailyReportCheck') {
     await checkDailyReport();
   } else if (alarm.name === 'subscriptionCheck') {
@@ -118,44 +119,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 /**
- * Create and show celebration immediately
+ * Award XP for closing a roasted tab
  */
-async function createPendingCelebration(closedTab, match) {
-  // Check if there's already a pending celebration
-  const { pendingCelebration } = await chrome.storage.local.get(['pendingCelebration']);
-  if (pendingCelebration) return; // Don't overwrite existing celebration
+async function createPendingXPGain(closedTab, match) {
+  // Random XP between 5-15
+  const xp = 5 + Math.floor(Math.random() * 11);
 
-  // Generate celebration message
-  const message = getCelebrationMessage(closedTab.domain);
-
-  const celebration = {
-    type: 'action_followed',
-    message: message.text,
-    mood: message.mood,
+  const xpGain = {
+    xp,
     domain: closedTab.domain,
     timestamp: Date.now()
   };
 
-  // Store celebration (sidepanel will pick this up via storage listener if open)
-  await chrome.storage.local.set({ pendingCelebration: celebration });
-}
-
-/**
- * Get a celebration message for the closed domain
- */
-function getCelebrationMessage(domain) {
-  const messages = [
-    { text: `You closed ${domain}? I'm genuinely impressed. And suspicious.`, mood: 'suspicious' },
-    { text: `Gone! ${domain} didn't deserve you anyway.`, mood: 'smug' },
-    { text: `Wait, you actually listened? Mark your calendar.`, mood: 'suspicious' },
-    { text: `${domain} has left the chat. Finally.`, mood: 'smug' },
-    { text: `One less distraction. Your focus thanks you.`, mood: 'happy' },
-    { text: `You did it! Closed ${domain}. I knew you had it in you. Maybe.`, mood: 'happy' },
-    { text: `Look at you, taking my advice. This is new.`, mood: 'suspicious' },
-    { text: `${domain}? Gone. Productivity? Maybe incoming.`, mood: 'smug' }
-  ];
-
-  return messages[Math.floor(Math.random() * messages.length)];
+  // Store XP gain (sidepanel/newtab will pick this up via storage listener)
+  await chrome.storage.local.set({ pendingXPGain: xpGain });
 }
 
 /**
@@ -226,79 +203,119 @@ async function handlePaymentSuccess(url) {
 }
 
 /* ──────────────────────────────────────────────
-   FOCUS MODE
+   FOCUS TIME — Event-driven tab tracking
    ────────────────────────────────────────────── */
 
-// Focus mode check runs every 10 seconds via alarm
-chrome.alarms.create('focusModeCheck', { periodInMinutes: 1 / 6 }); // ~10s
+// Site classification: maps storage.js TAB_CATEGORIES to Focus Time categories
+// (Duplicated here because service worker can't import from storage.js)
+const FOCUS_WORK_DOMAINS = [
+  'slack.com', 'notion.so', 'asana.com', 'trello.com', 'monday.com',
+  'figma.com', 'github.com', 'gitlab.com', 'jira', 'confluence',
+  'basecamp', 'linear.app',
+  'docs.google.com', 'sheets.google.com', 'calendar.google.com',
+  'mail.google.com', 'outlook.com', 'drive.google.com',
+  'dropbox.com', 'evernote.com',
+  'coursera.org', 'udemy.com', 'duolingo.com', 'khanacademy',
+  'skillshare', 'linkedin.com/learning', 'edx.org',
+  'chat.openai', 'claude.ai', 'bard.google', 'midjourney',
+  'perplexity.ai', 'poe.com', 'huggingface'
+];
+
+const FOCUS_DISTRACTION_DOMAINS = [
+  'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'reddit.com',
+  'tiktok.com', 'threads.net', 'mastodon', 'bluesky',
+  'youtube.com', 'twitch.tv', 'netflix.com', 'hulu.com',
+  'disneyplus.com', 'spotify.com', 'primevideo', 'hbomax',
+  'peacock', 'crunchyroll',
+  'steampowered', 'playstation.com', 'xbox.com', 'epicgames',
+  'itch.io', 'roblox.com', 'discord.com',
+  'tinder.com', 'bumble.com', 'hinge.co', 'match.com',
+  'okcupid.com', 'grindr', 'her.app',
+  'amazon.com', 'ebay.com', 'etsy.com', 'shopify.com',
+  'walmart.com', 'target.com', 'bestbuy.com', 'aliexpress',
+  'wish.com', 'shein.com'
+];
+
+function getFocusCategory(url) {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    if (FOCUS_WORK_DOMAINS.some(d => hostname.includes(d))) return 'Work';
+    if (FOCUS_DISTRACTION_DOMAINS.some(d => hostname.includes(d))) return 'Distraction';
+    return 'Neutral';
+  } catch {
+    return 'Neutral';
+  }
+}
+
+function computeIslandState(session) {
+  const d = session.distractionCount || 0;
+  const now = Date.now();
+  const streakSeconds = session.currentStreakStart
+    ? (now - session.currentStreakStart) / 1000
+    : 0;
+
+  if (d >= 5) return 'resigned';
+  if (d >= 3) return 'judging';
+  if (d === 2) return 'disappointed';
+  if (d === 1) return 'skeptical';
+  if (d === 0 && streakSeconds >= 300) return 'impressed';
+  return 'neutral';
+}
+
+async function trackFocusTabSwitch(tabId) {
+  try {
+    const { focusSession } = await chrome.storage.local.get(['focusSession']);
+    if (!focusSession || !focusSession.active) return;
+
+    const { openTabs = {} } = await chrome.storage.local.get(['openTabs']);
+    const tab = openTabs[tabId];
+    if (!tab || !tab.url) return;
+
+    const category = getFocusCategory(tab.url);
+    const now = Date.now();
+
+    const event = {
+      timestamp: now,
+      domain: tab.domain || extractDomain(tab.url),
+      category
+    };
+
+    if (!focusSession.tabSwitches) focusSession.tabSwitches = [];
+    focusSession.tabSwitches.push(event);
+
+    // Update distraction count + streak
+    if (category === 'Distraction') {
+      focusSession.distractionCount = (focusSession.distractionCount || 0) + 1;
+      focusSession.currentStreakStart = null; // Reset streak
+    } else if (category === 'Work') {
+      // Start or continue streak
+      if (!focusSession.currentStreakStart) {
+        focusSession.currentStreakStart = now;
+      }
+      // Check if current streak is the longest
+      if (focusSession.currentStreakStart) {
+        const streakSec = (now - focusSession.currentStreakStart) / 1000;
+        if (streakSec > (focusSession.longestStreakSeconds || 0)) {
+          focusSession.longestStreakSeconds = Math.floor(streakSec);
+        }
+      }
+    }
+
+    // Update island expression state
+    focusSession.islandState = computeIslandState(focusSession);
+    focusSession.lastCategory = category;
+
+    await chrome.storage.local.set({ focusSession });
+  } catch (e) {
+    // Fail silently for focus tracking
+  }
+}
 
 // Daily report alarm — runs every hour, checks if 9PM
 chrome.alarms.create('dailyReportCheck', { periodInMinutes: 60 });
 
 // Subscription status check — once daily
 chrome.alarms.create('subscriptionCheck', { periodInMinutes: 1440 });
-
-// Tab category mapping (subset for distraction detection)
-const DISTRACTION_DOMAINS = [
-  'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'reddit.com',
-  'tiktok.com', 'youtube.com', 'twitch.tv', 'netflix.com', 'hulu.com',
-  'disneyplus.com', 'tinder.com', 'bumble.com', 'discord.com',
-  'amazon.com', 'ebay.com', 'etsy.com'
-];
-
-function isDistracting(url) {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-    return DISTRACTION_DOMAINS.some(d => hostname.includes(d));
-  } catch {
-    return false;
-  }
-}
-
-async function checkFocusMode() {
-  try {
-    const { focusMode } = await chrome.storage.local.get(['focusMode']);
-    if (!focusMode || !focusMode.active) return;
-
-    const now = Date.now();
-    const elapsed = (now - focusMode.startedAt) / 1000; // seconds
-
-    // Get active tab
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const distracted = activeTab && activeTab.url ? isDistracting(activeTab.url) : false;
-
-    let newState = focusMode.state;
-    let productiveSeconds = focusMode.productiveSeconds || 0;
-    let distractionCount = focusMode.distractionCount || 0;
-
-    if (distracted) {
-      distractionCount++;
-      newState = 'excited'; // Jesty gets excited (alarmed) when you're distracted
-      productiveSeconds = 0; // Reset productive timer
-    } else {
-      productiveSeconds += 10;
-
-      // State machine: watching → bored (180s) → sleepy (300s) → sleeping (600s)
-      if (productiveSeconds >= 600) newState = 'sleeping';
-      else if (productiveSeconds >= 300) newState = 'sleepy';
-      else if (productiveSeconds >= 180) newState = 'bored';
-      else newState = 'watching';
-    }
-
-    const updatedFocusMode = {
-      ...focusMode,
-      state: newState,
-      productiveSeconds,
-      distractionCount,
-      lastCheckAt: now,
-      elapsed
-    };
-
-    await chrome.storage.local.set({ focusMode: updatedFocusMode });
-  } catch (e) {
-    // Fail silently for focus mode checks
-  }
-}
 
 /* ──────────────────────────────────────────────
    DAILY ROAST REPORT

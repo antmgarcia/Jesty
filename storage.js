@@ -3,7 +3,7 @@
  * Handles all persistent data for personalization
  */
 
-const SCHEMA_VERSION = "1.2";
+const SCHEMA_VERSION = "1.3";
 const MAX_ROASTS = 100;
 const MAX_CONVERSATIONS = 50;
 
@@ -58,6 +58,13 @@ const MIGRATIONS = {
 
     data.version = "1.2";
     return data;
+  },
+  "1.2_to_1.3": (data) => {
+    // Focus Time: session history
+    if (!data.focus_sessions) data.focus_sessions = [];
+
+    data.version = "1.3";
+    return data;
   }
 };
 
@@ -65,7 +72,7 @@ const MIGRATIONS = {
  * Run migrations if stored version < current version
  */
 function migrateData(data) {
-  const versions = ["1.0", "1.1", "1.2"];
+  const versions = ["1.0", "1.1", "1.2", "1.3"];
   let currentIdx = versions.indexOf(data.version || "1.0");
   const targetIdx = versions.indexOf(SCHEMA_VERSION);
 
@@ -324,7 +331,8 @@ function getDefaultData() {
       wall_of_shame: [],
       hall_of_fame: []
     },
-    daily_reports: []
+    daily_reports: [],
+    focus_sessions: []
   };
 }
 

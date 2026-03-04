@@ -679,6 +679,129 @@ const JestyCharacters = (function () {
         <circle cx="14" cy="28" r="1" fill="#FFD700" opacity="0.3"/>
         <rect x="2" y="32" width="44" height="4" rx="2" fill="#FFD700"/>
       </symbol>
+
+      <!-- Accessory: Bandana (Premium, L4) -->
+      <symbol id="acc-bandana" viewBox="0 0 52 22">
+        <path d="M4 14 C4 6, 16 2, 26 2 C36 2, 48 6, 48 14" fill="#E74C3C"/>
+        <path d="M4 14 C4 6, 16 2, 26 2 C36 2, 48 6, 48 14" fill="#FF6B6B" opacity="0.3"/>
+        <rect x="0" y="12" width="52" height="6" rx="3" fill="#C0392B"/>
+        <circle cx="14" cy="8" r="2" fill="#FFFFFF" opacity="0.3"/>
+        <circle cx="26" cy="6" r="2" fill="#FFFFFF" opacity="0.3"/>
+        <circle cx="38" cy="8" r="2" fill="#FFFFFF" opacity="0.3"/>
+        <path d="M44 14 C48 16, 52 20, 50 22 C48 22, 44 18, 44 14 Z" fill="#C0392B"/>
+      </symbol>
+
+      <!-- Accessory: Heart Shades (Premium, L5) -->
+      <symbol id="acc-heart-shades" viewBox="0 0 56 20">
+        <path d="M3 6 C3 2, 9 0, 14 3 C19 6, 19 12, 14 16 C10 18, 4 14, 3 6 Z" fill="#FF4081"/>
+        <path d="M5 6 C5 3, 10 2, 13 4" stroke="#FF80AB" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+        <path d="M33 6 C33 2, 39 0, 44 3 C49 6, 49 12, 44 16 C40 18, 34 14, 33 6 Z" fill="#FF4081"/>
+        <path d="M35 6 C35 3, 40 2, 43 4" stroke="#FF80AB" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+        <rect x="24" y="8" width="8" height="3" rx="1.5" fill="#FF4081"/>
+        <line x1="0" y1="10" x2="3" y2="9" stroke="#FF4081" stroke-width="2" stroke-linecap="round"/>
+        <line x1="53" y1="10" x2="56" y2="9" stroke="#FF4081" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Accessory: Aviators (Premium, L7) -->
+      <symbol id="acc-aviators" viewBox="0 0 56 22">
+        <path d="M4 6 C4 2, 10 0, 16 2 C20 3, 22 6, 22 10 C22 16, 16 20, 10 18 C4 16, 2 12, 4 6 Z" fill="#D4AF37" opacity="0.25"/>
+        <path d="M4 6 C4 2, 10 0, 16 2 C20 3, 22 6, 22 10 C22 16, 16 20, 10 18 C4 16, 2 12, 4 6 Z" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+        <path d="M34 6 C34 2, 40 0, 46 2 C50 3, 52 6, 52 10 C52 16, 46 20, 40 18 C34 16, 32 12, 34 6 Z" fill="#D4AF37" opacity="0.25"/>
+        <path d="M34 6 C34 2, 40 0, 46 2 C50 3, 52 6, 52 10 C52 16, 46 20, 40 18 C34 16, 32 12, 34 6 Z" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+        <path d="M22 10 C25 8, 31 8, 34 10" stroke="#C9A84C" stroke-width="1.5" fill="none"/>
+        <line x1="0" y1="8" x2="4" y2="7" stroke="#C9A84C" stroke-width="2" stroke-linecap="round"/>
+        <line x1="52" y1="8" x2="56" y2="7" stroke="#C9A84C" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Accessory: Chef Hat (Premium, L8) -->
+      <symbol id="acc-chef-hat" viewBox="0 0 48 34">
+        <ellipse cx="24" cy="10" rx="18" ry="10" fill="#FFFFFF"/>
+        <ellipse cx="12" cy="14" rx="8" ry="8" fill="#FFFFFF"/>
+        <ellipse cx="36" cy="14" rx="8" ry="8" fill="#FFFFFF"/>
+        <ellipse cx="24" cy="8" rx="10" ry="8" fill="#FFFFFF"/>
+        <rect x="8" y="18" width="32" height="12" fill="#FFFFFF"/>
+        <rect x="6" y="28" width="36" height="6" rx="3" fill="#F0F0F0"/>
+        <line x1="12" y1="30" x2="12" y2="33" stroke="#E0E0E0" stroke-width="1"/>
+        <line x1="20" y1="30" x2="20" y2="33" stroke="#E0E0E0" stroke-width="1"/>
+        <line x1="28" y1="30" x2="28" y2="33" stroke="#E0E0E0" stroke-width="1"/>
+        <line x1="36" y1="30" x2="36" y2="33" stroke="#E0E0E0" stroke-width="1"/>
+      </symbol>
+
+      <!-- Accessory: 3D Glasses (Premium, L9) -->
+      <symbol id="acc-3d-glasses" viewBox="0 0 56 20">
+        <rect x="2" y="4" width="22" height="14" rx="2" fill="#E74C3C" opacity="0.7"/>
+        <rect x="2" y="4" width="22" height="14" rx="2" fill="none" stroke="#2D2A26" stroke-width="1.5"/>
+        <rect x="32" y="4" width="22" height="14" rx="2" fill="#3498DB" opacity="0.7"/>
+        <rect x="32" y="4" width="22" height="14" rx="2" fill="none" stroke="#2D2A26" stroke-width="1.5"/>
+        <rect x="24" y="8" width="8" height="3" rx="1.5" fill="#2D2A26"/>
+        <line x1="0" y1="10" x2="2" y2="10" stroke="#2D2A26" stroke-width="2" stroke-linecap="round"/>
+        <line x1="54" y1="10" x2="56" y2="10" stroke="#2D2A26" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Accessory: Propeller Hat (Premium, L11) -->
+      <symbol id="acc-propeller-hat" viewBox="0 0 48 32">
+        <path d="M8 28 C8 16, 16 8, 24 8 C32 8, 40 16, 40 28" fill="#F39C12"/>
+        <path d="M8 28 C8 16, 16 8, 24 8 C32 8, 40 16, 40 28" fill="#F1C40F" opacity="0.3"/>
+        <rect x="4" y="26" width="40" height="6" rx="3" fill="#E67E22"/>
+        <line x1="10" y1="28" x2="10" y2="31" stroke="#F39C12" stroke-width="2"/>
+        <line x1="24" y1="28" x2="24" y2="31" stroke="#F39C12" stroke-width="2"/>
+        <line x1="38" y1="28" x2="38" y2="31" stroke="#F39C12" stroke-width="2"/>
+        <circle cx="24" cy="6" r="3" fill="#95A5A6"/>
+        <path d="M24 6 L14 2 C12 1, 12 3, 14 4 Z" fill="#E74C3C"/>
+        <path d="M24 6 L34 2 C36 1, 36 3, 34 4 Z" fill="#3498DB"/>
+        <path d="M24 6 L24 0 C23 -1, 25 -1, 24 0 Z" fill="#2ECC71"/>
+      </symbol>
+
+      <!-- Accessory: Star Glasses (Premium, L12) -->
+      <symbol id="acc-star-glasses" viewBox="0 0 56 22">
+        <polygon points="13,1 15.5,7 23,7 17,11.5 19,19 13,14 7,19 9,11.5 3,7 10.5,7" fill="#FFD700"/>
+        <polygon points="43,1 45.5,7 53,7 47,11.5 49,19 43,14 37,19 39,11.5 33,7 40.5,7" fill="#FFD700"/>
+        <polygon points="13,3 14.5,7.5 19,7.5 15.5,10.5 16.5,15 13,12 9.5,15 10.5,10.5 7,7.5 11.5,7.5" fill="#FFF8DC" opacity="0.3"/>
+        <rect x="23" y="8" width="10" height="3" rx="1.5" fill="#DAA520"/>
+        <line x1="0" y1="10" x2="3" y2="9" stroke="#DAA520" stroke-width="2" stroke-linecap="round"/>
+        <line x1="53" y1="10" x2="56" y2="9" stroke="#DAA520" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Accessory: Bow Tie (Premium, L14) — glasses slot (chin area) -->
+      <symbol id="acc-bow-tie" viewBox="0 0 44 20">
+        <path d="M22 10 L6 2 C2 0, 0 4, 2 8 L6 10 L2 12 C0 16, 2 20, 6 18 Z" fill="#E74C3C"/>
+        <path d="M22 10 L38 2 C42 0, 44 4, 42 8 L38 10 L42 12 C44 16, 42 20, 38 18 Z" fill="#E74C3C"/>
+        <path d="M22 10 L6 2 C2 0, 0 4, 2 8 L6 10" fill="#FF6B6B" opacity="0.3"/>
+        <circle cx="22" cy="10" r="3" fill="#C0392B"/>
+        <circle cx="22" cy="10" r="1.5" fill="#E74C3C"/>
+      </symbol>
+
+      <!-- Accessory: Headband (Premium, L16) -->
+      <symbol id="acc-headband" viewBox="0 0 52 18">
+        <rect x="0" y="8" width="52" height="8" rx="4" fill="#9B59B6"/>
+        <rect x="0" y="8" width="52" height="4" rx="2" fill="#8E44AD" opacity="0.5"/>
+        <path d="M20 8 C20 2, 24 0, 26 0 C28 0, 32 2, 32 8" fill="#9B59B6"/>
+        <path d="M22 8 C22 4, 24 2, 26 2 C28 2, 30 4, 30 8" fill="#8E44AD" opacity="0.4"/>
+        <circle cx="26" cy="1" r="1.5" fill="#F1C40F"/>
+      </symbol>
+
+      <!-- Accessory: Viking Helmet (Premium, L17) -->
+      <symbol id="acc-viking-helmet" viewBox="0 0 56 32">
+        <path d="M12 28 C12 14, 20 6, 28 6 C36 6, 44 14, 44 28" fill="#8B7355"/>
+        <path d="M12 28 C12 14, 20 6, 28 6 C36 6, 44 14, 44 28" fill="#A0896C" opacity="0.3"/>
+        <rect x="8" y="24" width="40" height="8" rx="4" fill="#6B5344"/>
+        <circle cx="16" cy="28" r="2" fill="#C9A84C"/>
+        <circle cx="28" cy="28" r="2" fill="#C9A84C"/>
+        <circle cx="40" cy="28" r="2" fill="#C9A84C"/>
+        <path d="M10 22 C6 18, 0 8, 2 2 C3 0, 6 2, 6 6 C6 12, 10 18, 12 22" fill="#F5F5DC" stroke="#D4C9A8" stroke-width="1"/>
+        <path d="M46 22 C50 18, 56 8, 54 2 C53 0, 50 2, 50 6 C50 12, 46 18, 44 22" fill="#F5F5DC" stroke="#D4C9A8" stroke-width="1"/>
+      </symbol>
+
+      <!-- Accessory: Pirate Hat (Premium, L19) -->
+      <symbol id="acc-pirate-hat" viewBox="0 0 56 30">
+        <ellipse cx="28" cy="26" rx="28" ry="6" fill="#1A1A2E"/>
+        <path d="M6 26 C6 14, 16 4, 28 4 C40 4, 50 14, 50 26" fill="#2D2B55"/>
+        <path d="M6 26 C6 14, 16 4, 28 4 C40 4, 50 14, 50 26" fill="#3D3B75" opacity="0.2"/>
+        <path d="M2 26 C0 24, 4 20, 8 22" fill="#1A1A2E"/>
+        <path d="M54 26 C56 24, 52 20, 48 22" fill="#1A1A2E"/>
+        <circle cx="28" cy="14" r="6" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+        <path d="M24 11 L28 8 L32 11 L32 17 L28 20 L24 17 Z" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.6"/>
+      </symbol>
   `;
 
   function init() {

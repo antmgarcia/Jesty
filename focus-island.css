@@ -1,0 +1,93 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: visible;
+  font-family: 'DM Sans', sans-serif;
+}
+
+body {
+  padding: 8px 10px 14px 8px;
+}
+
+.island {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  cursor: default;
+  user-select: none;
+}
+
+/* Circular face bubble */
+.island-face {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #18181B;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 0 2px rgba(255,255,255,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.island:hover .island-face {
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 2px rgba(255,255,255,0.12);
+}
+
+.island-face svg {
+  width: 52px;
+  height: 48px;
+  display: block;
+}
+
+/* Timer badge — pinned below the bubble */
+.island-timer {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #18181B;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 7px;
+  border-radius: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  letter-spacing: -0.2px;
+}
+
+/* End button — hidden until hover */
+.island-end {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: #18181B;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 50%;
+  color: #A1A1AA;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.15s, transform 0.15s, color 0.15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.island:hover .island-end {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.island-end:hover {
+  color: #FFFFFF;
+  background: #DC2626;
+  border-color: #DC2626;
+}

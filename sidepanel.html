@@ -21,6 +21,44 @@
   <div class="container">
     <!-- LAYER WRAPPER - contains main screen + drawer -->
     <div class="layer-wrapper">
+      <!-- Top Bar Left (Level + Accessory Mini-Slots) -->
+      <div class="top-bar-left" id="top-bar-left">
+        <button class="level-badge" id="level-badge" title="Level">
+          <svg class="level-ring" viewBox="0 0 36 36" width="32" height="32">
+            <circle cx="18" cy="18" r="15" fill="none" stroke="var(--jesty-border)" stroke-width="2.5"/>
+            <circle class="level-ring-fill" id="level-ring-fill" cx="18" cy="18" r="15" fill="none" stroke="#EAB308" stroke-width="2.5"
+              stroke-dasharray="94.25" stroke-dashoffset="94.25" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+          </svg>
+          <span class="level-badge-num" id="level-badge-num">1</span>
+        </button>
+        <div class="acc-mini-slot" id="acc-mini-hat" title="Hat"></div>
+        <div class="acc-mini-slot" id="acc-mini-glasses" title="Glasses"></div>
+        <button class="acc-mini-add" id="acc-mini-add" title="Accessories">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Level Panel -->
+      <div class="level-panel hidden" id="level-panel">
+        <div class="level-panel-header">
+          <span class="level-panel-title" id="level-panel-title">Level 1</span>
+          <span class="level-panel-stage" id="level-panel-stage">Baby Blob</span>
+        </div>
+        <div class="level-panel-progress">
+          <div class="level-panel-bar">
+            <div class="level-panel-fill" id="level-panel-fill" style="width: 0%"></div>
+          </div>
+          <span class="level-panel-xp" id="level-panel-xp">0 / 100 XP</span>
+        </div>
+        <div class="level-panel-next" id="level-panel-next"></div>
+        <div class="level-panel-earn">
+          <span class="level-panel-label">Earn XP</span>
+          <div class="level-panel-sources" id="level-panel-sources"></div>
+        </div>
+      </div>
+
       <!-- Settings Toggle (top right) -->
       <button class="settings-toggle" id="settings-toggle" title="Edit">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -32,7 +70,16 @@
       <div class="settings-panel hidden" id="settings-panel">
         <input class="settings-name-input" id="settings-name-input" placeholder="Your name" maxlength="20" autocomplete="off">
         <div class="settings-color-faces" id="settings-color-faces"></div>
+        <div class="settings-theme" id="settings-theme">
+          <button class="settings-theme-btn active" data-theme="light">Light</button>
+          <button class="settings-theme-btn" data-theme="dark">Dark</button>
+        </div>
         <div class="settings-plan" id="settings-plan"></div>
+        <div class="settings-tier-preview" id="settings-tier-preview">
+          <button class="settings-tier-btn" data-tier="free">Suspect</button>
+          <button class="settings-tier-btn" data-tier="premium">Guilty</button>
+          <button class="settings-tier-btn" data-tier="pro">Sentenced</button>
+        </div>
       </div>
 
 
@@ -41,7 +88,7 @@
         <!-- Character Stage -->
         <div class="character-stage" id="character-stage">
           <div class="character-wrapper" id="character-wrapper">
-            <svg id="animated-character" viewBox="-15 -10 150 140" width="200" height="186">
+            <svg id="animated-character" viewBox="-15 -10 150 140" width="200" height="187">
               <use href="#face-smug"/>
             </svg>
           </div>
@@ -52,8 +99,11 @@
           <p id="comment-text" class="comment-text"></p>
         </div>
 
-        <!-- Roast Me Now -->
-        <button class="roast-me-btn" id="roast-me-btn">Roast me now</button>
+        <!-- Action Buttons -->
+        <div class="action-btns">
+          <button class="roast-me-btn" id="roast-me-btn">Roast me now</button>
+          <button class="focus-btn" id="focus-btn">Focus time</button>
+        </div>
 
         <!-- Stats -->
         <div class="stats-row" id="stats-row">
@@ -71,61 +121,7 @@
           </div>
         </div>
 
-        <!-- Focus Mode Toggle (premium) -->
-        <button class="focus-toggle hidden" id="focus-toggle">
-          <span class="focus-icon">⏱</span>
-          <span class="focus-label" id="focus-label">Focus Mode</span>
-        </button>
-
-        <!-- Task Card (premium) -->
-        <div class="task-card hidden" id="task-card">
-          <div class="task-header">
-            <span class="task-icon">📋</span>
-            <span class="task-title" id="task-title">Current Task</span>
-          </div>
-          <p class="task-description" id="task-description"></p>
-          <div class="task-progress" id="task-progress"></div>
-        </div>
-
-        <!-- XP Bar (premium) -->
-        <div class="xp-bar-container hidden" id="xp-container">
-          <div class="xp-info">
-            <span class="xp-level" id="xp-level">Lv 1</span>
-            <span class="xp-text" id="xp-text">0 / 100 XP</span>
-          </div>
-          <div class="xp-bar">
-            <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Wall of Shame / Hall of Fame (premium) -->
-        <div class="records-section hidden" id="records-section">
-          <div class="records-tabs">
-            <button class="records-tab active" data-tab="shame">Shame</button>
-            <button class="records-tab" data-tab="fame">Fame</button>
-          </div>
-          <div class="records-list" id="records-list"></div>
-        </div>
-
-        <!-- Schedule Card (pro) -->
-        <div class="schedule-card hidden" id="schedule-card">
-          <div class="schedule-header">
-            <span>📅</span>
-            <span class="schedule-title">Today's Schedule</span>
-          </div>
-          <div class="schedule-events" id="schedule-events"></div>
-        </div>
-
-        <!-- Daily Report Card (premium) -->
-        <div class="daily-report hidden" id="daily-report">
-          <div class="report-header">
-            <span>📊</span>
-            <span class="report-title">Daily Report</span>
-          </div>
-          <p class="report-text" id="report-text"></p>
-        </div>
-
-        <!-- Premium CTA / Promo Card (shown to free users) -->
+        <!-- Premium CTA / Promo Card -->
         <div class="promo-card hidden" id="premium-cta">
           <div class="promo-card-faces" id="promo-card-faces"></div>
           <div class="promo-card-btn">
@@ -137,10 +133,76 @@
           </div>
         </div>
 
+        <!-- Task Card (premium) -->
+        <div class="task-card hidden" id="task-card">
+          <div class="task-card-header">
+            <span class="task-card-title">Tasks</span>
+            <button class="task-card-viewall" id="task-viewall">View all</button>
+          </div>
+          <div class="task-card-list" id="task-card-list"></div>
+          <button class="task-add-btn" id="task-add-btn">+ Add task</button>
+        </div>
+
+
+        <!-- Schedule Card (pro) -->
+        <div class="schedule-card hidden" id="schedule-card">
+          <div class="schedule-header">
+            <span class="schedule-title">Today's Events</span>
+          </div>
+          <div class="schedule-events" id="schedule-events"></div>
+        </div>
+
+        <!-- Fun Zone (premium) -->
+        <div class="funzone-section hidden" id="funzone-section">
+          <div class="accessories-label">Fun Zone</div>
+          <div class="funzone-grid">
+            <button class="funzone-card" id="memory-game-card">
+              <div class="funzone-card-icon">
+                <svg viewBox="-15 -10 150 140" width="32" height="30"><use href="#face-happy"/></svg>
+              </div>
+              <div class="funzone-card-info">
+                <span class="funzone-card-title">Memory Match</span>
+                <span class="funzone-card-desc">Find the pairs</span>
+              </div>
+              <svg class="funzone-card-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button class="funzone-card" id="tab-quiz-card">
+              <div class="funzone-card-icon">
+                <svg viewBox="-15 -10 150 140" width="32" height="30"><use href="#face-suspicious"/></svg>
+              </div>
+              <div class="funzone-card-info">
+                <span class="funzone-card-title">Tab Quiz</span>
+                <span class="funzone-card-desc">How well do you know your tabs?</span>
+              </div>
+              <svg class="funzone-card-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button class="funzone-card" id="roast-trivia-card">
+              <div class="funzone-card-icon">
+                <svg viewBox="-15 -10 150 140" width="32" height="30"><use href="#face-thinking"/></svg>
+              </div>
+              <div class="funzone-card-info">
+                <span class="funzone-card-title">Roast Trivia</span>
+                <span class="funzone-card-desc">Remember our time together?</span>
+              </div>
+              <svg class="funzone-card-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
         <!-- Accessories (inline tiles) -->
         <div class="accessories-section" id="accessories-section">
-          <div class="accessories-label">Accessories</div>
+          <div class="accessories-header">
+            <span class="accessories-label">Accessories</span>
+            <button class="accessories-customize" id="accessories-customize">Customize</button>
+          </div>
           <div class="accessory-grid" id="accessory-grid"></div>
+        </div>
+
+        <!-- Plans Upgrade Section -->
+        <div class="plans-section" id="plans-section">
+          <div class="plans-section-current" id="plans-section-current"></div>
+          <div class="plans-section-cards" id="plans-section-cards"></div>
+          <button class="plans-section-link" id="plans-section-link">See all plans</button>
         </div>
       </div>
 
@@ -186,6 +248,180 @@
       </div>
     </div>
 
+    <!-- Memory Game Overlay -->
+    <div class="memory-overlay hidden" id="memory-overlay">
+      <div class="memory-overlay-backdrop" id="memory-overlay-backdrop"></div>
+      <div class="memory-overlay-sheet">
+        <div class="memory-overlay-header">
+          <button class="memory-back-btn hidden" id="memory-back-btn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="memory-header-center">
+            <span class="memory-overlay-title" id="memory-title">Memory Match</span>
+          </div>
+          <button class="memory-overlay-close" id="memory-overlay-close">&times;</button>
+        </div>
+
+        <!-- Level Select -->
+        <div class="memory-screen" id="memory-level-select">
+          <div class="memory-start-info">
+            <div class="game-start-hero" id="memory-start-hero">
+              <svg viewBox="-15 -10 150 140" width="100" height="93"><use href="#face-smug"/></svg>
+            </div>
+            <span class="game-start-xp">Earn 15–120 XP per level</span>
+          </div>
+          <div class="memory-levels-grid" id="memory-levels-grid"></div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="memory-screen hidden" id="memory-game-board">
+          <div class="memory-stats-bar">
+            <div class="memory-stat"><span class="memory-stat-value" id="memory-moves">0</span><span class="memory-stat-label">moves</span></div>
+            <div class="memory-stat"><span class="memory-stat-value" id="memory-timer">0:00</span><span class="memory-stat-label">time</span></div>
+            <div class="memory-stat"><span class="memory-stat-value" id="memory-pairs-found">0/0</span><span class="memory-stat-label">pairs</span></div>
+          </div>
+          <div class="memory-grid" id="memory-grid"></div>
+        </div>
+
+        <!-- Level Complete -->
+        <div class="memory-screen hidden" id="memory-complete">
+          <div class="memory-complete-character" id="memory-complete-character"></div>
+          <p class="memory-complete-title" id="memory-complete-title">Nice!</p>
+          <div class="memory-stars" id="memory-stars"></div>
+          <p class="memory-complete-roast" id="memory-complete-roast"></p>
+          <div class="memory-complete-stats" id="memory-complete-stats"></div>
+          <div class="memory-complete-actions">
+            <button class="memory-next-btn" id="memory-next-btn">Next Level</button>
+            <button class="memory-replay-btn" id="memory-replay-btn">Replay</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Quiz Overlay -->
+    <div class="quiz-overlay hidden" id="tabquiz-overlay">
+      <div class="quiz-overlay-backdrop" id="tabquiz-overlay-backdrop"></div>
+      <div class="quiz-overlay-sheet">
+        <div class="quiz-overlay-header">
+          <div class="quiz-header-spacer"></div>
+          <div class="quiz-header-center">
+            <span class="quiz-overlay-title" id="tabquiz-title">Tab Quiz</span>
+          </div>
+          <button class="quiz-overlay-close" id="tabquiz-overlay-close">&times;</button>
+        </div>
+        <div class="quiz-content" id="tabquiz-content"></div>
+      </div>
+    </div>
+
+    <!-- Roast Trivia Overlay -->
+    <div class="quiz-overlay hidden" id="trivia-overlay">
+      <div class="quiz-overlay-backdrop" id="trivia-overlay-backdrop"></div>
+      <div class="quiz-overlay-sheet">
+        <div class="quiz-overlay-header">
+          <div class="quiz-header-spacer"></div>
+          <div class="quiz-header-center">
+            <span class="quiz-overlay-title" id="trivia-title">Roast Trivia</span>
+          </div>
+          <button class="quiz-overlay-close" id="trivia-overlay-close">&times;</button>
+        </div>
+        <div class="quiz-content" id="trivia-content"></div>
+      </div>
+    </div>
+
+    <!-- Accessories Drawer -->
+    <div class="acc-drawer hidden" id="acc-drawer">
+      <div class="acc-drawer-backdrop" id="acc-drawer-backdrop"></div>
+      <div class="acc-drawer-sheet">
+        <div class="acc-drawer-header">
+          <span class="acc-drawer-title">Accessories</span>
+          <button class="acc-drawer-clear" id="acc-drawer-clear">Remove all</button>
+          <button class="acc-drawer-close" id="acc-drawer-close">&times;</button>
+        </div>
+        <div class="acc-drawer-preview" id="acc-drawer-preview">
+          <button class="acc-preview-arrow acc-preview-prev" id="acc-preview-prev" title="Previous expression">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="acc-preview-center">
+            <svg id="acc-preview-svg" viewBox="-15 -10 150 140" width="120" height="112">
+              <use href="#face-smug"/>
+            </svg>
+            <span class="acc-preview-mood" id="acc-preview-mood">smug</span>
+          </div>
+          <button class="acc-preview-arrow acc-preview-next" id="acc-preview-next" title="Next expression">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="acc-drawer-sections" id="acc-drawer-sections"></div>
+      </div>
+    </div>
+
+    <!-- Task Drawer -->
+    <div class="task-drawer hidden" id="task-drawer">
+      <div class="task-drawer-backdrop" id="task-drawer-backdrop"></div>
+      <div class="task-drawer-sheet">
+        <div class="task-drawer-header">
+          <span class="task-drawer-heading">Tasks</span>
+          <button class="task-drawer-close" id="task-drawer-close">&times;</button>
+        </div>
+        <div class="task-drawer-content" id="task-drawer-content"></div>
+      </div>
+    </div>
+
+    <!-- Task Detail Drawer -->
+    <div class="task-detail-drawer hidden" id="task-detail-drawer">
+      <div class="task-detail-backdrop" id="task-detail-backdrop"></div>
+      <div class="task-detail-sheet">
+        <div class="task-detail-header">
+          <button class="task-detail-back" id="task-detail-back">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="task-detail-header-actions">
+            <button class="task-detail-delete-btn" id="task-detail-delete-btn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              </svg>
+            </button>
+            <button class="task-detail-close" id="task-detail-close">&times;</button>
+          </div>
+        </div>
+        <div class="task-detail-body">
+          <input class="task-detail-title" id="task-detail-title" placeholder="Task title..." />
+          <div class="task-detail-notes-list" id="task-detail-notes-list"></div>
+        </div>
+        <div class="task-detail-footer" id="task-detail-footer">
+          <button class="task-detail-done-btn" id="task-detail-done-btn">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Levels Drawer -->
+    <div class="levels-drawer" id="levels-drawer">
+      <div class="levels-drawer-backdrop" id="levels-drawer-backdrop"></div>
+      <div class="levels-drawer-sheet">
+        <div class="levels-drawer-header">
+          <button class="levels-drawer-close" id="levels-drawer-close">&times;</button>
+        </div>
+        <div class="levels-drawer-hero" id="levels-drawer-hero"></div>
+        <div class="levels-drawer-body">
+          <div class="levels-timeline" id="levels-timeline"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XP Win Banner (casino-style animation for tab closure XP) -->
+    <div class="xp-win hidden" id="xp-win">
+      <div class="xp-win-particles" id="xp-win-particles"></div>
+      <div class="xp-win-content">
+        <div class="xp-win-face">
+          <svg viewBox="-15 -10 150 140" width="40" height="37"><use href="#face-happy"/></svg>
+        </div>
+        <div class="xp-win-text">
+          <span class="xp-win-amount" id="xp-win-amount">+10 XP</span>
+          <span class="xp-win-label">Tab closed!</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Input Area - always visible, independent -->
     <div class="input-area">
       <span class="input-remaining hidden" id="input-remaining"></span>
@@ -198,6 +434,7 @@
     </div>
   </div>
 
+  <script src="theme.js"></script>
   <script src="characters.js"></script>
   <script src="config.js"></script>
   <script src="storage.js"></script>
@@ -206,6 +443,10 @@
   <script src="calendar.js"></script>
   <script src="character-animator.js"></script>
   <script src="roast-engine.js"></script>
+  <script src="memory-game.js"></script>
+  <script src="tab-quiz.js"></script>
+  <script src="roast-trivia.js"></script>
+  <script src="focus-time.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

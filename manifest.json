@@ -28,5 +28,18 @@
   },
   "side_panel": {
     "default_path": "sidepanel.html"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["focus-content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["focus-island.html", "focus-island.css", "focus-island.js", "characters.js"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
 }

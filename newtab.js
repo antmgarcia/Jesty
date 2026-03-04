@@ -18,23 +18,42 @@ chrome.storage.onChanged.addListener(async (changes) => {
       updateRoastsRemaining(capStatus.remaining);
     } catch (e) { /* non-critical */ }
   }
+  // XP gain from tab closure (while newtab is already open)
+  if (changes.pendingXPGain && changes.pendingXPGain.newValue) {
+    const xpGain = changes.pendingXPGain.newValue;
+    chrome.storage.local.remove(['pendingXPGain']);
+    showXPToast(xpGain.xp);
+  }
 });
 
 async function init() {
+  JestyTheme.init();
+
   // Inject shared SVG symbols (faces + accessories)
   JestyCharacters.init();
+
+  // Hide character until color is loaded to prevent lime flash
+  const heroChar = document.getElementById('character');
+  if (heroChar) heroChar.style.opacity = '0';
 
   // Initialize storage
   await JestyStorage.initializeStorage();
 
-  // Load saved character color
+  // Load saved character color, then reveal
   await loadJestyColor();
+  if (heroChar) {
+    heroChar.style.transition = 'opacity 0.15s ease';
+    heroChar.style.opacity = '1';
+  }
 
   // Initialize accessories
   await JestyAccessories.init();
 
-  // Check for pending action celebration (user closed a roasted tab)
-  const pendingCelebration = await checkPendingCelebration();
+  // Initialize top-bar: level badge + accessory mini slots
+  await initTopBar();
+
+  // Check for pending XP gain (user closed a roasted tab)
+  const pendingXPGain = await checkPendingXPGain();
 
   const searchForm = document.getElementById('search-form');
   const searchInput = document.getElementById('search-input');
@@ -75,23 +94,51 @@ async function init() {
   // Talk back button - opens side panel
   talkbackBtn.addEventListener('click', openSidePanel);
 
-  // Share button
+  // Share button — toggle menu
   const shareBtn = document.getElementById('share-btn');
-  shareBtn.addEventListener('click', shareRoast);
+  const shareMenu = document.getElementById('share-menu');
+  shareBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    shareMenu.classList.toggle('hidden');
+  });
 
-  // Show celebration if pending, otherwise check for name prompt or auto-roast
-  if (pendingCelebration) {
-    showActionCelebration(pendingCelebration);
-  } else {
-    const userName = await JestyStorage.getUserName();
-    const data = await JestyStorage.getJestyData();
-    const isFirstLaunch = data.profile.total_roasts === 0;
-
-    if (!userName && isFirstLaunch) {
-      showWelcomePrompt();
-    } else {
-      generateRoast();
+  // Close share menu on outside click
+  document.addEventListener('click', () => {
+    if (shareMenu && !shareMenu.classList.contains('hidden')) {
+      shareMenu.classList.add('hidden');
     }
+  });
+  shareMenu.addEventListener('click', (e) => e.stopPropagation());
+
+  // Share menu actions
+  shareMenu.addEventListener('click', async (e) => {
+    const option = e.target.closest('.share-option');
+    if (!option) return;
+    const action = option.dataset.action;
+    shareMenu.classList.add('hidden');
+
+    if (action === 'copy') {
+      await copyRoastImage();
+    } else if (action === 'twitter') {
+      shareToTwitter();
+    } else if (action === 'download') {
+      await downloadRoastImage();
+    }
+  });
+
+  // Show XP toast if pending, then proceed to normal flow
+  if (pendingXPGain) {
+    showXPToast(pendingXPGain.xp);
+  }
+
+  const userName = await JestyStorage.getUserName();
+  const data = await JestyStorage.getJestyData();
+  const isFirstLaunch = data.profile.total_roasts === 0;
+
+  if (!userName && isFirstLaunch) {
+    showWelcomePrompt();
+  } else {
+    generateRoast();
   }
 }
 
@@ -169,34 +216,35 @@ function renderWelcomeColorFaces(activeBodyColor) {
 }
 
 function showWelcomePrompt() {
-  const welcomePrompt = document.getElementById('welcome-prompt');
+  const onboarding = document.getElementById('onboarding-page');
   const loadingText = document.getElementById('loading-text');
   const nameInput = document.getElementById('welcome-name');
   const colorsContainer = document.getElementById('welcome-colors');
   const submitBtn = document.getElementById('welcome-submit');
   const skipBtn = document.getElementById('welcome-skip');
+  const onboardChar = document.getElementById('onboarding-character');
 
   loadingText.classList.add('hidden');
-  welcomePrompt.classList.remove('hidden');
-  setExpression('smug');
+  onboarding.classList.remove('hidden');
+
+  // Recolor onboarding character to default purple
+  if (onboardChar) {
+    const svg = onboardChar.querySelector('svg');
+    if (svg) {
+      const SOURCE = { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' };
+      recolorSVG(svg, SOURCE, NEWTAB_DEFAULT_PURPLE);
+    }
+  }
 
   // Render face-based color picker
   renderWelcomeColorFaces(NEWTAB_DEFAULT_PURPLE.body);
 
-  // Hide search and tab info during onboarding
-  const searchSection = document.querySelector('.search-section');
-  const tabInfo = document.querySelector('.tab-info');
-  if (searchSection) searchSection.classList.add('hidden');
-  if (tabInfo) tabInfo.classList.add('hidden');
-
   function dismissWelcome() {
-    welcomePrompt.classList.add('hidden');
-    if (searchSection) searchSection.classList.remove('hidden');
-    if (tabInfo) tabInfo.classList.remove('hidden');
+    onboarding.classList.add('hidden');
     generateRoast();
   }
 
-  // Color face click — preview + save
+  // Color face click — preview + save + update onboarding character
   colorsContainer.addEventListener('click', (e) => {
     const btn = e.target.closest('.welcome-color-face');
     if (!btn) return;
@@ -210,6 +258,12 @@ function showWelcomePrompt() {
 
     recolorNewtabSVGs(entry.color);
     chrome.storage.local.set({ jestyColor: entry.color });
+
+    // Update onboarding character
+    if (onboardChar) {
+      const svg = onboardChar.querySelector('svg');
+      if (svg) recolorSVG(svg, newtabCurrentColor, entry.color);
+    }
   });
 
   // Submit — save name + start roasting
@@ -256,7 +310,7 @@ function isValidUrl(string) {
 
 function setExpression(mood) {
   const character = document.getElementById('character');
-  character.innerHTML = `<svg viewBox="-15 -10 150 140"><use href="#face-${mood}"/></svg>`;
+  character.innerHTML = `<svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-${mood}"/></svg>`;
   character.classList.remove('pop');
   void character.offsetWidth;
   character.classList.add('pop');
@@ -269,21 +323,14 @@ function setExpression(mood) {
 }
 
 /**
- * Check for pending action celebration (user closed a roasted tab)
- * Only shows celebrations that originated from new tab roasts
+ * Check for pending XP gain (user closed a roasted tab)
  */
-async function checkPendingCelebration() {
+async function checkPendingXPGain() {
   try {
-    const { pendingCelebration } = await chrome.storage.local.get(['pendingCelebration']);
-    if (pendingCelebration && pendingCelebration.type === 'action_followed') {
-      // Only show here if it came from a new tab roast (not chat)
-      if (pendingCelebration.source === 'chat') {
-        // Let the sidepanel handle this one
-        return null;
-      }
-      // Clear it so it doesn't show again
-      await chrome.storage.local.remove(['pendingCelebration']);
-      return pendingCelebration;
+    const { pendingXPGain } = await chrome.storage.local.get(['pendingXPGain']);
+    if (pendingXPGain) {
+      await chrome.storage.local.remove(['pendingXPGain']);
+      return pendingXPGain;
     }
   } catch (e) {
   }
@@ -291,34 +338,19 @@ async function checkPendingCelebration() {
 }
 
 /**
- * Show action celebration when user follows a suggestion
+ * Show XP toast micro animation
  */
-function showActionCelebration(celebration) {
-  showJoke(celebration.message, celebration.mood || 'happy');
-
-  // Add celebration animation
-  const character = document.getElementById('character');
-  character.classList.add('celebrating');
-
-  // Show "You listened!" badge
+function showXPToast(amount) {
   const heroSection = document.querySelector('.hero-section');
-  const badge = document.createElement('div');
-  badge.className = 'action-badge';
-  badge.textContent = 'You listened!';
-  heroSection.appendChild(badge);
+  if (!heroSection) return;
 
-  // Fade out after 5 seconds, then remove
-  setTimeout(() => {
-    badge.classList.add('fade-out');
-  }, 5000);
+  const toast = document.createElement('div');
+  toast.className = 'xp-toast';
+  toast.textContent = `+${amount} XP`;
+  heroSection.appendChild(toast);
 
-  setTimeout(() => {
-    badge.remove();
-    character.classList.remove('celebrating');
-  }, 5500);
-
-  // Record the action in storage for stats
-  JestyStorage.recordActionFollowed(celebration.domain);
+  // Remove after animation completes
+  setTimeout(() => toast.remove(), 2200);
 }
 
 
@@ -426,134 +458,134 @@ async function generateRoast() {
   }
 }
 
-async function shareRoast() {
-  const jokeText = document.getElementById('joke-text').textContent;
-  const character = document.getElementById('character');
+function generateShareBlob() {
+  return new Promise(async (resolve, reject) => {
+    const jokeText = document.getElementById('joke-text').textContent;
+    const character = document.getElementById('character');
+    if (!jokeText) return reject('No roast text');
 
-  if (!jokeText) return;
+    const storage = await chrome.storage.local.get(['lastTabCount']);
+    const tabCount = storage.lastTabCount || 0;
 
-  // Get tab count from when the roast was generated
-  const storage = await chrome.storage.local.get(['lastTabCount']);
-  const tabCount = storage.lastTabCount || 0;
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 1080;
+      canvas.height = 1350;
 
-  try {
-    // Create canvas for shareable image
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Image dimensions (Instagram story friendly)
-    canvas.width = 1080;
-    canvas.height = 1350;
+      const useElement = character.querySelector('use');
+      const symbolId = useElement.getAttribute('href').replace('#', '');
+      const expressionId = symbolId.replace('face-', '');
+      const symbolElement = document.getElementById(symbolId);
+      const svgContent = symbolElement ? symbolElement.innerHTML : '';
+      const accessoryContent = window.JestyAccessories ? JestyAccessories.getAccessorySvgContent(expressionId) : '';
 
-    // White background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -10 150 140" width="360" height="336">${svgContent}${accessoryContent}</svg>`], {type: 'image/svg+xml'});
+      const svgUrl = URL.createObjectURL(svgBlob);
 
-    // Get the actual SVG content from the symbol definition
-    const useElement = character.querySelector('use');
-    const symbolId = useElement.getAttribute('href').replace('#', '');
-    const expressionId = symbolId.replace('face-', '');
-    const symbolElement = document.getElementById(symbolId);
-    const svgContent = symbolElement ? symbolElement.innerHTML : '';
+      const img = new Image();
+      img.onload = () => {
+        const charX = (canvas.width - 360) / 2;
+        ctx.drawImage(img, charX, 280, 360, 345);
 
-    // Include equipped accessories
-    const accessoryContent = window.JestyAccessories ? JestyAccessories.getAccessorySvgContent(expressionId) : '';
+        ctx.fillStyle = '#2D2A26';
+        ctx.font = 'bold 52px "DM Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
 
-    // Expanded viewBox to capture full character including arms/hands/feet
-    // Characters extend from x=-7 to x=107 and y=0 to y=106
-    const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -10 150 140" width="360" height="336">${svgContent}${accessoryContent}</svg>`], {type: 'image/svg+xml'});
-    const svgUrl = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = async () => {
-      // Draw character centered
-      const charX = (canvas.width - 360) / 2;
-      const charY = 280;
-      ctx.drawImage(img, charX, charY, 360, 345);
-
-      // Draw quote text
-      ctx.fillStyle = '#2D2A26';
-      ctx.font = 'bold 52px "DM Sans", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-
-      // Word wrap the text
-      const maxWidth = 900;
-      const lineHeight = 70;
-      const words = jokeText.split(' ');
-      let line = '';
-      let lines = [];
-
-      for (const word of words) {
-        const testLine = line + word + ' ';
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && line !== '') {
-          lines.push(line.trim());
-          line = word + ' ';
-        } else {
-          line = testLine;
-        }
-      }
-      lines.push(line.trim());
-
-      // Draw lines
-      const textY = 700;
-      lines.forEach((l, i) => {
-        ctx.fillText(l, canvas.width / 2, textY + (i * lineHeight));
-      });
-
-      // Draw tab count below quote
-      if (tabCount > 0) {
-        ctx.fillStyle = '#9CA3AF';
-        ctx.font = '500 32px "DM Sans", sans-serif';
-        const tabCountY = textY + (lines.length * lineHeight) + 60;
-        ctx.fillText(`Based on ${tabCount} open tabs`, canvas.width / 2, tabCountY);
-      }
-
-      // Draw branding
-      ctx.fillStyle = '#9CA3AF';
-      ctx.font = '500 28px "DM Sans", sans-serif';
-      ctx.fillText('Jesty', canvas.width / 2, 1250);
-
-      // Small decorative line
-      ctx.strokeStyle = '#F5F9A8';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(440, 1230);
-      ctx.lineTo(640, 1230);
-      ctx.stroke();
-
-      URL.revokeObjectURL(svgUrl);
-
-      // Convert to blob and share
-      canvas.toBlob(async (blob) => {
-        const file = new File([blob], 'jesty-roast.png', { type: 'image/png' });
-
-        // Track the share
-        await JestyStorage.markRoastShared();
-
-        // Try native share first
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file]
-            });
-          } catch (err) {
-            if (err.name !== 'AbortError') {
-              downloadImage(blob);
-            }
+        const maxWidth = 900;
+        const lineHeight = 70;
+        const words = jokeText.split(' ');
+        let line = '';
+        let lines = [];
+        for (const word of words) {
+          const testLine = line + word + ' ';
+          if (ctx.measureText(testLine).width > maxWidth && line !== '') {
+            lines.push(line.trim());
+            line = word + ' ';
+          } else {
+            line = testLine;
           }
-        } else {
-          // Fallback: download image
-          downloadImage(blob);
         }
-      }, 'image/png');
-    };
+        lines.push(line.trim());
 
-    img.src = svgUrl;
-  } catch (error) {
-    console.error('Error sharing:', error);
+        const textY = 700;
+        lines.forEach((l, i) => ctx.fillText(l, canvas.width / 2, textY + (i * lineHeight)));
+
+        if (tabCount > 0) {
+          ctx.fillStyle = '#9CA3AF';
+          ctx.font = '500 32px "DM Sans", sans-serif';
+          ctx.fillText(`Based on ${tabCount} open tabs`, canvas.width / 2, textY + (lines.length * lineHeight) + 60);
+        }
+
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = '500 28px "DM Sans", sans-serif';
+        ctx.fillText('Jesty', canvas.width / 2, 1250);
+
+        ctx.strokeStyle = '#F5F9A8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(440, 1230);
+        ctx.lineTo(640, 1230);
+        ctx.stroke();
+
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob((blob) => resolve(blob), 'image/png');
+      };
+      img.src = svgUrl;
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function copyRoastImage() {
+  try {
+    const blob = await generateShareBlob();
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': blob })
+    ]);
+    await JestyStorage.markRoastShared();
+    showShareCheck();
+  } catch (e) {
+    console.error('Copy failed:', e);
   }
+}
+
+async function shareToTwitter() {
+  const jokeText = document.getElementById('joke-text').textContent;
+  if (!jokeText) return;
+  try {
+    const blob = await generateShareBlob();
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': blob })
+    ]);
+    showShareCheck();
+  } catch (e) { /* clipboard copy is best-effort */ }
+  const text = `"${jokeText}" — Jesty read my tabs and chose violence`;
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+  JestyStorage.markRoastShared();
+}
+
+async function downloadRoastImage() {
+  try {
+    const blob = await generateShareBlob();
+    downloadImage(blob);
+    await JestyStorage.markRoastShared();
+  } catch (e) {
+    console.error('Download failed:', e);
+  }
+}
+
+function showShareCheck() {
+  const btn = document.getElementById('share-btn');
+  if (!btn) return;
+  const original = btn.innerHTML;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="check-pop"><polyline points="20 6 9 17 4 12"/></svg>`;
+  setTimeout(() => { btn.innerHTML = original; }, 1500);
 }
 
 function downloadImage(blob) {
@@ -623,6 +655,21 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
+function recolorSVG(svg, fromColor, toColor) {
+  const replacements = {};
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    replacements[fromColor[key].toUpperCase()] = toColor[key];
+  }
+  svg.querySelectorAll('*').forEach(el => {
+    for (const attr of ['fill', 'stroke']) {
+      const val = el.getAttribute(attr);
+      if (val && replacements[val.toUpperCase()]) {
+        el.setAttribute(attr, replacements[val.toUpperCase()]);
+      }
+    }
+  });
+}
+
 function recolorNewtabSVGs(color) {
   const svgDefs = document.querySelector('svg[style*="display: none"] defs');
   if (!svgDefs) return;
@@ -654,4 +701,162 @@ function recolorNewtabSVGs(color) {
   if (heroSvg) {
     heroSvg.style.filter = `drop-shadow(0 4px 12px ${color.body}4D)`;
   }
+}
+
+
+/* ──────────────────────────────────────────────
+   TOP BAR: Level Badge + Accessory Mini Slots
+   ────────────────────────────────────────────── */
+
+const NT_ACC_VIEWBOXES = {
+  'acc-party-hat': '0 0 44 30', 'acc-sunglasses': '0 0 56 20',
+  'acc-bandana': '0 0 52 22', 'acc-heart-shades': '0 0 56 20',
+  'acc-beanie': '0 0 52 26', 'acc-aviators': '0 0 56 22',
+  'acc-chef-hat': '0 0 48 34', 'acc-3d-glasses': '0 0 56 20',
+  'acc-monocle': '0 0 24 24', 'acc-propeller-hat': '0 0 48 32',
+  'acc-star-glasses': '0 0 56 22', 'acc-crown': '0 0 48 28',
+  'acc-bow-tie': '0 0 44 20', 'acc-detective-hat': '0 0 56 28',
+  'acc-headband': '0 0 52 18', 'acc-viking-helmet': '0 0 56 32',
+  'acc-top-hat': '0 0 44 36', 'acc-pirate-hat': '0 0 56 30',
+  'acc-halo': '0 0 44 14',
+  'acc-flame-crown': '0 0 48 32', 'acc-neon-shades': '0 0 56 20',
+  'acc-wizard-hat': '0 0 48 40'
+};
+
+const NT_RING_CIRCUMFERENCE = 94.25;
+
+const NT_LEVEL_UNLOCKS = {
+  2: 'Party Hat', 3: 'Sunglasses', 4: 'Bandana', 5: 'Heart Shades',
+  6: 'Beanie', 7: 'Aviators', 8: 'Chef Hat', 9: '3D Glasses',
+  10: 'Monocle', 11: 'Propeller Hat', 12: 'Star Glasses', 13: 'Crown'
+};
+
+async function initTopBar() {
+  renderNewtabMiniSlots();
+  await renderNewtabLevelBadge();
+  initLevelPanel();
+  initAccMiniAdd();
+
+  // Listen for accessory changes
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.jestyAccessoriesChanged) {
+      JestyAccessories.init().then(() => renderNewtabMiniSlots());
+    }
+  });
+}
+
+function renderNewtabMiniSlots() {
+  const equipped = JestyAccessories.getEquipped();
+  for (const slot of ['hat', 'glasses']) {
+    const el = document.getElementById(`acc-mini-${slot}`);
+    if (!el) continue;
+    const accId = equipped[slot];
+    if (accId) {
+      const acc = JestyAccessories.getCatalog().find(a => a.id === accId);
+      if (acc) {
+        const vb = NT_ACC_VIEWBOXES[acc.symbolId] || '0 0 44 30';
+        el.innerHTML = `<svg viewBox="${vb}"><use href="#${acc.symbolId}"/></svg>`;
+        el.classList.add('equipped');
+      }
+    } else {
+      el.innerHTML = '';
+      el.classList.remove('equipped');
+    }
+  }
+}
+
+async function renderNewtabLevelBadge() {
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  if (!jesty_data) return;
+
+  const prog = jesty_data.progression || { level: 1, xp: 0, xp_to_next: 100 };
+  const pct = Math.min(1, prog.xp / prog.xp_to_next);
+
+  // Badge number
+  const numEl = document.getElementById('level-badge-num');
+  if (numEl) numEl.textContent = prog.level;
+
+  // Ring progress
+  const ringEl = document.getElementById('level-ring-fill');
+  if (ringEl) ringEl.style.strokeDashoffset = NT_RING_CIRCUMFERENCE * (1 - pct);
+
+  // Panel details
+  const titleEl = document.getElementById('level-panel-title');
+  const stageEl = document.getElementById('level-panel-stage');
+  const fillEl = document.getElementById('level-panel-fill');
+  const xpEl = document.getElementById('level-panel-xp');
+  if (titleEl) titleEl.textContent = `Level ${prog.level}`;
+
+  const tier = await JestyPremium.getTier();
+  const tierName = JestyPremium.getTierDisplayName(tier);
+  if (stageEl) stageEl.textContent = tierName;
+
+  if (fillEl) fillEl.style.width = `${pct * 100}%`;
+  if (xpEl) xpEl.textContent = `${prog.xp} / ${prog.xp_to_next} XP`;
+
+  // Next unlock
+  const nextEl = document.getElementById('level-panel-next');
+  if (nextEl) {
+    const unlockLevels = Object.keys(NT_LEVEL_UNLOCKS).map(Number).sort((a, b) => a - b);
+    const nextUnlock = unlockLevels.find(l => l > prog.level);
+    if (nextUnlock) {
+      const reward = NT_LEVEL_UNLOCKS[nextUnlock];
+      nextEl.innerHTML = `<strong>Level ${nextUnlock}</strong> — ${reward}`;
+    } else {
+      nextEl.textContent = 'All accessories unlocked!';
+    }
+  }
+}
+
+function initLevelPanel() {
+  const badge = document.getElementById('level-badge');
+  const panel = document.getElementById('level-panel');
+  if (!badge || !panel) return;
+
+  badge.addEventListener('click', () => {
+    const isVisible = panel.classList.contains('visible');
+    if (isVisible) {
+      panel.classList.remove('visible');
+    } else {
+      panel.classList.add('visible');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (panel.classList.contains('visible') && !badge.contains(e.target) && !panel.contains(e.target)) {
+      panel.classList.remove('visible');
+    }
+  });
+
+  // Next-unlock click opens levels drawer in sidepanel
+  const nextEl = document.getElementById('level-panel-next');
+  if (nextEl) {
+    nextEl.style.cursor = 'pointer';
+    nextEl.addEventListener('click', () => {
+      panel.classList.remove('visible');
+      openSidePanelTo('levels');
+    });
+  }
+}
+
+async function openSidePanelTo(mode) {
+  try {
+    await chrome.storage.local.set({ sidePanelOpenMode: mode, sidePanelOpenAt: Date.now() });
+    await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id });
+  } catch (e) { /* fallback */ }
+}
+
+function initAccMiniAdd() {
+  const addBtn = document.getElementById('acc-mini-add');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => openSidePanelTo('accessories'));
+  }
+
+  // Mini slot clicks also open accessories
+  ['acc-mini-hat', 'acc-mini-glasses'].forEach(id => {
+    const slot = document.getElementById(id);
+    if (slot) {
+      slot.addEventListener('click', () => openSidePanelTo('accessories'));
+    }
+  });
 }

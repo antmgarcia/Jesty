@@ -15,6 +15,7 @@
     ul { padding-left: 20px; margin-bottom: 16px; }
     li { font-size: 15px; color: #5F6368; margin-bottom: 8px; }
     a { color: #202124; }
+    .highlight { background: #FEF9C3; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -27,7 +28,7 @@
     <li>Processed locally on your device</li>
     <li>Sent to OpenAI's API only when generating a roast or chat response</li>
     <li>Never stored on any server we control</li>
-    <li>Never shared with third parties</li>
+    <li>Never shared with third parties beyond what is described below</li>
   </ul>
 
   <h2>What Jesty stores</h2>
@@ -36,18 +37,53 @@
     <li>Your roast history (last 100 roasts)</li>
     <li>Usage stats (roast count, streak, browsing patterns)</li>
     <li>Conversation history (last 50 chats)</li>
-    <li>Your color and accessory preferences</li>
+    <li>Your display name, color, and accessory preferences</li>
+    <li>Progression data (level, XP) and achievement milestones</li>
+    <li>Subscription status (tier, activation date)</li>
   </ul>
   <p>This data never leaves your device except when sent to OpenAI for generating responses.</p>
 
   <h2>OpenAI API</h2>
-  <p>When generating roasts or chat responses, your tab titles and URLs are sent to OpenAI's GPT-4o-mini model. OpenAI's data usage policy applies to these API calls. We send only the minimum data needed for the feature to work.</p>
+  <p>When generating roasts or chat responses, your tab titles and URLs are sent to OpenAI's GPT-4o-mini model. OpenAI's <a href="https://openai.com/policies/api-data-usage-policies" target="_blank">API data usage policy</a> applies to these calls. We send only the minimum data needed: tab titles, URLs, and browsing pattern summaries. We do not send personal files, passwords, or page content.</p>
+
+  <h2>Real-time context</h2>
+  <p>To make roasts more relevant, Jesty may fetch public data from third-party APIs:</p>
+  <ul>
+    <li><strong>Weather</strong> — Your approximate location is requested via the browser's geolocation API to fetch weather data from wttr.in. Location is never stored or sent to our servers.</li>
+    <li><strong>Cryptocurrency prices</strong> — Public price data from CoinGecko, only when crypto-related tabs are detected.</li>
+    <li><strong>Sports scores</strong> — Public scores from ESPN, only when sports-related tabs are detected.</li>
+  </ul>
+  <p>These requests are made directly from your browser. No personal data is included in these requests.</p>
+
+  <h2>Google account</h2>
+  <p>Jesty uses Chrome's identity API to read your Google account email address for display purposes (avatar initials). This is optional and processed locally.</p>
+
+  <h2>Google Calendar (Pro tier only)</h2>
+  <p>If you subscribe to the Pro tier and choose to connect your Google Calendar, Jesty requests read-only access to your calendar events via OAuth 2.0. Calendar data is:</p>
+  <ul>
+    <li>Used solely to make roasts aware of your schedule</li>
+    <li>Cached locally for up to 15 minutes for performance</li>
+    <li>Never sent to any server other than Google's API and OpenAI (as part of roast context)</li>
+    <li>Revocable at any time by disconnecting in the extension</li>
+  </ul>
+
+  <h2>Background activity</h2>
+  <p>Jesty runs a background service worker that:</p>
+  <ul>
+    <li>Monitors tab opens and closes to detect when you act on a roast (e.g., closing a tab Jesty mentioned)</li>
+    <li>Checks focus mode status if you have it enabled (Premium feature)</li>
+    <li>Generates a daily browsing summary at 9 PM if you have Premium</li>
+  </ul>
+  <p>All background processing happens locally on your device.</p>
+
+  <h2>Payments</h2>
+  <p>Premium purchases are processed through Stripe. Jesty detects a successful payment by watching for a Stripe success URL in your browser. We do not process, store, or have access to your payment details — all payment handling is done by Stripe under their <a href="https://stripe.com/privacy" target="_blank">privacy policy</a>.</p>
 
   <h2>No tracking</h2>
   <p>Jesty does not use analytics, cookies, or any tracking services. There are no ads. Your browsing data stays between you and your browser.</p>
 
   <h2>Data deletion</h2>
-  <p>Uninstalling the extension removes all locally stored data. You can also clear data manually through Chrome's extension settings.</p>
+  <p>Uninstalling the extension removes all locally stored data. You can also clear data manually through Chrome's extension settings. To revoke Google Calendar access, disconnect from within the extension or remove Jesty from your <a href="https://myaccount.google.com/permissions" target="_blank">Google account permissions</a>.</p>
 
   <h2>Contact</h2>
   <p>Questions? Reach out at the Jesty GitHub repository.</p>

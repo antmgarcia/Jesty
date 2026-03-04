@@ -11,11 +11,9 @@ const JestyPremium = (() => {
   const FEATURE_TIERS = {
     unlimited_roasts: 'premium',
     unlimited_chat: 'premium',
-    focus_mode: 'premium',
     tasks: 'premium',
     tamagotchi: 'premium',
-    wall_of_shame: 'premium',
-    daily_report: 'premium',
+    games_full: 'premium',
     calendar: 'pro',
     calendar_roasts: 'pro',
     schedule_awareness: 'pro',
@@ -27,14 +25,25 @@ const JestyPremium = (() => {
 
   const TIER_DISPLAY_NAMES = { free: 'Suspect', premium: 'Guilty', pro: 'Sentenced' };
 
+  let _tierOverride = null;
+
   function getTierDisplayName(tier) {
     return TIER_DISPLAY_NAMES[tier] || tier;
+  }
+
+  /**
+   * Set a tier override for preview/testing. Pass null to clear.
+   */
+  function setTierOverride(tier) {
+    _tierOverride = tier;
   }
 
   /**
    * Get current tier: free | premium | pro
    */
   async function getTier() {
+    if (_tierOverride !== null) return _tierOverride;
+
     try {
       const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
       if (!jesty_data || !jesty_data.settings) return 'free';
@@ -135,6 +144,7 @@ const JestyPremium = (() => {
   return {
     getTier,
     getTierDisplayName,
+    setTierOverride,
     isPremium,
     isPro,
     checkFeature,

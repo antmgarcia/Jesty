@@ -10,15 +10,25 @@ const JestyAccessories = (() => {
    * Each entry: { id, name, slot, tier, symbolId, unlockLevel? }
    */
   const CATALOG = [
-    // Free accessories
-    { id: 'party-hat', name: 'Party Hat', slot: 'hat', tier: 'free', symbolId: 'acc-party-hat' },
-    { id: 'sunglasses', name: 'Sunglasses', slot: 'glasses', tier: 'free', symbolId: 'acc-sunglasses' },
-    { id: 'beanie', name: 'Beanie', slot: 'hat', tier: 'free', symbolId: 'acc-beanie' },
-    // Premium level unlocks
-    { id: 'monocle', name: 'Monocle', slot: 'glasses', tier: 'premium', symbolId: 'acc-monocle', unlockLevel: 5 },
-    { id: 'crown', name: 'Crown', slot: 'hat', tier: 'premium', symbolId: 'acc-crown', unlockLevel: 8 },
-    { id: 'detective-hat', name: 'Detective Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-detective-hat', unlockLevel: 10 },
-    { id: 'top-hat', name: 'Top Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-top-hat', unlockLevel: 15 },
+    // Level unlocks (linear 2-20)
+    { id: 'party-hat', name: 'Party Hat', slot: 'hat', tier: 'free', symbolId: 'acc-party-hat', unlockLevel: 2 },
+    { id: 'sunglasses', name: 'Sunglasses', slot: 'glasses', tier: 'free', symbolId: 'acc-sunglasses', unlockLevel: 3 },
+    { id: 'bandana', name: 'Bandana', slot: 'hat', tier: 'free', symbolId: 'acc-bandana', unlockLevel: 4 },
+    { id: 'heart-shades', name: 'Heart Shades', slot: 'glasses', tier: 'free', symbolId: 'acc-heart-shades', unlockLevel: 5 },
+    { id: 'beanie', name: 'Beanie', slot: 'hat', tier: 'premium', symbolId: 'acc-beanie', unlockLevel: 6 },
+    { id: 'aviators', name: 'Aviators', slot: 'glasses', tier: 'premium', symbolId: 'acc-aviators', unlockLevel: 7 },
+    { id: 'chef-hat', name: 'Chef Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-chef-hat', unlockLevel: 8 },
+    { id: '3d-glasses', name: '3D Glasses', slot: 'glasses', tier: 'premium', symbolId: 'acc-3d-glasses', unlockLevel: 9 },
+    { id: 'monocle', name: 'Monocle', slot: 'glasses', tier: 'premium', symbolId: 'acc-monocle', unlockLevel: 10 },
+    { id: 'propeller-hat', name: 'Propeller Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-propeller-hat', unlockLevel: 11 },
+    { id: 'star-glasses', name: 'Star Glasses', slot: 'glasses', tier: 'premium', symbolId: 'acc-star-glasses', unlockLevel: 12 },
+    { id: 'crown', name: 'Crown', slot: 'hat', tier: 'premium', symbolId: 'acc-crown', unlockLevel: 13 },
+    { id: 'bow-tie', name: 'Bow Tie', slot: 'glasses', tier: 'premium', symbolId: 'acc-bow-tie', unlockLevel: 14 },
+    { id: 'detective-hat', name: 'Detective Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-detective-hat', unlockLevel: 15 },
+    { id: 'headband', name: 'Headband', slot: 'hat', tier: 'premium', symbolId: 'acc-headband', unlockLevel: 16 },
+    { id: 'viking-helmet', name: 'Viking Helmet', slot: 'hat', tier: 'premium', symbolId: 'acc-viking-helmet', unlockLevel: 17 },
+    { id: 'top-hat', name: 'Top Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-top-hat', unlockLevel: 18 },
+    { id: 'pirate-hat', name: 'Pirate Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-pirate-hat', unlockLevel: 19 },
     { id: 'halo', name: 'Halo', slot: 'hat', tier: 'premium', symbolId: 'acc-halo', unlockLevel: 20 },
     // Pro-exclusive accessories
     { id: 'flame-crown', name: 'Flame Crown', slot: 'hat', tier: 'pro', symbolId: 'acc-flame-crown' },
@@ -32,9 +42,9 @@ const JestyAccessories = (() => {
    */
   const EVOLUTION_STAGES = {
     baby:   { minLevel: 1,  scale: 1.0,  label: 'Baby Blob', glow: false },
-    teen:   { minLevel: 5,  scale: 1.06, label: 'Teen Blob', glow: false },
-    adult:  { minLevel: 15, scale: 1.12, label: 'Adult Blob', glow: false },
-    legend: { minLevel: 30, scale: 1.18, label: 'Legendary Blob', glow: true }
+    teen:   { minLevel: 7,  scale: 1.06, label: 'Teen Blob', glow: false },
+    adult:  { minLevel: 14, scale: 1.12, label: 'Adult Blob', glow: false },
+    legend: { minLevel: 20, scale: 1.18, label: 'Legendary Blob', glow: true }
   };
 
   /**
@@ -106,9 +116,9 @@ const JestyAccessories = (() => {
    * Determine evolution stage from level
    */
   function getStageForLevel(level) {
-    if (level >= 30) return 'legend';
-    if (level >= 15) return 'adult';
-    if (level >= 5) return 'teen';
+    if (level >= 20) return 'legend';
+    if (level >= 14) return 'adult';
+    if (level >= 7) return 'teen';
     return 'baby';
   }
 
@@ -138,14 +148,14 @@ const JestyAccessories = (() => {
     const acc = CATALOG.find(a => a.id === accessoryId);
     if (!acc) return false;
 
-    // Free accessories are always unlocked
-    if (acc.tier === 'free') return true;
-
-    // Check tier access
+    // Check tier access (pro/premium gate)
     if (typeof JestyPremium !== 'undefined') {
       if (acc.tier === 'pro' && !(await JestyPremium.isPro())) return false;
       if (acc.tier === 'premium' && !(await JestyPremium.isPremium())) return false;
     }
+
+    // Free accessories are always unlocked (level is just for roadmap ordering)
+    if (acc.tier === 'free') return true;
 
     // Check level requirement
     if (acc.unlockLevel) {
@@ -196,11 +206,26 @@ const JestyAccessories = (() => {
   function renderAccessories(expressionId, svgContainer) {
     if (!svgContainer) return;
 
-    // Remove existing accessory overlays and stage effects
-    svgContainer.querySelectorAll('.jesty-accessory, .jesty-stage-effect').forEach(el => el.remove());
+    // Remove existing accessory overlays, stage effects, and groups
+    svgContainer.querySelectorAll('.jesty-accessory, .jesty-stage-effect, .jesty-acc-group').forEach(el => el.remove());
 
     // Apply evolution stage visual effects
     applyStageEffects(svgContainer);
+
+    const hasAccs = Object.values(equipped).some(v => v);
+    if (!hasAccs) return;
+
+    // Wrap accessories in a group with evolution scaling so they match the character
+    const stageInfo = EVOLUTION_STAGES[currentStage];
+    const accGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    accGroup.classList.add('jesty-acc-group');
+
+    if (stageInfo && currentStage !== 'baby') {
+      const scale = stageInfo.scale;
+      const offsetX = (1 - scale) * 60;
+      const offsetY = (1 - scale) * 65;
+      accGroup.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`);
+    }
 
     for (const slot of ['hat', 'glasses']) {
       const accId = equipped[slot];
@@ -215,8 +240,6 @@ const JestyAccessories = (() => {
       const symbol = document.getElementById(accessory.symbolId);
       if (!symbol) continue;
 
-      // Clone symbol innerHTML into a <g> with translate (same approach as spinner)
-      // Using <use> with symbols creates a separate viewport that scales inconsistently
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.classList.add('jesty-accessory');
 
@@ -228,8 +251,10 @@ const JestyAccessories = (() => {
       }
       g.setAttribute('transform', transform);
       g.innerHTML = symbol.innerHTML;
-      svgContainer.appendChild(g);
+      accGroup.appendChild(g);
     }
+
+    svgContainer.appendChild(accGroup);
   }
 
   /**
@@ -306,7 +331,7 @@ const JestyAccessories = (() => {
    * @returns {string} SVG markup string
    */
   function getAccessorySvgContent(expressionId) {
-    let markup = '';
+    let inner = '';
     for (const slot of ['hat', 'glasses']) {
       const accId = equipped[slot];
       if (!accId) continue;
@@ -326,9 +351,27 @@ const JestyAccessories = (() => {
         const [, , symW, symH] = vb ? vb.split(/\s+/).map(Number) : [0, 0, 44, 30];
         transform += ` rotate(${anchor.rotate}, ${symW / 2}, ${symH / 2})`;
       }
-      markup += `<g transform="${transform}">${symbol.innerHTML}</g>`;
+      inner += `<g transform="${transform}">${symbol.innerHTML}</g>`;
     }
-    return markup;
+    if (!inner) return '';
+
+    // Wrap in evolution scale group if needed
+    const stageInfo = EVOLUTION_STAGES[currentStage];
+    if (stageInfo && currentStage !== 'baby') {
+      const scale = stageInfo.scale;
+      const offsetX = (1 - scale) * 60;
+      const offsetY = (1 - scale) * 65;
+      return `<g transform="translate(${offsetX}, ${offsetY}) scale(${scale})">${inner}</g>`;
+    }
+    return inner;
+  }
+
+  /**
+   * Unequip all accessories
+   */
+  async function unequipAll() {
+    equipped = { hat: null, glasses: null };
+    await saveEquipped();
   }
 
   /**
@@ -349,7 +392,7 @@ const JestyAccessories = (() => {
   }
 
   return {
-    init, getCatalog, equipAccessory, unequipAccessory, getEquipped,
+    init, getCatalog, equipAccessory, unequipAccessory, unequipAll, getEquipped,
     renderAccessories, getAccessorySvgContent, getEvolutionStage, isUnlocked, getStageForLevel
   };
 })();

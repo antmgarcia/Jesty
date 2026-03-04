@@ -31,6 +31,40 @@
     </defs>
   </svg>
 
+  <!-- Top Left (Level + Accessory Mini-Slots) -->
+  <div class="top-bar-left" id="top-bar-left">
+    <button class="level-badge" id="level-badge" title="Level">
+      <svg class="level-ring" viewBox="0 0 36 36" width="32" height="32">
+        <circle cx="18" cy="18" r="15" fill="none" stroke="var(--jesty-border)" stroke-width="2.5"/>
+        <circle class="level-ring-fill" id="level-ring-fill" cx="18" cy="18" r="15" fill="none" stroke="#EAB308" stroke-width="2.5"
+          stroke-dasharray="94.25" stroke-dashoffset="94.25" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+      </svg>
+      <span class="level-badge-num" id="level-badge-num">1</span>
+    </button>
+    <div class="acc-mini-slot" id="acc-mini-hat" title="Hat"></div>
+    <div class="acc-mini-slot" id="acc-mini-glasses" title="Glasses"></div>
+    <button class="acc-mini-add" id="acc-mini-add" title="Accessories">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Level Panel (tooltip) -->
+  <div class="level-panel hidden" id="level-panel">
+    <div class="level-panel-header">
+      <span class="level-panel-title" id="level-panel-title">Level 1</span>
+      <span class="level-panel-stage" id="level-panel-stage">Baby Blob</span>
+    </div>
+    <div class="level-panel-progress">
+      <div class="level-panel-bar">
+        <div class="level-panel-fill" id="level-panel-fill" style="width: 0%"></div>
+      </div>
+      <span class="level-panel-xp" id="level-panel-xp">0 / 100 XP</span>
+    </div>
+    <div class="level-panel-next" id="level-panel-next"></div>
+  </div>
+
   <!-- Top Right Links -->
   <div class="top-links">
     <a href="https://mail.google.com" class="top-link">Gmail</a>
@@ -41,7 +75,7 @@
     <!-- Hero Jesty Section -->
     <div class="hero-section">
       <div class="hero-character" id="character">
-        <svg viewBox="-15 -10 150 140"><use href="#face-thinking"/></svg>
+        <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-thinking"/></svg>
       </div>
 
       <div class="hero-content" id="jesty-card">
@@ -49,25 +83,32 @@
         <p id="hero-cta" class="hero-cta hidden">Plead Guilty for unlimited roasts</p>
         <p id="loading-text" class="hero-loading">Reading your tabs...</p>
 
-        <!-- Welcome prompt (shown once on first launch) -->
-        <div id="welcome-prompt" class="welcome-prompt hidden">
-          <p class="welcome-heading">What should I call you?</p>
-          <div class="welcome-row">
-            <input type="text" id="welcome-name" class="welcome-name-input" placeholder="Your name" autocomplete="off" maxlength="20" autofocus>
-            <button id="welcome-submit" class="welcome-submit">Go</button>
-          </div>
-          <div class="welcome-color-faces" id="welcome-colors"></div>
-          <button id="welcome-skip" class="welcome-skip">Skip</button>
-        </div>
+        <!-- Welcome prompt placeholder (actual UI is in #onboarding-page) -->
       </div>
 
       <div class="hero-actions hidden" id="jesty-actions">
         <button id="talkback-btn" class="action-btn" title="Talk back to Jesty">
           <svg><use href="#icon-chat"/></svg>
         </button>
-        <button id="share-btn" class="action-btn" title="Share this roast">
-          <svg><use href="#icon-share"/></svg>
-        </button>
+        <div class="share-wrapper">
+          <button id="share-btn" class="action-btn" title="Share this roast">
+            <svg><use href="#icon-share"/></svg>
+          </button>
+          <div class="share-menu hidden" id="share-menu">
+            <button class="share-option" data-action="copy">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy image
+            </button>
+            <button class="share-option" data-action="twitter">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              Share to X
+            </button>
+            <button class="share-option" data-action="download">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
         <button id="refresh-btn" class="action-btn" title="Get another roast">
           <svg><use href="#icon-refresh"/></svg>
         </button>
@@ -98,11 +139,33 @@
     </div>
   </div>
 
+  <!-- Full-page onboarding -->
+  <div id="onboarding-page" class="onboarding-page hidden">
+    <div class="onboarding-content">
+      <div class="onboarding-character" id="onboarding-character">
+        <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-smug"/></svg>
+      </div>
+      <h1 class="onboarding-title">Meet Jesty</h1>
+      <p class="onboarding-subtitle">Your tabs are about to get roasted</p>
+      <div class="onboarding-form">
+        <p class="onboarding-label">What should I call you?</p>
+        <div class="onboarding-input-row">
+          <input type="text" id="welcome-name" class="onboarding-name-input" placeholder="Your name" autocomplete="off" maxlength="20" autofocus>
+        </div>
+      </div>
+      <p class="onboarding-label">Pick a color</p>
+      <div class="welcome-color-faces" id="welcome-colors"></div>
+      <button id="welcome-submit" class="onboarding-submit">Let's go</button>
+      <button id="welcome-skip" class="onboarding-skip">Skip</button>
+    </div>
+  </div>
+
   <footer class="privacy-footer">
     Your tabs are processed locally and never stored.
     <a href="privacy.html" target="_blank">Privacy Policy</a>
   </footer>
 
+  <script src="theme.js"></script>
   <script src="characters.js"></script>
   <script src="config.js"></script>
   <script src="storage.js"></script>
