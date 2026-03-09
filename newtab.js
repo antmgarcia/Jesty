@@ -17,12 +17,14 @@ chrome.storage.onChanged.addListener(async (changes) => {
       const capStatus = await JestyStorage.checkDailyCap();
       updateRoastsRemaining(capStatus.remaining);
     } catch (e) { /* non-critical */ }
+    renderNewtabTasks();
   }
   // XP gain from tab closure (while newtab is already open)
   if (changes.pendingXPGain && changes.pendingXPGain.newValue) {
     const xpGain = changes.pendingXPGain.newValue;
     chrome.storage.local.remove(['pendingXPGain']);
     showXPToast(xpGain.xp);
+    renderNewtabLevelBadge();
   }
 });
 
@@ -131,6 +133,12 @@ async function init() {
     showXPToast(pendingXPGain.xp);
   }
 
+  // Seed onboarding task for new users (even if widget is hidden)
+  await seedOnboardingTask();
+
+  // Initialize focus island (inline, not iframe — extension pages can't use content scripts)
+  await initNewtabFocusIsland();
+
   const userName = await JestyStorage.getUserName();
   const data = await JestyStorage.getJestyData();
   const isFirstLaunch = data.profile.total_roasts === 0;
@@ -216,35 +224,40 @@ function renderWelcomeColorFaces(activeBodyColor) {
 }
 
 function showWelcomePrompt() {
-  const onboarding = document.getElementById('onboarding-page');
+  const welcomePrompt = document.getElementById('welcome-prompt');
   const loadingText = document.getElementById('loading-text');
   const nameInput = document.getElementById('welcome-name');
   const colorsContainer = document.getElementById('welcome-colors');
   const submitBtn = document.getElementById('welcome-submit');
   const skipBtn = document.getElementById('welcome-skip');
-  const onboardChar = document.getElementById('onboarding-character');
 
   loadingText.classList.add('hidden');
-  onboarding.classList.remove('hidden');
+  welcomePrompt.classList.remove('hidden');
+  setExpression('smug');
 
-  // Recolor onboarding character to default purple
-  if (onboardChar) {
-    const svg = onboardChar.querySelector('svg');
-    if (svg) {
-      const SOURCE = { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' };
-      recolorSVG(svg, SOURCE, NEWTAB_DEFAULT_PURPLE);
-    }
-  }
+  // Pick a random default color for this user
+  const randomIdx = Math.floor(Math.random() * WELCOME_COLORS.length);
+  const randomColor = WELCOME_COLORS[randomIdx].color;
+  recolorNewtabSVGs(randomColor);
+  chrome.storage.local.set({ jestyColor: randomColor });
 
-  // Render face-based color picker
-  renderWelcomeColorFaces(NEWTAB_DEFAULT_PURPLE.body);
+  // Render face-based color picker with random color pre-selected
+  renderWelcomeColorFaces(randomColor.body);
+
+  // Hide search and tab info during onboarding
+  const searchSection = document.querySelector('.search-section');
+  const tabInfo = document.querySelector('.tab-info');
+  if (searchSection) searchSection.classList.add('hidden');
+  if (tabInfo) tabInfo.classList.add('hidden');
 
   function dismissWelcome() {
-    onboarding.classList.add('hidden');
+    welcomePrompt.classList.add('hidden');
+    if (searchSection) searchSection.classList.remove('hidden');
+    if (tabInfo) tabInfo.classList.remove('hidden');
     generateRoast();
   }
 
-  // Color face click — preview + save + update onboarding character
+  // Color face click — preview + save
   colorsContainer.addEventListener('click', (e) => {
     const btn = e.target.closest('.welcome-color-face');
     if (!btn) return;
@@ -258,12 +271,6 @@ function showWelcomePrompt() {
 
     recolorNewtabSVGs(entry.color);
     chrome.storage.local.set({ jestyColor: entry.color });
-
-    // Update onboarding character
-    if (onboardChar) {
-      const svg = onboardChar.querySelector('svg');
-      if (svg) recolorSVG(svg, newtabCurrentColor, entry.color);
-    }
   });
 
   // Submit — save name + start roasting
@@ -696,10 +703,10 @@ function recolorNewtabSVGs(color) {
 
   newtabCurrentColor = { ...color };
 
-  // Also update the drop-shadow color on the hero character
+  // Clear any drop-shadow on the hero character
   const heroSvg = document.querySelector('.hero-character svg');
   if (heroSvg) {
-    heroSvg.style.filter = `drop-shadow(0 4px 12px ${color.body}4D)`;
+    heroSvg.style.filter = '';
   }
 }
 
@@ -789,7 +796,16 @@ async function renderNewtabLevelBadge() {
 
   const tier = await JestyPremium.getTier();
   const tierName = JestyPremium.getTierDisplayName(tier);
-  if (stageEl) stageEl.textContent = tierName;
+  if (stageEl) {
+    stageEl.textContent = tierName;
+    stageEl.dataset.tier = tier;
+    stageEl.style.cursor = 'pointer';
+    stageEl.addEventListener('click', () => {
+      const panel = document.getElementById('level-panel');
+      if (panel) panel.classList.remove('visible');
+      openSidePanelTo('plans');
+    });
+  }
 
   if (fillEl) fillEl.style.width = `${pct * 100}%`;
   if (xpEl) xpEl.textContent = `${prog.xp} / ${prog.xp_to_next} XP`;
@@ -860,3 +876,149 @@ function initAccMiniAdd() {
     }
   });
 }
+
+
+/* ──────────────────────────────────────────────
+   MINI TASKS WIDGET
+   ────────────────────────────────────────────── */
+
+function newtabMigrateTaskNotes(task) {
+  if (typeof task.notes === 'string' && task.notes.trim()) {
+    task.notes = [{ text: task.notes.trim(), done: false }];
+  } else if (!Array.isArray(task.notes)) {
+    task.notes = [];
+  }
+}
+
+async function seedOnboardingTask() {
+  const { jestyTaskSeeded } = await chrome.storage.local.get(['jestyTaskSeeded']);
+  if (jestyTaskSeeded) return;
+
+  await chrome.storage.local.set({ jestyTaskSeeded: true });
+
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  const data = jesty_data || {};
+  const tasks = data.user_tasks || [];
+
+  // Only seed if user has no tasks at all
+  if (tasks.length > 0) return;
+
+  const onboardingTask = {
+    id: 'user_onboarding',
+    title: 'Try managing tasks with Jesty',
+    notes: [
+      { text: 'Tap a task to open its details', done: false },
+      { text: 'Add notes to break it into steps', done: false },
+      { text: 'Check items off as you go', done: false }
+    ],
+    completed: false,
+    completedAt: null,
+    createdAt: Date.now()
+  };
+
+  data.user_tasks = [onboardingTask];
+  await chrome.storage.local.set({ jesty_data: data });
+}
+
+async function renderNewtabTasks() {
+  const widget = document.getElementById('newtab-tasks');
+  const list = document.getElementById('newtab-tasks-list');
+  if (!widget || !list) return;
+
+  // Seed onboarding task on first ever load
+  await seedOnboardingTask();
+
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  const tasks = (jesty_data && jesty_data.user_tasks) || [];
+
+  // Migrate notes, filter incomplete, sort newest first, take 3
+  tasks.forEach(newtabMigrateTaskNotes);
+  const visible = tasks
+    .filter(t => !t.completed)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 3);
+
+  if (visible.length === 0) {
+    widget.classList.remove('hidden');
+    list.innerHTML = '';
+    list.innerHTML = `
+      <div class="newtab-tasks-empty">
+        <p class="newtab-tasks-empty-text">No tasks yet</p>
+      </div>
+    `;
+    return;
+  }
+
+  widget.classList.remove('hidden');
+  list.innerHTML = '';
+
+  visible.forEach(task => {
+    const row = document.createElement('div');
+    row.className = 'newtab-task';
+
+    const check = document.createElement('div');
+    check.className = 'newtab-task-check';
+    check.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      task.completed = true;
+      task.completedAt = Date.now();
+      // Save back
+      const { jesty_data: data } = await chrome.storage.local.get(['jesty_data']);
+      if (data && data.user_tasks) {
+        const idx = data.user_tasks.findIndex(t => t.id === task.id);
+        if (idx >= 0) {
+          data.user_tasks[idx] = task;
+          await chrome.storage.local.set({ jesty_data: data });
+        }
+      }
+      renderNewtabTasks();
+    });
+
+    const title = document.createElement('span');
+    title.className = 'newtab-task-title';
+    title.textContent = task.title || 'Untitled';
+    title.addEventListener('click', async () => {
+      await chrome.storage.local.set({ sidePanelTaskId: task.id });
+      openSidePanelTo('task-detail');
+    });
+
+    row.appendChild(check);
+    row.appendChild(title);
+
+    // Notes badge — count pending (non-done) notes
+    const pendingNotes = task.notes.filter(n => !n.done).length;
+    if (pendingNotes > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'newtab-task-notes';
+      badge.textContent = `${pendingNotes} note${pendingNotes > 1 ? 's' : ''}`;
+      row.appendChild(badge);
+    }
+
+    list.appendChild(row);
+  });
+}
+
+/* ──────────────────────────────────────────────
+   FOCUS ISLAND (inline on newtab)
+   ────────────────────────────────────────────── */
+
+async function initNewtabFocusIsland() {
+  const iframe = document.getElementById('focus-island-iframe');
+  if (!iframe) return;
+
+  const { focusSession } = await chrome.storage.local.get(['focusSession']);
+  if (focusSession && focusSession.active) {
+    iframe.classList.remove('hidden');
+  }
+
+  chrome.storage.onChanged.addListener((changes) => {
+    if (!changes.focusSession) return;
+    const session = changes.focusSession.newValue;
+    if (session && session.active) {
+      iframe.classList.remove('hidden');
+    } else {
+      iframe.classList.add('hidden');
+    }
+  });
+}
+

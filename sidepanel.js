@@ -1,3 +1,6 @@
+// Keep a port open so background.js can track sidepanel open/close
+chrome.runtime.connect({ name: 'sidepanel' });
+
 document.addEventListener('DOMContentLoaded', init);
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -59,11 +62,11 @@ const LIVE_COMMENTS = {
     "Research, sure. We'll call it that."
   ],
   'reddit.com': [
-    "Refreshing the front page won't change reality.",
+    "Refreshing won't change reality.",
     "Reddit. Naturally.",
-    "Which subreddit is ruining your productivity now?",
+    "Which subreddit is it now?",
     "Scrolling. Still scrolling.",
-    "That's enough Reddit for one lifetime."
+    "Enough Reddit for one lifetime."
   ],
   'twitter.com': [
     "Doom scrolling? Classic.",
@@ -78,36 +81,36 @@ const LIVE_COMMENTS = {
     "Still refreshing the timeline?"
   ],
   'amazon.com': [
-    "Shopping again? Your wallet weeps.",
-    "Add to cart. Remove from cart. Repeat.",
+    "Shopping again? Wallet weeps.",
+    "Add to cart. Remove. Repeat.",
     "Do you actually need that?",
     "Prime day is not every day."
   ],
   'github.com': [
-    "Oh, pretending to be productive?",
+    "Pretending to be productive?",
     "Starring repos you'll never read.",
-    "Another commit message you'll regret.",
-    "README.md is not a personality trait."
+    "Another commit you'll regret.",
+    "README is not a personality."
   ],
   'netflix.com': [
-    "Just one more episode, right?",
+    "One more episode, right?",
     "Still deciding what to watch?",
-    "The queue grows. The free time doesn't."
+    "Queue grows. Free time doesn't."
   ],
   'linkedin.com': [
     "Networking or lurking?",
-    "Another inspirational post? Groundbreaking.",
-    "Congratulating strangers on promotions?"
+    "Inspirational post? Groundbreaking.",
+    "Congrats to strangers again?"
   ],
   'instagram.com': [
-    "Living vicariously through reels?",
+    "Living through reels? Cool.",
     "Double tap culture.",
-    "That explore page knows you too well."
+    "Explore page knows you too well."
   ],
   'tiktok.com': [
     "15 seconds at a time, huh?",
     "How long have you been scrolling?",
-    "For You Page? More like For Hours Page."
+    "For You? More like For Hours."
   ],
   'chatgpt.com': [
     "Cheating on me with another AI?",
@@ -130,59 +133,59 @@ const LIVE_COMMENTS = {
     "Marked as duplicate."
   ],
   'twitch.tv': [
-    "Watching someone else play games. Peak living.",
+    "Watching others play. Peak living.",
     "Subscribe? Donate? Touch grass?",
     "Lurking in chat, are we?"
   ]
 };
 
 const TAB_COUNT_COMMENTS = [
-  { min: 100, messages: ["100+ tabs. This is a cry for help.", "Your RAM called. It's filing a restraining order.", "Triple digits. You absolute legend."] },
-  { min: 50, messages: ["50+ tabs? Your browser is sweating.", "Half a century of tabs. Impressive and terrifying.", "You're a tab hoarder. Own it."] },
-  { min: 30, messages: ["30+ tabs. Getting spicy.", "Your taskbar is starting a union.", "How do you find anything in there?"] }
+  { min: 100, messages: ["100+ tabs. A cry for help.", "RAM is filing a restraining order.", "Triple digits. Absolute legend."] },
+  { min: 50, messages: ["50+ tabs? Browser is sweating.", "Half a century of tabs. Terrifying.", "Tab hoarder. Own it."] },
+  { min: 30, messages: ["30+ tabs. Getting spicy.", "Taskbar is starting a union.", "How do you find anything?"] }
 ];
 
 const GENERIC_COMMENTS = [
-  "I'm watching your tabs. Always.",
-  "You know I can see everything, right?",
-  "Interesting browsing choices today.",
+  "Watching your tabs. Always.",
+  "I can see everything, right?",
+  "Interesting choices today.",
   "Don't mind me. Just judging.",
-  "Your browser history would make a great novel.",
+  "Browser history? Great novel.",
   "Productivity level: questionable.",
-  "I've seen worse. Not by much.",
+  "Seen worse. Not by much.",
   "Keep browsing. I'll keep watching.",
   "Is this what you call working?",
   "Fascinating. Truly.",
-  "You're being surprisingly productive. Suspicious.",
-  "That's a lot of tabs for someone with nothing to do.",
-  "I wonder what your boss would think of these tabs.",
+  "Surprisingly productive. Suspicious.",
+  "A lot of tabs for nothing to do.",
+  "What would your boss think?",
   "Still here? Commitment.",
   "Your tabs tell a whole story.",
   "I know what you did five tabs ago.",
-  "Bold browsing strategy. Let's see if it pays off.",
+  "Bold strategy. Let's see.",
   "You call this multitasking?",
-  "I've been taking notes. You should be worried.",
+  "Taking notes. Be worried.",
   "Another day, another tab crisis.",
   "Somewhere, your RAM is crying.",
-  "You browse like nobody's watching. But I am.",
-  "Plot twist: I remember yesterday too.",
-  "That's a choice. Not a good one, but a choice.",
-  "Your screen time report would be devastating.",
-  "The tabs keep growing. The ambition doesn't.",
+  "Nobody's watching. But I am.",
+  "Plot twist: I remember yesterday.",
+  "That's a choice. Not a good one.",
+  "Screen time report? Devastating.",
+  "Tabs grow. Ambition doesn't.",
   "This is fine. Everything is fine.",
   "Do you even close tabs?",
-  "I've seen your patterns. No judgment. Okay, some judgment.",
-  "One more tab and your laptop files for divorce.",
+  "No judgment. Okay, some judgment.",
+  "One more tab. Laptop files divorce.",
   "You're in your procrastination era.",
-  "Tell me you're avoiding work without telling me.",
-  "Peak performance. And by peak I mean the opposite.",
-  "Your browsing says a lot about you. None of it good.",
+  "Avoiding work without telling me.",
+  "Peak performance. The opposite kind.",
+  "Browsing says a lot. None good.",
   "I'm not mad. I'm disappointed.",
-  "Every tab is a broken promise to yourself.",
-  "The internet was a mistake. You're proving it.",
-  "At least you're consistent. Consistently distracted.",
-  "This is what rock bottom looks like in tab form.",
-  "Your future self will judge you for this.",
+  "Every tab is a broken promise.",
+  "The internet was a mistake. Proof.",
+  "Consistent. Consistently distracted.",
+  "Rock bottom, in tab form.",
+  "Future you will judge this.",
   "Open a new tab. I dare you.",
 ];
 
@@ -220,8 +223,8 @@ async function init() {
   const sendBtn = document.getElementById('send-btn');
 
   // Read and clear open mode signals
-  const { sidePanelOpenMode, loadRoastIntoChat: pendingRoast } = await chrome.storage.local.get(['sidePanelOpenMode', 'loadRoastIntoChat']);
-  await chrome.storage.local.remove(['sidePanelOpenMode', 'loadRoastIntoChat']);
+  const { sidePanelOpenMode, loadRoastIntoChat: pendingRoast, sidePanelTaskId } = await chrome.storage.local.get(['sidePanelOpenMode', 'loadRoastIntoChat', 'sidePanelTaskId']);
+  await chrome.storage.local.remove(['sidePanelOpenMode', 'loadRoastIntoChat', 'sidePanelTaskId']);
 
   // Initialize subsystems
   initDrawer();
@@ -289,13 +292,34 @@ async function init() {
         // Session ended externally (island close button)
         handleFocusEnd();
       } else if (newVal && newVal.active && focusActive) {
-        // Session updated (distraction detected) — show brief notification
+        // Session updated (distraction detected) — flash overlay face
         if (oldVal && newVal.distractionCount > (oldVal.distractionCount || 0)) {
           const quips = ["I saw that.", "Noted.", "Really?", "Classic."];
-          showComment(quips[Math.floor(Math.random() * quips.length)]);
-          JestyAnimator.setExpression('suspicious', 4000);
-          setTimeout(() => { if (focusActive) updateFocusTimerDisplay(); }, 3000);
+          const msgEl = document.getElementById('focus-overlay-msg');
+          if (msgEl) {
+            msgEl.style.opacity = '0';
+            setTimeout(() => {
+              msgEl.textContent = quips[Math.floor(Math.random() * quips.length)];
+              msgEl.style.opacity = '1';
+            }, 300);
+          }
+          updateFocusOverlayFace('suspicious');
+          setTimeout(() => updateFocusOverlayFace('smug'), 4000);
         }
+      }
+    }
+    // Focus note request from island pencil button
+    if (changes.focusNoteRequest && changes.focusNoteRequest.newValue) {
+      chrome.storage.local.remove('focusNoteRequest');
+      handleFocusNoteMode();
+    }
+    // Memory game tab opened/closed
+    if (changes.memoryGameTab) {
+      const val = changes.memoryGameTab.newValue;
+      if (val && val.active) {
+        showMemoryGameInTabState();
+      } else {
+        hideMemoryGameInTabState();
       }
     }
   });
@@ -318,13 +342,37 @@ async function init() {
     openLevelsDrawer();
   }
 
+  // If opened from newtab tasks widget — open specific task detail
+  if (sidePanelOpenMode === 'task-detail' && sidePanelTaskId) {
+    openTaskDetail(sidePanelTaskId);
+  }
+
+  // If opened from newtab tasks widget — create new task
+  if (sidePanelOpenMode === 'task-new') {
+    createAndOpenTask();
+  }
+
+  // If opened from focus island pencil — show focus overlay and focus note input
+  if (sidePanelOpenMode === 'focus-note') {
+    handleFocusNoteMode();
+  }
+
+  // If opened from tier badge — show all plans overlay
+  if (sidePanelOpenMode === 'plans') {
+    showTierOverlayPlans();
+  }
+
   // Listen for open-mode signals while sidepanel is already open
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.sidePanelOpenAt) {
-      chrome.storage.local.get(['sidePanelOpenMode'], ({ sidePanelOpenMode: mode }) => {
-        chrome.storage.local.remove(['sidePanelOpenMode', 'sidePanelOpenAt']);
+      chrome.storage.local.get(['sidePanelOpenMode', 'sidePanelTaskId'], ({ sidePanelOpenMode: mode, sidePanelTaskId: taskId }) => {
+        chrome.storage.local.remove(['sidePanelOpenMode', 'sidePanelOpenAt', 'sidePanelTaskId']);
         if (mode === 'accessories') openAccDrawer();
         else if (mode === 'levels') openLevelsDrawer();
+        else if (mode === 'task-detail' && taskId) openTaskDetail(taskId);
+        else if (mode === 'task-new') createAndOpenTask();
+        else if (mode === 'focus-note') handleFocusNoteMode();
+        else if (mode === 'plans') showTierOverlayPlans();
       });
     }
   });
@@ -554,6 +602,7 @@ async function generateSidepanelRoast() {
       // Show nudge in live comment
       if (commentText) {
         commentText.textContent = result.nudge.text;
+
         commentText.classList.add('visible');
       }
       JestyAnimator.setExpression(result.nudge.mood);
@@ -561,6 +610,7 @@ async function generateSidepanelRoast() {
       // Update live comment with roast
       if (commentText) {
         commentText.textContent = result.joke;
+
         commentText.classList.add('visible');
       }
       JestyAnimator.setExpression(result.mood);
@@ -590,7 +640,7 @@ async function generateSidepanelRoast() {
   } catch (error) {
     if (commentText) {
       commentText.textContent = 'My brain broke. Try again.';
-      commentText.classList.add('visible');
+            commentText.classList.add('visible');
     }
     JestyAnimator.setExpression('yikes');
   } finally {
@@ -1048,6 +1098,9 @@ function initAccessoryPicker() {
     await refreshAllAccessoryUI();
   });
 
+  // Init gallery
+  initAccessoryGallery();
+
   // Render all UI
   renderMiniSlots();
   renderAccessoryGrid();
@@ -1110,11 +1163,13 @@ function openAccDrawer() {
   _accExprIdx = Math.max(0, ACC_EXPRESSIONS.indexOf(currentExpr));
   renderDrawerGrid();
   updateDrawerPreview();
+  startUpgradeShakeLoop();
 }
 
 function closeAccDrawer() {
   const drawer = document.getElementById('acc-drawer');
   if (drawer) drawer.classList.add('hidden');
+  stopUpgradeShakeLoop();
 }
 
 function updateDrawerPreview(overrideExpr) {
@@ -1190,15 +1245,18 @@ async function renderDrawerGrid(refreshId) {
   // Add upgrade card for non-pro users
   const tier = await JestyPremium.getTier();
   if (tier !== 'pro') {
+    const nextTierKey = tier === 'free' ? 'premium' : 'pro';
     const upgrade = tier === 'free'
-      ? { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, Focus mode & more', expression: 'impressed' }
-      : { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', expression: 'chaotic' };
+      ? { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, Focus mode & more' }
+      : { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories' };
+    const combo = TIER_COMBOS[nextTierKey];
+    const ucColor = SLOT_COLORS[combo.color];
 
     const card = document.createElement('div');
     card.className = 'plans-upgrade-card';
     card.innerHTML = `
       <div class="plans-upgrade-icon">
-        <svg viewBox="-15 -10 150 140" width="36" height="34"><use href="#face-${upgrade.expression}"/></svg>
+        ${buildTierComboSvg(combo, 36, 34)}
       </div>
       <div class="plans-upgrade-info">
         <span class="plans-upgrade-name">${upgrade.name} — ${upgrade.price}</span>
@@ -1222,7 +1280,7 @@ function createAccTile(acc, slot, isEquipped, unlocked, onClick) {
   if (unlocked) {
     btn.addEventListener('click', onClick);
   } else {
-    btn.addEventListener('click', () => showTierOverlayPlans());
+    btn.addEventListener('click', () => openAccGallery(acc.id));
   }
   return btn;
 }
@@ -1271,6 +1329,8 @@ async function renderAccessoryGrid(refreshId) {
           }
           await refreshAllAccessoryUI();
         });
+      } else {
+        btn.addEventListener('click', () => openAccGallery(acc.id));
       }
       fragment.appendChild(btn);
       count++;
@@ -1279,6 +1339,171 @@ async function renderAccessoryGrid(refreshId) {
 
   grid.innerHTML = '';
   grid.appendChild(fragment);
+}
+
+/* ──────────────────────────────────────────────
+   ACCESSORY GALLERY (detail view for locked items)
+   ────────────────────────────────────────────── */
+
+let _galleryIndex = 0;
+let _galleryCatalog = []; // flat ordered catalog for gallery navigation
+
+function initAccessoryGallery() {
+  const close = document.getElementById('acc-gallery-close');
+  const backdrop = document.getElementById('acc-gallery-backdrop');
+  const prev = document.getElementById('acc-gallery-prev');
+  const next = document.getElementById('acc-gallery-next');
+
+  if (close) close.addEventListener('click', closeAccGallery);
+  if (backdrop) backdrop.addEventListener('click', closeAccGallery);
+  if (prev) prev.addEventListener('click', () => navigateGallery(-1));
+  if (next) next.addEventListener('click', () => navigateGallery(1));
+}
+
+function openAccGallery(accId) {
+  const catalog = JestyAccessories.getCatalog();
+  // Build flat ordered list: hats then glasses
+  _galleryCatalog = [...catalog.filter(a => a.slot === 'hat'), ...catalog.filter(a => a.slot === 'glasses')];
+  _galleryIndex = Math.max(0, _galleryCatalog.findIndex(a => a.id === accId));
+
+  renderGalleryItem();
+
+  const gallery = document.getElementById('acc-gallery');
+  if (gallery) gallery.classList.remove('hidden');
+  startUpgradeShakeLoop();
+}
+
+function closeAccGallery() {
+  const gallery = document.getElementById('acc-gallery');
+  if (gallery) gallery.classList.add('hidden');
+  stopUpgradeShakeLoop();
+}
+
+function navigateGallery(dir) {
+  _galleryIndex = (_galleryIndex + dir + _galleryCatalog.length) % _galleryCatalog.length;
+  renderGalleryItem();
+}
+
+async function renderGalleryItem() {
+  const acc = _galleryCatalog[_galleryIndex];
+  if (!acc) return;
+
+  const preview = document.getElementById('acc-gallery-preview');
+  const nameEl = document.getElementById('acc-gallery-name');
+  const metaEl = document.getElementById('acc-gallery-meta');
+  const actionEl = document.getElementById('acc-gallery-action');
+  const footer = document.getElementById('acc-gallery-footer');
+
+  const unlocked = await JestyAccessories.isUnlocked(acc.id);
+  const equipped = JestyAccessories.getEquipped();
+  const isEquipped = equipped[acc.slot] === acc.id;
+  const vb = ACC_VIEWBOXES[acc.symbolId] || '0 0 44 30';
+  const funName = (ACC_FUN_NAMES[acc.id] || acc.name).replace('\n', ' ');
+
+  // Preview
+  if (preview) {
+    preview.className = 'acc-gallery-preview' + (unlocked ? '' : ' locked');
+    const lockBadge = unlocked ? '' : '<span class="acc-gallery-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>';
+    preview.innerHTML = `<svg viewBox="${vb}"><use href="#${acc.symbolId}"/></svg>${lockBadge}`;
+    const lockEl = preview.querySelector('.acc-gallery-lock');
+    if (lockEl) {
+      lockEl.style.cursor = 'pointer';
+      lockEl.addEventListener('click', () => {
+        const card = document.querySelector('#acc-gallery-footer .game-upgrade-card');
+        if (card) bounceUpgradeCard(card);
+      });
+    }
+  }
+
+  // Name
+  if (nameEl) nameEl.textContent = funName;
+
+  // Meta: level + XP needed
+  if (metaEl) {
+    if (unlocked) {
+      metaEl.innerHTML = `<span style="color: var(--jesty-text-secondary)">Unlocked</span>`;
+    } else {
+      const lvl = acc.unlockLevel || 0;
+      const xpNeeded = lvl >= 2 ? LEVEL_THRESHOLDS[Math.min(lvl - 2, LEVEL_THRESHOLDS.length - 1)] : 0;
+      const tierLabel = acc.tier === 'pro' ? 'Sentenced' : acc.tier === 'premium' ? 'Guilty' : '';
+      let metaText = '';
+      if (lvl) metaText += `Level ${lvl}`;
+      if (lvl && xpNeeded) metaText += ` · <span class="acc-gallery-xp">${xpNeeded} XP</span>`;
+      if (tierLabel) metaText += (metaText ? ' · ' : '') + tierLabel;
+      metaEl.innerHTML = metaText || 'Locked';
+    }
+  }
+
+  // Action button
+  if (actionEl) {
+    if (unlocked && isEquipped) {
+      actionEl.textContent = 'Unequip';
+      actionEl.className = 'acc-gallery-action unequip';
+      actionEl.onclick = async () => {
+        await JestyAccessories.unequipAccessory(acc.slot);
+        await refreshAllAccessoryUI();
+        renderGalleryItem();
+      };
+    } else if (unlocked) {
+      actionEl.textContent = 'Equip';
+      actionEl.className = 'acc-gallery-action equip';
+      actionEl.onclick = async () => {
+        await JestyAccessories.equipAccessory(acc.slot, acc.id);
+        await refreshAllAccessoryUI();
+        renderGalleryItem();
+      };
+    } else {
+      const lvl = acc.unlockLevel || 0;
+      actionEl.textContent = lvl ? `Reach Level ${lvl}` : (acc.tier === 'pro' ? 'Upgrade to Sentenced' : 'Upgrade to Guilty');
+      actionEl.className = 'acc-gallery-action locked-action';
+      actionEl.onclick = () => {
+        if (lvl) {
+          // Level-gated: bounce the upgrade card instead of opening plans
+          const card = document.querySelector('#acc-gallery-footer .game-upgrade-card');
+          if (card) bounceUpgradeCard(card);
+        } else {
+          showTierOverlayPlans();
+        }
+      };
+    }
+  }
+
+  // Upgrade card in footer for free users (fixed color per gallery session)
+  if (footer) {
+    footer.innerHTML = '';
+    const tier = typeof JestyPremium !== 'undefined' ? await JestyPremium.getTier() : 'free';
+    if (tier === 'free') {
+      const hint = document.createElement('p');
+      hint.className = 'game-upgrade-hint';
+      hint.textContent = 'Unlock all accessories and more';
+      footer.appendChild(hint);
+
+      const card = document.createElement('div');
+      card.className = 'game-upgrade-card';
+      card.innerHTML = `
+        <div class="plans-upgrade-icon">
+          ${buildTierComboSvg(TIER_COMBOS.premium, 36, 34)}
+        </div>
+        <div class="plans-upgrade-info">
+          <span class="plans-upgrade-name">Guilty — $5 once</span>
+          <span class="plans-upgrade-price">Unlimited roasts, Focus mode & more</span>
+        </div>
+        <svg class="plans-upgrade-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      `;
+      card.addEventListener('click', () => showTierOverlayPlans());
+      footer.appendChild(card);
+    }
+  }
+
+  // Counter
+  const counterEl = document.getElementById('acc-gallery-counter');
+  if (counterEl) counterEl.textContent = `${_galleryIndex + 1}/${_galleryCatalog.length}`;
+
+  // Arrow state
+  const prevBtn = document.getElementById('acc-gallery-prev');
+  const nextBtn = document.getElementById('acc-gallery-next');
+  if (prevBtn) prevBtn.disabled = _galleryCatalog.length <= 1;
+  if (nextBtn) nextBtn.disabled = _galleryCatalog.length <= 1;
 }
 
 /* ──────────────────────────────────────────────
@@ -1363,27 +1588,8 @@ async function showLiveComment() {
     return;
   }
 
-  // Focus mode: show focus status messages instead of normal comments
+  // Focus mode: overlay handles display, skip normal comments
   if (focusActive) {
-    const FOCUS_QUIPS = [
-      "Still focusing. Impressive.",
-      "I'm watching every tab switch.",
-      "Don't even think about it.",
-      "Focus mode. I'm judging harder.",
-      "You're doing suspiciously well.",
-      "I see everything.",
-      "Stay on task. I'm watching."
-    ];
-    showComment(FOCUS_QUIPS[Math.floor(Math.random() * FOCUS_QUIPS.length)]);
-    // Brief quip, then resume timer display after 5s
-    setTimeout(() => { if (focusActive) updateFocusTimerDisplay(); }, 5000);
-    scheduleNextComment();
-    return;
-  }
-
-  // 1-in-8 chance: show focus prompt (only when no active session)
-  if (Math.random() < 0.125) {
-    showFocusPrompt();
     scheduleNextComment();
     return;
   }
@@ -1438,10 +1644,10 @@ async function showLiveComment() {
       const stats = await JestyStorage.getUserStats();
       if (stats.totalRoasts >= 50) {
         const nudges = [
-          "I have premium roasts. They're meaner. You'll love them.",
-          "50 roasts and still free? You're missing out.",
-          "Unlock me. I have so much more to say.",
-          "Premium Jesty never sleeps. Just saying."
+          "Premium roasts. Meaner. You'll love them.",
+          "50 roasts and still free? Missing out.",
+          "Unlock me. So much more to say.",
+          "Premium Jesty never sleeps."
         ];
         comment = nudges[Math.floor(Math.random() * nudges.length)];
       }
@@ -1460,22 +1666,17 @@ function scheduleNextComment() {
   liveCommentTimer = setTimeout(() => showLiveComment(), delay);
 }
 
+
 function showComment(text) {
   const commentText = document.getElementById('comment-text');
 
   if (!commentText) return;
 
-  // Clear focus-prompt class (if a non-focus comment replaces the prompt)
-  const commentEl = document.getElementById('live-comment');
-  if (commentEl && commentEl.classList.contains('focus-prompt')) {
-    commentEl.classList.remove('focus-prompt');
-  }
-
   // Crossfade: fade out, swap text, fade in
   commentText.style.opacity = '0';
   setTimeout(() => {
     commentText.textContent = text;
-    commentText.style.opacity = '1';
+        commentText.style.opacity = '1';
   }, 400);
 
   // Set a temporary expression (only when drawer is closed)
@@ -1487,57 +1688,281 @@ function showComment(text) {
 }
 
 /* ──────────────────────────────────────────────
-   FOCUS TIME (live comment integration)
+   FOCUS TIME (overlay + timer)
    ────────────────────────────────────────────── */
 
-function showFocusPrompt() {
-  const commentEl = document.getElementById('live-comment');
-  const commentText = document.getElementById('comment-text');
-  if (!commentText || !commentEl) return;
+const FOCUS_MESSAGES = [
+  "Still focusing. Impressive.",
+  "I'm watching every tab switch.",
+  "Don't even think about it.",
+  "Focus mode. I'm judging harder.",
+  "You're doing suspiciously well.",
+  "I see everything.",
+  "Stay on task. I'm watching.",
+  "One tab at a time.",
+  "You got this. Probably.",
+  "Keep going. I'll be here."
+];
 
-  commentEl.classList.add('focus-prompt');
-  commentText.style.opacity = '0';
+let focusMsgInterval = null;
+
+async function showFocusOverlay() {
+  const overlay = document.getElementById('focus-overlay');
+  const wrapper = document.querySelector('.layer-wrapper');
+  const container = document.querySelector('.container');
+  if (!overlay || !wrapper) return;
+
+  overlay.classList.remove('hidden');
+  wrapper.classList.add('focus-mode');
+  if (container) container.classList.add('focus-mode');
+
+  // Set initial encouraging message
+  rotateFocusMessage();
+  focusMsgInterval = setInterval(rotateFocusMessage, 15000);
+
+  // Render existing notes from session
+  const session = await JestyFocusTime.getSession();
+  const notes = (session && session.notes) || [];
+  renderFocusNotes(notes);
+}
+
+function hideFocusOverlay() {
+  const overlay = document.getElementById('focus-overlay');
+  const wrapper = document.querySelector('.layer-wrapper');
+  const container = document.querySelector('.container');
+  if (overlay) overlay.classList.add('hidden');
+  if (wrapper) wrapper.classList.remove('focus-mode');
+  if (container) container.classList.remove('focus-mode');
+  clearInterval(focusMsgInterval);
+  focusMsgInterval = null;
+}
+
+function rotateFocusMessage() {
+  const msgEl = document.getElementById('focus-overlay-msg');
+  if (!msgEl) return;
+  msgEl.style.opacity = '0';
   setTimeout(() => {
-    commentText.textContent = 'Need to focus? Tap me.';
-    commentText.style.opacity = '1';
+    msgEl.textContent = FOCUS_MESSAGES[Math.floor(Math.random() * FOCUS_MESSAGES.length)];
+    msgEl.style.opacity = '1';
+  }, 300);
+}
+
+async function handleFocusNoteMode() {
+  // Ensure focus overlay is visible
+  if (!focusActive) {
+    focusActive = true;
+    await showFocusOverlay();
+  }
+
+  const timerEl = document.getElementById('focus-overlay-timer');
+  if (timerEl && !timerEl._noteAnimating) {
+    timerEl._noteAnimating = true;
+    animateTimerNote(timerEl, 'Write it down.').then(() => {
+      timerEl._noteAnimating = false;
+    });
+  }
+
+  // Focus the note input with visual hint
+  setTimeout(() => {
+    const input = document.querySelector('.focus-note-input');
+    if (input) {
+      input.classList.add('note-hint');
+      input.focus();
+      input.addEventListener('blur', () => input.classList.remove('note-hint'), { once: true });
+    }
   }, 400);
 }
 
-async function handleFocusClick() {
-  const commentEl = document.getElementById('live-comment');
-  if (!commentEl) return;
+function animateTimerNote(timerEl, message) {
+  const delay = 35;
 
-  // Click on focus prompt → start session
-  if (commentEl.classList.contains('focus-prompt')) {
-    commentEl.classList.remove('focus-prompt');
-    const session = await JestyFocusTime.startSession();
-    if (session) {
-      focusActive = true;
-      commentEl.classList.add('focus-active');
-      showComment("Let's see how this goes.");
-      JestyAnimator.setExpression('smug', 4000);
-      setTimeout(() => startFocusTimer(), 2000);
-    }
-    return;
+  function setChars(el, text, cls) {
+    el.innerHTML = '';
+    text.split('').forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.className = `timer-char ${cls}`;
+      span.textContent = ch === ' ' ? '\u00A0' : ch;
+      span.style.animationDelay = `${i * delay}ms`;
+      el.appendChild(span);
+    });
+    return text.length;
   }
 
-  // Click during active session → end session
-  if (commentEl.classList.contains('focus-active')) {
-    await handleFocusEnd();
+  return new Promise(resolve => {
+    // 1. Timer chars exit
+    const savedTime = timerEl.textContent;
+    const exitLen = setChars(timerEl, savedTime, 'char-exit');
+
+    setTimeout(() => {
+      // 2. Message chars enter (h1 size)
+      timerEl.classList.add('timer-note-msg');
+      const enterLen = setChars(timerEl, message, 'char-enter');
+
+      // 3. After pause, message chars exit
+      setTimeout(() => {
+        setChars(timerEl, message, 'char-exit');
+
+        // 4. Timer chars enter back
+        setTimeout(() => {
+          timerEl.classList.remove('timer-note-msg');
+          setChars(timerEl, savedTime, 'char-enter');
+
+          setTimeout(() => {
+            timerEl.textContent = savedTime;
+            resolve();
+          }, savedTime.length * delay + 300);
+        }, message.length * delay + 300);
+      }, 2500);
+    }, exitLen * delay + 300);
+  });
+}
+
+function updateFocusOverlayFace(expression) {
+  const faceEl = document.getElementById('focus-overlay-face');
+  if (faceEl) faceEl.setAttribute('href', `#face-${expression}`);
+}
+
+/* ─── Focus Notes ─── */
+
+function renderFocusNotes(notes) {
+  const list = document.getElementById('focus-notes-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  notes.forEach((note, i) => {
+    const div = document.createElement('div');
+    div.className = `focus-note${note.done ? ' checked' : ''}`;
+
+    const check = document.createElement('div');
+    check.className = 'focus-note-check';
+    check.addEventListener('click', async () => {
+      note.done = !note.done;
+      renderFocusNotes(notes);
+      await saveFocusNotes(notes);
+    });
+
+    const textEl = document.createElement('span');
+    textEl.className = 'focus-note-text';
+    textEl.textContent = note.text;
+    textEl.contentEditable = 'true';
+    textEl.addEventListener('blur', async () => {
+      const newText = textEl.textContent.trim();
+      if (!newText) {
+        notes.splice(i, 1);
+        renderFocusNotes(notes);
+      } else {
+        note.text = newText;
+      }
+      await saveFocusNotes(notes);
+    });
+    textEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        textEl.blur();
+      }
+    });
+
+    const del = document.createElement('button');
+    del.className = 'focus-note-delete';
+    del.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+    del.addEventListener('click', async () => {
+      div.classList.add('removing');
+      setTimeout(async () => {
+        notes.splice(i, 1);
+        renderFocusNotes(notes);
+        await saveFocusNotes(notes);
+      }, 350);
+    });
+
+    div.appendChild(check);
+    div.appendChild(textEl);
+    div.appendChild(del);
+    list.appendChild(div);
+  });
+
+  // Add-note input row
+  const row = document.createElement('div');
+  row.className = 'focus-note-add';
+
+  const addCheck = document.createElement('div');
+  addCheck.className = 'focus-note-check';
+  row.appendChild(addCheck);
+
+  const input = document.createElement('input');
+  input.className = 'focus-note-input';
+  input.placeholder = 'Quick note...';
+
+  input.addEventListener('input', () => {
+    row.classList.toggle('typing', input.value.length > 0);
+  });
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      notes.push({ text, done: false });
+      renderFocusNotes(notes);
+      await saveFocusNotes(notes);
+      const newInput = list.querySelector('.focus-note-input');
+      if (newInput) newInput.focus();
+    }
+  });
+
+  row.appendChild(input);
+  list.appendChild(row);
+}
+
+async function saveFocusNotes(notes) {
+  const { focusSession } = await chrome.storage.local.get(['focusSession']);
+  if (!focusSession || !focusSession.active) return;
+  focusSession.notes = notes;
+  await chrome.storage.local.set({ focusSession });
+}
+
+async function handleFocusStart() {
+  const session = await JestyFocusTime.startSession();
+  if (!session) return;
+
+  focusActive = true;
+  showFocusOverlay();
+  updateFocusOverlayFace('smug');
+  startFocusTimer();
+
+  const focusBtn = document.getElementById('focus-btn');
+  if (focusBtn) {
+    focusBtn.textContent = 'End focus';
+    focusBtn.classList.add('active');
   }
 }
 
 async function handleFocusEnd() {
   stopFocusTimer();
-
-  const commentEl = document.getElementById('live-comment');
-  if (commentEl) commentEl.classList.remove('focus-active');
+  focusActive = false;
 
   const focusBtn = document.getElementById('focus-btn');
   if (focusBtn) {
     focusBtn.textContent = 'Focus time';
     focusBtn.classList.remove('active');
   }
+
+  // Animate timer explosion, then hide overlay
+  const timerEl = document.getElementById('focus-overlay-timer');
+  if (timerEl) {
+    await explodeTimer(timerEl);
+  }
+
+  // Fade out the rest of the overlay
+  const overlay = document.getElementById('focus-overlay');
+  if (overlay) {
+    overlay.style.transition = 'opacity 0.4s ease';
+    overlay.style.opacity = '0';
+    await new Promise(r => setTimeout(r, 400));
+    overlay.style.transition = '';
+    overlay.style.opacity = '';
+  }
+
+  hideFocusOverlay();
 
   const endedSession = await JestyFocusTime.endSession();
   if (!endedSession) return;
@@ -1552,6 +1977,38 @@ async function handleFocusEnd() {
     showComment(roast.text);
     JestyAnimator.setExpression(roast.mood, 8000);
   }
+}
+
+function explodeTimer(timerEl) {
+  return new Promise(resolve => {
+    const text = timerEl.textContent;
+    timerEl._noteAnimating = true;
+    timerEl.innerHTML = '';
+
+    const chars = text.split('');
+    const count = chars.length;
+    chars.forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.className = 'timer-char timer-drop';
+      span.textContent = ch === ' ' ? '\u00A0' : ch;
+      // Spread outward from center — each char gets its own lane
+      const center = (count - 1) / 2;
+      const spread = (i - center) * 18;
+      const rot = 60 + Math.random() * 200;
+      const dir = i < center ? -1 : i > center ? 1 : (Math.random() > 0.5 ? 1 : -1);
+      const delay = Math.random() * 0.1;
+      span.style.setProperty('--dx-start', `${spread}px`);
+      span.style.setProperty('--dr', `${rot * dir}deg`);
+      span.style.animationDelay = `${delay}s`;
+      timerEl.appendChild(span);
+    });
+
+    setTimeout(() => {
+      timerEl.textContent = '';
+      timerEl._noteAnimating = false;
+      resolve();
+    }, 1800);
+  });
 }
 
 function startFocusTimer() {
@@ -1574,43 +2031,27 @@ async function updateFocusTimerDisplay() {
   }
   const elapsed = Math.floor((Date.now() - session.startedAt) / 1000);
   const timeStr = JestyFocusTime.formatTime(elapsed);
-  const commentText = document.getElementById('comment-text');
-  if (commentText && !drawerOpen) {
-    // Direct update (no fade animation for timer ticks)
-    commentText.textContent = `Focusing \u00b7 ${timeStr}`;
-    commentText.style.opacity = '1';
-  }
+  const timerEl = document.getElementById('focus-overlay-timer');
+  if (timerEl && !timerEl._noteAnimating) timerEl.textContent = timeStr;
 }
 
 function initFocusClickHandler() {
-  // Comment area click (focus prompt or active session)
-  const commentEl = document.getElementById('live-comment');
-  if (commentEl) {
-    commentEl.addEventListener('click', handleFocusClick);
-  }
-
-  // Focus button
+  // Focus button (main screen)
   const focusBtn = document.getElementById('focus-btn');
   if (focusBtn) {
     focusBtn.addEventListener('click', async () => {
       if (focusActive) {
         await handleFocusEnd();
-        focusBtn.textContent = 'Focus time';
-        focusBtn.classList.remove('active');
       } else {
-        const session = await JestyFocusTime.startSession();
-        if (session) {
-          focusActive = true;
-          focusBtn.textContent = 'End focus';
-          focusBtn.classList.add('active');
-          const commentEl = document.getElementById('live-comment');
-          if (commentEl) commentEl.classList.add('focus-active');
-          showComment("Let's see how this goes.");
-          JestyAnimator.setExpression('smug', 4000);
-          setTimeout(() => startFocusTimer(), 2000);
-        }
+        await handleFocusStart();
       }
     });
+  }
+
+  // End button on the focus overlay
+  const overlayEnd = document.getElementById('focus-overlay-end');
+  if (overlayEnd) {
+    overlayEnd.addEventListener('click', () => handleFocusEnd());
   }
 }
 
@@ -1637,14 +2078,13 @@ async function initPremiumFeatures() {
   const focusWasActive = await JestyFocusTime.init();
   if (focusWasActive) {
     focusActive = true;
-    const commentEl = document.getElementById('live-comment');
-    if (commentEl) commentEl.classList.add('focus-active');
+    showFocusOverlay();
+    startFocusTimer();
     const focusBtn = document.getElementById('focus-btn');
     if (focusBtn) {
       focusBtn.textContent = 'End focus';
       focusBtn.classList.add('active');
     }
-    startFocusTimer();
   }
   initFocusClickHandler();
 
@@ -1764,6 +2204,101 @@ async function initFunZone(isPremium) {
   funZoneInited = true;
 }
 
+// ── Memory Game in Tab State ──
+async function showMemoryGameInTabState() {
+  const overlay = document.getElementById('memory-overlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+
+  const sheet = overlay.querySelector('.memory-overlay-sheet');
+  if (!sheet) return;
+
+  // Hide all game screens and their footers
+  sheet.querySelectorAll('.memory-screen').forEach(s => s.classList.add('hidden'));
+  const upgradeFooter = document.getElementById('memory-upgrade-footer');
+  if (upgradeFooter) upgradeFooter.classList.add('hidden');
+  // Also hide the header bar items except close
+  const backBtn = document.getElementById('memory-back-btn');
+  if (backBtn) backBtn.classList.add('hidden');
+  const titleEl = document.getElementById('memory-title');
+  if (titleEl) titleEl.textContent = 'Memory Match';
+  const charEl = document.getElementById('memory-game-character');
+  if (charEl) charEl.innerHTML = '';
+
+  let placeholder = document.getElementById('memory-in-tab-state');
+  if (!placeholder) {
+    placeholder = document.createElement('div');
+    placeholder.id = 'memory-in-tab-state';
+    placeholder.className = 'memory-in-tab-state';
+    sheet.appendChild(placeholder);
+  }
+
+  placeholder.innerHTML = `
+    <svg viewBox="-15 -10 150 140" width="80" height="75"><use href="#face-happy"/></svg>
+    <p class="memory-in-tab-title">Playing in a tab</p>
+    <p class="memory-in-tab-subtitle">Your game is open in a browser tab. Go crush it!</p>
+    <button class="memory-in-tab-btn" id="memory-play-here-btn">Play here instead</button>
+  `;
+
+  document.getElementById('memory-play-here-btn').addEventListener('click', () => {
+    // Signal handover — game tab will save state and become a new tab
+    chrome.storage.local.set({ memoryGameTab: { active: false, handover: true } });
+
+    // Listen for the transferred game state
+    const onTransfer = (changes) => {
+      if (changes.memoryGameTransfer && changes.memoryGameTransfer.newValue) {
+        chrome.storage.onChanged.removeListener(onTransfer);
+        const transfer = changes.memoryGameTransfer.newValue;
+        hideMemoryGameInTabState();
+        JestyMemoryGame.resumeFromTransfer(transfer);
+        chrome.storage.local.remove('memoryGameTransfer');
+      }
+    };
+    chrome.storage.onChanged.addListener(onTransfer);
+  });
+
+  // Add upgrade card at the bottom for free users
+  const tier = typeof JestyPremium !== 'undefined' ? await JestyPremium.getTier() : 'free';
+  let footer = document.getElementById('memory-in-tab-footer');
+  if (!footer) {
+    footer = document.createElement('div');
+    footer.id = 'memory-in-tab-footer';
+    footer.className = 'memory-in-tab-footer';
+    sheet.appendChild(footer);
+  }
+  footer.innerHTML = '';
+  if (tier === 'free' && typeof renderGameUpgradeCard === 'function') {
+    await renderGameUpgradeCard(footer);
+  }
+  footer.classList.remove('hidden');
+  placeholder.classList.remove('hidden');
+}
+
+async function hideMemoryGameInTabState() {
+  const placeholder = document.getElementById('memory-in-tab-state');
+  if (placeholder) placeholder.classList.add('hidden');
+  const footer = document.getElementById('memory-in-tab-footer');
+  if (footer) footer.classList.add('hidden');
+  const upgradeFooter = document.getElementById('memory-upgrade-footer');
+  if (upgradeFooter) upgradeFooter.classList.remove('hidden');
+
+  // Show levels screen so user sees their progress
+  const overlay = document.getElementById('memory-overlay');
+  if (overlay && !overlay.classList.contains('hidden')) {
+    JestyMemoryGame.show();
+  }
+
+  // Check if XP was earned in the tab game
+  try {
+    const { memoryGameXP } = await chrome.storage.local.get(['memoryGameXP']);
+    if (memoryGameXP && memoryGameXP.xp && (Date.now() - memoryGameXP.timestamp < 60000)) {
+      showXPToast(memoryGameXP.xp);
+      await chrome.storage.local.remove('memoryGameXP');
+      await renderLevelBadge();
+      await loadStats();
+    }
+  } catch (e) {}
+}
+
 /* ──────────────────────────────────────────────
    PLANS UPGRADE SECTION
    ────────────────────────────────────────────── */
@@ -1787,23 +2322,25 @@ async function initPlansSection() {
   const upgrades = [];
   if (tier === 'free') {
     upgrades.push(
-      { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, Focus mode & more', action: 'checkout', expression: 'impressed' },
-      { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', action: 'checkout-pro', expression: 'chaotic' }
+      { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, Focus mode & more', action: 'checkout', tierKey: 'premium' },
+      { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', action: 'checkout-pro', tierKey: 'pro' }
     );
   } else if (tier === 'premium') {
     upgrades.push(
-      { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', action: 'checkout-pro', expression: 'chaotic' }
+      { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', action: 'checkout-pro', tierKey: 'pro' }
     );
   }
 
   if (cardsContainer) {
     cardsContainer.innerHTML = '';
     for (const up of upgrades) {
+      const combo = TIER_COMBOS[up.tierKey];
+      const upColor = SLOT_COLORS[combo.color];
       const card = document.createElement('div');
       card.className = 'plans-upgrade-card';
       card.innerHTML = `
         <div class="plans-upgrade-icon">
-          <svg viewBox="-15 -10 150 140" width="36" height="34"><use href="#face-${up.expression}"/></svg>
+          ${buildTierComboSvg(combo, 36, 34)}
         </div>
         <div class="plans-upgrade-info">
           <span class="plans-upgrade-name">${up.name} — ${up.price}</span>
@@ -2082,9 +2619,6 @@ async function renderTaskList() {
     if (viewAll) viewAll.style.display = 'none';
     listEl.innerHTML = `
       <div class="task-empty-state">
-        <div class="task-empty-character">
-          <svg viewBox="-15 -10 150 140" width="48" height="45"><use href="#face-smug"/></svg>
-        </div>
         <p class="task-empty-text">No tasks yet. Add one to get started.</p>
         <button class="task-add-btn" id="task-empty-add-btn">+ Add task</button>
       </div>
@@ -2215,9 +2749,6 @@ async function openTaskDrawer() {
     const empty = document.createElement('div');
     empty.className = 'task-empty-state task-empty-state-drawer';
     empty.innerHTML = `
-      <div class="task-empty-character">
-        <svg viewBox="-15 -10 150 140" width="58" height="54"><use href="#face-smug"/></svg>
-      </div>
       <p class="task-empty-text">No tasks yet. Add one to get started.</p>
       <button class="task-empty-add-btn">+ Add task</button>
     `;
@@ -2354,8 +2885,22 @@ function renderNoteItems(task) {
       }
     });
 
+    const del = document.createElement('button');
+    del.className = 'task-detail-note-delete';
+    del.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+    del.addEventListener('click', async () => {
+      div.classList.add('removing');
+      setTimeout(async () => {
+        task.notes.splice(i, 1);
+        renderNoteItems(task);
+        await saveUserTask(task);
+        renderTaskList();
+      }, 350);
+    });
+
     div.appendChild(check);
     div.appendChild(textEl);
+    div.appendChild(del);
     list.appendChild(div);
   });
 
@@ -2515,14 +3060,6 @@ async function closeTaskDetail() {
   taskDetailCurrentTask = null;
 }
 
-  const drawer = document.getElementById('task-detail-drawer');
-  if (drawer) {
-    drawer.classList.remove('visible');
-    setTimeout(() => drawer.classList.add('hidden'), 200);
-  }
-  clearTimeout(taskDetailSaveTimer);
-}
-
 async function createAndOpenTask() {
   const newTask = {
     id: 'user_' + Date.now(),
@@ -2549,6 +3086,7 @@ async function checkTaskCompletion() {
 
     // Award XP
     await awardXP(template.xp);
+    showXPToast(template.xp);
 
     // Show completion
     showComment(`Task complete! +${template.xp} XP`);
@@ -2786,12 +3324,22 @@ function closeLevelsDrawer() {
   if (drawer) drawer.classList.remove('visible');
 }
 
+let _lastKnownLevel = null;
+
 async function renderLevelBadge() {
   const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
   if (!jesty_data) return;
 
   const prog = jesty_data.progression || { level: 1, xp: 0, xp_to_next: 100 };
   const pct = Math.min(1, prog.xp / prog.xp_to_next);
+
+  // Detect level-up from any source
+  if (_lastKnownLevel !== null && prog.level > _lastKnownLevel) {
+    const unlock = LEVEL_UNLOCKS[prog.level];
+    // Small delay so XP toast (if any) shows first
+    setTimeout(() => showLevelUpToast(prog.level, unlock), 3200);
+  }
+  _lastKnownLevel = prog.level;
 
   // Badge number
   const numEl = document.getElementById('level-badge-num');
@@ -2810,7 +3358,12 @@ async function renderLevelBadge() {
 
   const tier = await JestyPremium.getTier();
   const tierName = JestyPremium.getTierDisplayName(tier);
-  if (stageEl) stageEl.textContent = tierName;
+  if (stageEl) {
+    stageEl.textContent = tierName;
+    stageEl.dataset.tier = tier;
+    stageEl.style.cursor = 'pointer';
+    stageEl.onclick = () => showTierOverlayPlans();
+  }
 
   if (fillEl) fillEl.style.width = `${pct * 100}%`;
   if (xpEl) xpEl.textContent = `${prog.xp} / ${prog.xp_to_next} XP`;
@@ -2827,6 +3380,124 @@ async function renderLevelBadge() {
       nextEl.textContent = 'All accessories unlocked!';
     }
   }
+}
+
+/**
+ * Renders a Guilty upgrade card for free users inside a game overlay.
+ * Returns the card element (or null if user is premium).
+ */
+
+function createRecoloredFaceSVG(expression, targetColor, width, height) {
+  const symbol = document.getElementById(`face-${expression}`);
+  if (!symbol) return `<svg viewBox="-15 -10 150 140" width="${width}" height="${height}"><use href="#face-${expression}"/></svg>`;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '-15 -10 150 140');
+  svg.setAttribute('width', width);
+  svg.setAttribute('height', height);
+
+  // Clone symbol content with unique clip IDs
+  const id = Math.random().toString(36).slice(2, 8);
+  let content = symbol.innerHTML;
+  content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-uc-${id}`);
+  content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-uc-${id})`);
+  svg.innerHTML = content;
+
+  // Recolor from current color to target
+  const replacements = {};
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    replacements[currentColor[key].toUpperCase()] = targetColor[key];
+  }
+  svg.querySelectorAll('*').forEach(el => {
+    for (const attr of ['fill', 'stroke']) {
+      const val = el.getAttribute(attr);
+      if (val && replacements[val.toUpperCase()]) {
+        el.setAttribute(attr, replacements[val.toUpperCase()]);
+      }
+    }
+  });
+
+  return svg.outerHTML;
+}
+
+async function renderGameUpgradeCard(container) {
+  const tier = typeof JestyPremium !== 'undefined' ? await JestyPremium.getTier() : 'free';
+  if (tier !== 'free') return null;
+
+  const hint = document.createElement('p');
+  hint.className = 'game-upgrade-hint';
+  hint.textContent = 'Want harder levels and unlimited fun?';
+  container.appendChild(hint);
+
+  const combo = TIER_COMBOS.premium;
+  const upgradeColor = SLOT_COLORS[combo.color];
+  const card = document.createElement('div');
+  card.className = 'game-upgrade-card';
+  card.innerHTML = `
+    <div class="plans-upgrade-icon">
+      ${buildTierComboSvg(combo, 36, 34)}
+    </div>
+    <div class="plans-upgrade-info">
+      <span class="plans-upgrade-name">Guilty — $5 once</span>
+      <span class="plans-upgrade-price">Unlimited roasts, Focus mode & more</span>
+    </div>
+    <svg class="plans-upgrade-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  `;
+  card.addEventListener('click', () => {
+    showTierOverlayPlans();
+  });
+  container.appendChild(card);
+  return card;
+}
+
+function bounceGameUpgradeCard() {
+  const card = document.querySelector('.game-upgrade-card');
+  if (!card) return;
+  card.classList.remove('bounce');
+  void card.offsetWidth;
+  card.classList.add('bounce');
+
+  // Spawn sparkle particles
+  for (let i = 0; i < 6; i++) {
+    const spark = document.createElement('span');
+    spark.className = 'upgrade-sparkle';
+    spark.textContent = '\u2728';
+    spark.style.left = `${10 + Math.random() * 80}%`;
+    spark.style.animationDelay = `${i * 0.06}s`;
+    card.appendChild(spark);
+    setTimeout(() => spark.remove(), 800);
+  }
+
+  // Remove bounce class after animation
+  setTimeout(() => card.classList.remove('bounce'), 700);
+}
+
+function bounceUpgradeCard(el) {
+  if (!el) return;
+  el.classList.remove('bounce');
+  void el.offsetWidth;
+  el.classList.add('bounce');
+  setTimeout(() => el.classList.remove('bounce'), 700);
+}
+
+// Auto-shake visible upgrade cards every 15–30s
+let _upgradeShakeTimer = null;
+function startUpgradeShakeLoop() {
+  stopUpgradeShakeLoop();
+  (function tick() {
+    const delay = 15000 + Math.random() * 15000;
+    _upgradeShakeTimer = setTimeout(() => {
+      // Find the first visible upgrade card in current context
+      const card = document.querySelector('.game-upgrade-card:not(.hidden)') ||
+                   document.querySelector('.accessories-sections .plans-upgrade-card') ||
+                   document.querySelector('#acc-gallery-footer .game-upgrade-card');
+      if (card && !card.closest('.hidden')) bounceUpgradeCard(card);
+      tick();
+    }, delay);
+  })();
+}
+function stopUpgradeShakeLoop() {
+  if (_upgradeShakeTimer) { clearTimeout(_upgradeShakeTimer); _upgradeShakeTimer = null; }
 }
 
 async function awardXP(amount) {
@@ -2846,11 +3517,6 @@ async function awardXP(amount) {
     prog.xp -= prog.xp_to_next;
     prog.level++;
     prog.xp_to_next = LEVEL_THRESHOLDS[Math.min(prog.level - 1, LEVEL_THRESHOLDS.length - 1)];
-
-    // Check for unlock
-    if (LEVEL_UNLOCKS[prog.level]) {
-      showComment(`Level ${prog.level}! Unlocked: ${LEVEL_UNLOCKS[prog.level]}!`);
-    }
   }
 
   await chrome.storage.local.set({ jesty_data });
@@ -3080,12 +3746,46 @@ function addMessage(text, sender) {
   messageDiv.className = `message ${sender}`;
 
   if (sender === 'jesty') {
+    const msgId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     messageDiv.innerHTML = `
       <div class="message-avatar">
         <svg viewBox="-15 -10 150 140" width="27" height="26"><use href="#face-smug"/></svg>
       </div>
-      <div class="message-bubble">${escapeHtml(text)}</div>
+      <div class="message-content">
+        <div class="message-bubble">${escapeHtml(text)}</div>
+        <div class="message-reactions" data-msg-id="${msgId}">
+          <button class="reaction-btn fire" title="Fire" aria-label="Fire">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c2-2.96 0-7-1-8 0 3.038-1.773 4.741-3 6-1.226 1.26-2 3.24-2 5a6 6 0 1 0 12 0c0-1.532-1.056-3.94-2-5-1.786 3-2.791 3-4 2z"/></svg>
+          </button>
+          <button class="reaction-btn laugh" title="Haha" aria-label="Haha">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          </button>
+        </div>
+      </div>
     `;
+    // Wire reaction buttons
+    const reactions = messageDiv.querySelector('.message-reactions');
+    reactions.addEventListener('click', (e) => {
+      const btn = e.target.closest('.reaction-btn');
+      if (!btn) return;
+      const type = btn.classList.contains('fire') ? 'fire' : 'laugh';
+      const wasActive = btn.classList.contains('active');
+      reactions.querySelectorAll('.reaction-btn').forEach(b => b.classList.remove('active'));
+      if (!wasActive) {
+        btn.classList.add('active');
+        reactions.classList.add('reacted');
+        saveReaction(text, type);
+        spawnReactionRain(btn, type);
+        // Fade out pill after rain, re-show on hover
+        clearTimeout(reactions._fadeTimer);
+        reactions._fadeTimer = setTimeout(() => {
+          reactions.classList.add('faded');
+        }, 2000);
+      } else {
+        reactions.classList.remove('reacted', 'faded');
+        saveReaction(text, null);
+      }
+    });
   } else {
     const avatarContent = userAvatar.useIcon
       ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
@@ -3098,6 +3798,47 @@ function addMessage(text, sender) {
 
   chatContainer.appendChild(messageDiv);
   chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+async function saveReaction(messageText, reaction) {
+  try {
+    const { jesty_reactions } = await chrome.storage.local.get(['jesty_reactions']);
+    const reactions = jesty_reactions || [];
+    // Find existing reaction for this message
+    const existing = reactions.findIndex(r => r.text === messageText);
+    if (reaction === null) {
+      // Remove reaction
+      if (existing >= 0) reactions.splice(existing, 1);
+    } else if (existing >= 0) {
+      reactions[existing].reaction = reaction;
+      reactions[existing].timestamp = Date.now();
+    } else {
+      reactions.push({ text: messageText, reaction, timestamp: Date.now() });
+    }
+    // Keep last 200 reactions
+    while (reactions.length > 200) reactions.shift();
+    await chrome.storage.local.set({ jesty_reactions: reactions });
+  } catch (e) { /* non-critical */ }
+}
+
+function spawnReactionRain(btn, type) {
+  const svgMarkup = type === 'fire'
+    ? '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 12c2-2.96 0-7-1-8 0 3.038-1.773 4.741-3 6-1.226 1.26-2 3.24-2 5a6 6 0 1 0 12 0c0-1.532-1.056-3.94-2-5-1.786 3-2.791 3-4 2z"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
+  const color = type === 'fire' ? '#F97316' : '#EAB308';
+  const container = btn.closest('.message-content');
+  const count = 8;
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('span');
+    particle.className = 'reaction-particle';
+    particle.style.color = color;
+    particle.innerHTML = svgMarkup;
+    particle.style.left = `${10 + Math.random() * 80}%`;
+    particle.style.animationDelay = `${Math.random() * 0.3}s`;
+    particle.style.animationDuration = `${0.8 + Math.random() * 0.6}s`;
+    container.appendChild(particle);
+    particle.addEventListener('animationend', () => particle.remove());
+  }
 }
 
 function showTypingIndicator() {
@@ -3361,6 +4102,13 @@ const SLOT_ANCHORS = {
   glasses: { x: 32, y: 42 }
 };
 
+// One representative combo per tier — used in plans page, upgrade cards, and design system
+const TIER_COMBOS = {
+  free:    { expression: 'smug', hat: null, glasses: null, color: 'lime' },
+  premium: { expression: 'happy', hat: 'acc-crown', glasses: null, color: 'pink' },
+  pro:     { expression: 'smug', hat: 'acc-flame-crown', glasses: null, color: 'mint' },
+};
+
 const SLOT_VIEWBOXES = {
   'acc-party-hat': '0 0 44 30', 'acc-beanie': '0 0 52 26',
   'acc-sunglasses': '0 0 56 20', 'acc-monocle': '0 0 24 24',
@@ -3548,35 +4296,61 @@ function revealSlotResult(tierKey) {
   result.classList.add('visible');
 }
 
-// One representative combo per tier for the "See all plans" view
-const TIER_COMBOS = {
-  free:    { expression: 'smug', hat: null, glasses: null, color: 'lime' },
-  premium: { expression: 'happy', hat: 'acc-crown', glasses: null, color: 'pink' },
-  pro:     { expression: 'smug', hat: 'acc-flame-crown', glasses: null, color: 'mint' },
-};
 
-function buildTierCharacterSvg(combo) {
+function buildTierComboSvg(combo, width = 52, height = 48) {
   const color = SLOT_COLORS[combo.color];
+  const symbol = document.getElementById(`face-${combo.expression}`);
+  if (!symbol) return '';
+
+  const id = Math.random().toString(36).slice(2, 8);
+  let content = symbol.innerHTML;
+  content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-tier-${id}`);
+  content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-tier-${id})`);
+
   let accsHtml = '';
   if (combo.hat) {
     const a = SLOT_ANCHORS.hat;
-    accsHtml += `<use href="#${combo.hat}" x="${a.x}" y="${a.y}"/>`;
+    const hatSymbol = document.getElementById(combo.hat);
+    if (hatSymbol) accsHtml += `<g transform="translate(${a.x},${a.y})">${hatSymbol.innerHTML}</g>`;
   }
   if (combo.glasses) {
     const a = SLOT_ANCHORS.glasses;
-    accsHtml += `<use href="#${combo.glasses}" x="${a.x}" y="${a.y}"/>`;
+    const glassesSymbol = document.getElementById(combo.glasses);
+    if (glassesSymbol) accsHtml += `<g transform="translate(${a.x},${a.y})">${glassesSymbol.innerHTML}</g>`;
   }
 
-  // We use a CSS filter to tint the character. Since SVG <use> references
-  // shared symbols whose fills we can't change per-instance, we apply
-  // a background circle in the tier color behind the character as a badge.
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '-15 -10 150 140');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  svg.innerHTML = content + accsHtml;
+
+  // Recolor from current color to tier color
+  const replacements = {};
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    replacements[currentColor[key].toUpperCase()] = color[key];
+  }
+  svg.querySelectorAll('*').forEach(el => {
+    for (const attr of ['fill', 'stroke']) {
+      const val = el.getAttribute(attr);
+      if (val && replacements[val.toUpperCase()]) {
+        el.setAttribute(attr, replacements[val.toUpperCase()]);
+      }
+    }
+  });
+
+  return svg.outerHTML;
+}
+
+function buildTierCharacterSvg(combo) {
+  const color = SLOT_COLORS[combo.color];
+  const svgHtml = buildTierComboSvg(combo);
+  if (!svgHtml) return `<div class="tier-card-character"><div class="tier-card-character-bg" style="background:${color.body}"></div></div>`;
+
   return `
     <div class="tier-card-character">
       <div class="tier-card-character-bg" style="background:${color.body}"></div>
-      <svg viewBox="-15 -10 150 140" width="52" height="48">
-        <use href="#face-${combo.expression}"/>
-        ${accsHtml}
-      </svg>
+      ${svgHtml}
     </div>
   `;
 }
@@ -3794,29 +4568,35 @@ async function checkPendingTabCloseXP() {
 async function handleTabCloseXP(xpGain) {
   await chrome.storage.local.remove(['pendingXPGain']);
 
-  // Award XP
-  await awardXP(xpGain.xp);
-
-  // Record action followed for stats
-  await JestyStorage.recordActionFollowed(xpGain.domain);
-
-  // Show casino-style XP banner
+  // XP already awarded in background.js — just show visual feedback
   showXPToast(xpGain.xp);
 
   // Flash happy expression briefly
   if (JestyAnimator) JestyAnimator.setExpression('happy', 3000);
 
-  // Refresh stats
+  // Refresh stats and level badge (XP was updated in storage by background)
   await loadStats();
+  await renderLevelBadge();
 }
+
+let _xpToastTimer = null;
 
 function showXPToast(amount) {
   const win = document.getElementById('xp-win');
   if (!win) return;
 
-  // Set amount
+  // Cancel any pending hide from a previous toast
+  if (_xpToastTimer) clearTimeout(_xpToastTimer);
+
+  // Set amount (reset overrides from level-up toast)
   const amountEl = document.getElementById('xp-win-amount');
-  if (amountEl) amountEl.textContent = `+${amount} XP`;
+  if (amountEl) {
+    amountEl.style.color = '';
+    amountEl.textContent = `+${amount} XP`;
+  }
+
+  const labelEl = win.querySelector('.xp-win-label');
+  if (labelEl) labelEl.style.color = '';
 
   // Apply XP yellow background (matches levels progress bar)
   const content = win.querySelector('.xp-win-content');
@@ -3852,7 +4632,91 @@ function showXPToast(amount) {
   }
 
   // Hide after animation completes
-  setTimeout(() => {
+  _xpToastTimer = setTimeout(() => {
     win.classList.add('hidden');
   }, 2800);
+}
+
+function showLevelUpToast(level, unlock) {
+  // Remove any existing overlay
+  document.querySelector('.level-up-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'level-up-overlay';
+
+  // Glow
+  overlay.innerHTML = `<div class="level-up-glow"></div>`;
+
+  // Label
+  const label = document.createElement('div');
+  label.className = 'level-up-label';
+  label.textContent = 'Level Up';
+  overlay.appendChild(label);
+
+  // Big number
+  const num = document.createElement('div');
+  num.className = 'level-up-number';
+  num.textContent = level;
+  num.dataset.num = level;
+  overlay.appendChild(num);
+
+  // Unlock text
+  if (unlock) {
+    const unlockEl = document.createElement('div');
+    unlockEl.className = 'level-up-unlock';
+    unlockEl.innerHTML = `<span>${unlock.split(' · ')[0]}</span> unlocked`;
+    overlay.appendChild(unlockEl);
+  }
+
+  // Particle container
+  const particles = document.createElement('div');
+  particles.className = 'level-up-particles';
+  overlay.appendChild(particles);
+
+  document.body.appendChild(overlay);
+
+  // Trigger fade in
+  requestAnimationFrame(() => overlay.classList.add('visible'));
+
+  // Spawn spark bursts
+  const sparkColors = ['#EAB308', '#FDE047', '#FFFFFF', '#CA8A04', '#A78BFA', '#F59E0B'];
+  function spawnBurst(delay) {
+    setTimeout(() => {
+      for (let i = 0; i < 24; i++) {
+        const spark = document.createElement('div');
+        const isStreak = Math.random() > 0.5;
+        spark.className = isStreak ? 'level-up-streak' : 'level-up-spark';
+        spark.style.background = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+        spark.style.left = '50%';
+        spark.style.top = '45%';
+
+        const angle = (Math.PI * 2 * i / 24) + (Math.random() - 0.5) * 0.5;
+        const dist = 80 + Math.random() * 160;
+        spark.style.setProperty('--sx', `${Math.cos(angle) * dist}px`);
+        spark.style.setProperty('--sy', `${Math.sin(angle) * dist}px`);
+        spark.style.animationDelay = `${Math.random() * 0.2}s`;
+
+        if (isStreak) {
+          spark.style.height = `${10 + Math.random() * 16}px`;
+          spark.style.transform = `rotate(${angle}rad)`;
+        } else {
+          const size = 3 + Math.random() * 5;
+          spark.style.width = `${size}px`;
+          spark.style.height = `${size}px`;
+        }
+
+        particles.appendChild(spark);
+      }
+    }, delay);
+  }
+
+  spawnBurst(200);
+  spawnBurst(600);
+  spawnBurst(1200);
+
+  // Fade out and remove
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    setTimeout(() => overlay.remove(), 500);
+  }, 4000);
 }

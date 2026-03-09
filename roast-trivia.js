@@ -391,6 +391,12 @@ const JestyRoastTrivia = (() => {
     `;
 
     document.getElementById('trivia-start-btn').addEventListener('click', startGame);
+
+    // Upgrade card for free users
+    if (typeof renderGameUpgradeCard === 'function') {
+      const startDiv = container.querySelector('.quiz-start');
+      if (startDiv) renderGameUpgradeCard(startDiv);
+    }
   }
 
   async function startGame() {
@@ -548,7 +554,10 @@ const JestyRoastTrivia = (() => {
     progress.lastPlayed = new Date().toISOString();
     await saveProgress();
 
-    if (typeof awardXP === 'function') await awardXP(xp);
+    if (typeof awardXP === 'function') {
+      await awardXP(xp);
+      if (typeof showXPToast === 'function') showXPToast(xp);
+    }
 
     const cat = state.score === total ? 'perfect' : state.score >= 5 ? 'good' : state.score >= 3 ? 'okay' : 'bad';
     const roast = randomFrom(RESULT_ROASTS[cat]);

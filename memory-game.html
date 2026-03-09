@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jesty Memory Match</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --jesty-bg: #FAF8F5;
+      --jesty-bg-secondary: #F5F0EB;
+      --jesty-bg-tertiary: #EFEBE6;
+      --jesty-text: #1C1917;
+      --jesty-text-secondary: #6B6560;
+      --jesty-text-muted: #9C968F;
+      --jesty-border: #DDD9D5;
+      --jesty-border-hover: #CCC7C2;
+      --jesty-btn-bg: #1C1917;
+      --jesty-btn-bg-hover: #292524;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--jesty-bg);
+      color: var(--jesty-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+    }
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 720px;
+      padding: 24px 24px 0;
+    }
+    .game-header-left { display: flex; align-items: center; gap: 12px; }
+    .game-jesty-icon { width: 36px; height: 34px; }
+    .game-jesty-icon svg { width: 100%; height: 100%; }
+    .game-title { font-size: 18px; font-weight: 700; }
+    .game-restart-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid var(--jesty-border); background: transparent;
+      color: var(--jesty-text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .game-restart-btn:hover { color: var(--jesty-text); border-color: var(--jesty-border-hover); }
+    .game-header-right { display: flex; align-items: center; gap: 8px; }
+    .tab-stats-bar {
+      display: flex; align-items: center; justify-content: center;
+      gap: 24px; padding: 16px 0; max-width: 720px; width: 100%;
+    }
+    .tab-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .tab-stat-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .tab-stat-label { font-size: 11px; color: var(--jesty-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .tab-grid-wrapper {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 16px 24px 24px; width: 100%; max-width: 720px;
+      min-height: 0; overflow: hidden;
+    }
+    .tab-grid {
+      display: grid; grid-template-columns: repeat(var(--mem-cols, 4), 1fr);
+      gap: 10px; width: 100%; max-height: 100%;
+    }
+    .tab-card { aspect-ratio: 1; perspective: 600px; cursor: pointer; min-height: 0; }
+    .tab-card-inner {
+      width: 100%; height: 100%; position: relative;
+      transform-style: preserve-3d; transition: transform 0.4s ease;
+    }
+    .tab-card.flipped .tab-card-inner,
+    .tab-card.matched .tab-card-inner { transform: rotateY(180deg); }
+    .tab-card-back, .tab-card-front {
+      position: absolute; inset: 0; backface-visibility: hidden;
+      border-radius: 14px; display: flex; align-items: center;
+      justify-content: center; overflow: hidden;
+    }
+    .tab-card-back { background: var(--jesty-bg-tertiary); border: 2px solid var(--jesty-border); }
+    .tab-card-q { font-size: 28px; font-weight: 700; color: var(--jesty-border-hover); }
+    .tab-card-front {
+      background: var(--jesty-bg-secondary); border: 2px solid var(--jesty-border);
+      transform: rotateY(180deg); padding: 8px;
+    }
+    .tab-card.matched { pointer-events: none; }
+    .tab-card.matched .tab-card-front { border-color: #34D399; background: rgba(52,211,153,0.08); }
+    .tab-complete {
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px; padding: 48px 24px;
+      flex: 1; text-align: center; animation: fadeInUp 0.4s ease-out;
+    }
+    .tab-complete.visible { display: flex; }
+    .tab-complete-character svg { width: 100px; height: 93px; }
+    .tab-complete-title { font-size: 28px; font-weight: 700; }
+    .tab-complete-roast { font-size: 15px; color: var(--jesty-text-secondary); max-width: 400px; line-height: 1.5; }
+    .tab-stars { display: flex; gap: 8px; }
+    .tab-star { font-size: 32px; color: var(--jesty-border); animation: starPop 0.3s ease-out backwards; }
+    .tab-star.earned { color: #EAB308; }
+    @keyframes starPop { 0%{transform:scale(0);opacity:0} 50%{transform:scale(1.3)} 100%{transform:scale(1);opacity:1} }
+    .tab-complete-stats { display: flex; gap: 24px; margin-top: 8px; }
+    .tab-complete-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .tab-complete-stat-val { font-size: 20px; font-weight: 700; }
+    .tab-complete-stat-lbl { font-size: 12px; color: var(--jesty-text-muted); }
+    .tab-complete-actions { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+    .tab-btn-next {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+      color: #fff; background: var(--jesty-btn-bg); border: none;
+      border-radius: 20px; padding: 8px 20px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn-next:hover { background: var(--jesty-btn-bg-hover); transform: scale(1.03); }
+    .tab-btn-replay {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      color: var(--jesty-text-muted); background: none; border: none;
+      cursor: pointer; padding: 4px 8px;
+    }
+    .tab-btn-replay:hover { color: var(--jesty-text-secondary); text-decoration: underline; }
+    .hidden { display: none !important; }
+    @keyframes fadeInUp { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+  <div class="game-header">
+    <div class="game-header-left">
+      <div class="game-jesty-icon" id="jesty-icon"></div>
+      <span class="game-title" id="game-title">Memory Match</span>
+    </div>
+    <div class="game-header-right">
+      <button class="game-restart-btn" id="restart-btn" title="Restart level">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button class="game-restart-btn" id="close-btn" title="Close game">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="tab-stats-bar" id="stats-bar">
+    <div class="tab-stat"><span class="tab-stat-value" id="stat-moves">0</span><span class="tab-stat-label">Moves</span></div>
+    <div class="tab-stat"><span class="tab-stat-value" id="stat-timer">0:00</span><span class="tab-stat-label">Time</span></div>
+    <div class="tab-stat"><span class="tab-stat-value" id="stat-pairs">0/0</span><span class="tab-stat-label">Pairs</span></div>
+  </div>
+
+  <div class="tab-grid-wrapper" id="grid-wrapper">
+    <div class="tab-grid" id="game-grid"></div>
+  </div>
+
+  <div class="tab-complete" id="complete-screen">
+    <div class="tab-complete-character" id="complete-character"></div>
+    <p class="tab-complete-title" id="complete-title">Nice!</p>
+    <div class="tab-stars" id="complete-stars"></div>
+    <p class="tab-complete-roast" id="complete-roast"></p>
+    <div class="tab-complete-stats" id="complete-stats"></div>
+    <div class="tab-complete-actions">
+      <button class="tab-btn-replay" id="btn-replay">Replay</button>
+      <button class="tab-btn-next hidden" id="btn-next">Next Level</button>
+    </div>
+  </div>
+
+  <script src="characters.js"></script>
+  <script src="theme.js"></script>
+  <script src="memory-game-tab.js"></script>
+</body>
+</html>

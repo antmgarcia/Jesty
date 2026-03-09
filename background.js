@@ -15,24 +15,21 @@ chrome.runtime.onInstalled.addListener((details) => {
 // Listen for tab removals
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   try {
-    const { roastedDomains, openTabs } = await chrome.storage.local.get(['roastedDomains', 'openTabs']);
-
-    if (!openTabs || !roastedDomains || roastedDomains.length === 0) return;
+    const { openTabs } = await chrome.storage.local.get(['openTabs']);
+    if (!openTabs) return;
 
     const closedTab = openTabs[tabId];
-    if (!closedTab) return;
 
-    // Check if this domain was recently roasted
-    const now = Date.now();
-    const match = roastedDomains.find(rd => rd.domain === closedTab.domain && now < rd.expiresAt);
-
-    if (match) {
-      await createPendingXPGain(closedTab, match);
+    // Award XP for any real tab closed (skip chrome:// and extension pages)
+    if (closedTab && closedTab.domain && !closedTab.domain.startsWith('chrome')) {
+      await createPendingXPGain(closedTab);
     }
 
     // Remove from open tabs cache
-    delete openTabs[tabId];
-    await chrome.storage.local.set({ openTabs });
+    if (closedTab) {
+      delete openTabs[tabId];
+      await chrome.storage.local.set({ openTabs });
+    }
 
   } catch (e) {
     console.error('Jesty: Error processing tab removal:', e);
@@ -119,11 +116,24 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 /**
- * Award XP for closing a roasted tab
+ * Award XP for closing any tab.
+ * Points scale with how long the tab was open:
+ *   < 1 min:  2-4 XP   (quick close)
+ *   1-10 min: 3-7 XP   (normal browsing)
+ *   10-60 min: 5-10 XP (cleaning up)
+ *   1hr+:     8-15 XP  (hoarded tab)
  */
-async function createPendingXPGain(closedTab, match) {
-  // Random XP between 5-15
-  const xp = 5 + Math.floor(Math.random() * 11);
+async function createPendingXPGain(closedTab) {
+  const ageMs = Date.now() - (closedTab.firstSeen || Date.now());
+  const ageMin = ageMs / 60000;
+
+  let min, max;
+  if (ageMin < 1)       { min = 2;  max = 4; }
+  else if (ageMin < 10) { min = 3;  max = 7; }
+  else if (ageMin < 60) { min = 5;  max = 10; }
+  else                  { min = 8;  max = 15; }
+
+  const xp = min + Math.floor(Math.random() * (max - min + 1));
 
   const xpGain = {
     xp,
@@ -131,7 +141,45 @@ async function createPendingXPGain(closedTab, match) {
     timestamp: Date.now()
   };
 
-  // Store XP gain (sidepanel/newtab will pick this up via storage listener)
+  // Award XP directly in background (single source of truth)
+  const LEVEL_THRESHOLDS = [
+    100, 250, 500, 800, 1200, 1700, 2300, 3000, 4000, 5000,
+    6500, 8000, 10000, 12500, 15000, 18000, 21000, 25000, 30000, 35000
+  ];
+  try {
+    const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+    if (jesty_data) {
+      if (!jesty_data.progression) {
+        jesty_data.progression = { level: 1, xp: 0, xp_to_next: 100, total_xp: 0 };
+      }
+      const prog = jesty_data.progression;
+      const levelBefore = prog.level;
+      prog.xp += xp;
+      prog.total_xp = (prog.total_xp || 0) + xp;
+
+      // Level up check
+      while (prog.xp >= prog.xp_to_next) {
+        prog.xp -= prog.xp_to_next;
+        prog.level++;
+        prog.xp_to_next = LEVEL_THRESHOLDS[Math.min(prog.level - 1, LEVEL_THRESHOLDS.length - 1)];
+      }
+
+      // Signal level-up for toast display
+      if (prog.level > levelBefore) {
+        xpGain.levelUp = prog.level;
+      }
+
+      // Record action followed
+      if (!jesty_data.milestones.actions_followed) jesty_data.milestones.actions_followed = 0;
+      jesty_data.milestones.actions_followed++;
+
+      await chrome.storage.local.set({ jesty_data });
+    }
+  } catch (e) {
+    console.error('Jesty: Error awarding XP in background:', e);
+  }
+
+  // Signal for toast display (newtab/sidepanel will show the visual)
   await chrome.storage.local.set({ pendingXPGain: xpGain });
 }
 
@@ -311,6 +359,87 @@ async function trackFocusTabSwitch(tabId) {
   }
 }
 
+// Focus Island: notify all tabs when session starts or ends
+chrome.storage.onChanged.addListener(async (changes) => {
+  if (!changes.focusSession) return;
+  const session = changes.focusSession.newValue;
+  const prev = changes.focusSession.oldValue;
+
+  if (session && session.active && !(prev && prev.active)) {
+    // Focus just started — message all tabs + inject as fallback
+    sendFocusMessageToAllTabs('focus-island-show');
+    injectFocusIslandIntoAllTabs();
+  } else if ((!session || !session.active) && prev && prev.active) {
+    // Focus just ended — message all tabs to remove
+    sendFocusMessageToAllTabs('focus-island-hide');
+  }
+});
+
+// Focus Island: inject into new/reloaded tabs while session is active
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete') return;
+  // Only inject into http/https pages
+  if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) return;
+  try {
+    const { focusSession } = await chrome.storage.local.get(['focusSession']);
+    if (!focusSession || !focusSession.active) return;
+    chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['focus-content.js']
+    }).catch(() => {});
+  } catch (e) { /* best-effort */ }
+});
+
+// Focus Island: inject into newly created tabs
+chrome.tabs.onCreated.addListener(async (tab) => {
+  try {
+    const { focusSession } = await chrome.storage.local.get(['focusSession']);
+    if (!focusSession || !focusSession.active) return;
+    // Wait briefly for the tab to have a URL and load
+    setTimeout(() => {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['focus-content.js']
+      }).catch(() => {});
+    }, 1000);
+  } catch (e) { /* best-effort */ }
+});
+
+// Focus Island: inject when switching to a tab (catches discarded/sleeping tabs)
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const { focusSession } = await chrome.storage.local.get(['focusSession']);
+    if (!focusSession || !focusSession.active) return;
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) return;
+    chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['focus-content.js']
+    }).catch(() => {});
+  } catch (e) { /* best-effort */ }
+});
+
+async function sendFocusMessageToAllTabs(type) {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+    for (const tab of tabs) {
+      chrome.tabs.sendMessage(tab.id, { type }).catch(() => {});
+    }
+  } catch (e) { /* best-effort */ }
+}
+
+async function injectFocusIslandIntoAllTabs() {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+    for (const tab of tabs) {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['focus-content.js']
+      }).catch(() => {});
+    }
+  } catch (e) { /* best-effort */ }
+}
+
 // Daily report alarm — runs every hour, checks if 9PM
 chrome.alarms.create('dailyReportCheck', { periodInMinutes: 60 });
 
@@ -438,3 +567,65 @@ initializeOpenTabs();
 // Open side panel when toolbar icon is clicked (replacing popup)
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   .catch(e => console.error('Jesty: setPanelBehavior error:', e));
+
+// Track sidepanel open state and broadcast via storage for island
+let sidePanelOpen = false;
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'sidepanel') {
+    sidePanelOpen = true;
+    chrome.storage.local.set({ _sidePanelOpen: true });
+    port.onDisconnect.addListener(() => {
+      sidePanelOpen = false;
+      chrome.storage.local.set({ _sidePanelOpen: false });
+    });
+  }
+});
+
+function getActiveTabId(sender) {
+  return new Promise((resolve) => {
+    if (sender.tab?.id) return resolve(sender.tab.id);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      resolve(tabs[0]?.id || null);
+    });
+  });
+}
+
+// Handle messages from sidepanel/newtab/island
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'get-sidepanel-state') {
+    sendResponse({ open: sidePanelOpen });
+    return;
+  }
+  if (msg.type === 'open-tab' && msg.url) {
+    chrome.tabs.create({ url: msg.url });
+    sendResponse({ ok: true });
+  }
+  if (msg.type === 'open-sidepanel') {
+    // Use tabId from message (island passes it) or sender, call open() synchronously to preserve user gesture
+    const openTabId = msg.tabId || sender.tab?.id;
+    if (openTabId) {
+      chrome.sidePanel.open({ tabId: openTabId }).catch(e => console.error('open-sidepanel:', e));
+    } else {
+      chrome.windows.getCurrent().then(win =>
+        chrome.sidePanel.open({ windowId: win.id })
+      ).catch(e => console.error('open-sidepanel:', e));
+    }
+    sendResponse({ ok: true });
+  }
+  if (msg.type === 'toggle-sidepanel') {
+    const tid = msg.tabId || sender.tab?.id;
+    console.log('[Jesty] toggle-sidepanel:', { sidePanelOpen, tabId: tid });
+    if (sidePanelOpen) {
+      chrome.windows.getCurrent().then(win =>
+        chrome.sidePanel.close({ windowId: win.id })
+      ).catch(e => console.error('[Jesty] close failed:', e));
+    } else if (tid) {
+      chrome.sidePanel.open({ tabId: tid })
+        .then(() => console.log('[Jesty] open succeeded'))
+        .catch(e => console.error('[Jesty] open failed:', e));
+    } else {
+      console.error('[Jesty] No tabId for open');
+    }
+    return true;
+  }
+});

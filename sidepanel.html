@@ -83,6 +83,21 @@
       </div>
 
 
+      <!-- FOCUS OVERLAY (covers main-screen when focus is active) -->
+      <div class="focus-overlay hidden" id="focus-overlay">
+        <div class="focus-overlay-center">
+          <div class="focus-overlay-timer" id="focus-overlay-timer">0:00</div>
+          <div class="focus-overlay-character">
+            <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-smug" id="focus-overlay-face"/></svg>
+          </div>
+          <p class="focus-overlay-msg" id="focus-overlay-msg">Stay focused. I'm watching.</p>
+          <button class="focus-overlay-end" id="focus-overlay-end">End focus</button>
+        </div>
+        <div class="focus-overlay-notes">
+          <div class="focus-notes-list" id="focus-notes-list"></div>
+        </div>
+      </div>
+
       <!-- MAIN SCREEN -->
       <div class="main-screen" id="main-screen">
         <!-- Character Stage -->
@@ -154,7 +169,7 @@
 
         <!-- Fun Zone (premium) -->
         <div class="funzone-section hidden" id="funzone-section">
-          <div class="accessories-label">Fun Zone</div>
+          <div class="funzone-header"><span class="accessories-label">Fun Zone</span><span class="funzone-xp-chip">Play to level up</span></div>
           <div class="funzone-grid">
             <button class="funzone-card" id="memory-game-card">
               <div class="funzone-card-icon">
@@ -202,7 +217,6 @@
         <div class="plans-section" id="plans-section">
           <div class="plans-section-current" id="plans-section-current"></div>
           <div class="plans-section-cards" id="plans-section-cards"></div>
-          <button class="plans-section-link" id="plans-section-link">See all plans</button>
         </div>
       </div>
 
@@ -268,6 +282,7 @@
             <div class="game-start-hero" id="memory-start-hero">
               <svg viewBox="-15 -10 150 140" width="100" height="93"><use href="#face-smug"/></svg>
             </div>
+            <p class="game-start-desc">Match the faces. Sounds easy? The colors and accessories will make you question everything.</p>
             <span class="game-start-xp">Earn 15–120 XP per level</span>
           </div>
           <div class="memory-levels-grid" id="memory-levels-grid"></div>
@@ -281,6 +296,10 @@
             <div class="memory-stat"><span class="memory-stat-value" id="memory-pairs-found">0/0</span><span class="memory-stat-label">pairs</span></div>
           </div>
           <div class="memory-grid" id="memory-grid"></div>
+          <button class="memory-expand-btn" id="memory-expand-btn" title="Play in full tab">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            <span>Play in tab</span>
+          </button>
         </div>
 
         <!-- Level Complete -->
@@ -295,6 +314,9 @@
             <button class="memory-replay-btn" id="memory-replay-btn">Replay</button>
           </div>
         </div>
+
+        <!-- Upgrade card footer (injected by JS for free users) -->
+        <div class="game-upgrade-footer" id="memory-upgrade-footer"></div>
       </div>
     </div>
 
@@ -352,6 +374,33 @@
           </button>
         </div>
         <div class="acc-drawer-sections" id="acc-drawer-sections"></div>
+      </div>
+    </div>
+
+    <!-- Accessory Gallery Detail -->
+    <div class="acc-gallery hidden" id="acc-gallery">
+      <div class="acc-gallery-backdrop" id="acc-gallery-backdrop"></div>
+      <div class="acc-gallery-sheet">
+        <div class="acc-gallery-header">
+          <span class="acc-gallery-title">Accessories</span>
+          <button class="acc-gallery-close" id="acc-gallery-close">&times;</button>
+        </div>
+        <div class="acc-gallery-body">
+          <button class="acc-gallery-arrow acc-gallery-prev" id="acc-gallery-prev">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="acc-gallery-center">
+            <div class="acc-gallery-preview" id="acc-gallery-preview"></div>
+            <h2 class="acc-gallery-name" id="acc-gallery-name"></h2>
+            <p class="acc-gallery-meta" id="acc-gallery-meta"></p>
+            <button class="acc-gallery-action" id="acc-gallery-action"></button>
+          </div>
+          <button class="acc-gallery-arrow acc-gallery-next" id="acc-gallery-next">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="acc-gallery-counter" id="acc-gallery-counter"></div>
+        <div class="acc-gallery-footer" id="acc-gallery-footer"></div>
       </div>
     </div>
 

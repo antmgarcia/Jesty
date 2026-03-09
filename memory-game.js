@@ -43,10 +43,10 @@ const JestyMemoryGame = (() => {
   // ── Level Definitions ──
 
   const LEVELS = [
-    { rows: 2, cols: 2, pairs: 2,  useColor: false, useAccessory: false, par: 8,  peek: 1500 },
-    { rows: 2, cols: 3, pairs: 3,  useColor: false, useAccessory: false, par: 12, peek: 1500 },
-    { rows: 3, cols: 4, pairs: 6,  useColor: true,  useAccessory: false, par: 24, peek: 1500 },
-    { rows: 4, cols: 4, pairs: 8,  useColor: true,  useAccessory: false, par: 32, peek: 2500 },
+    { rows: 2, cols: 2, pairs: 2,  useColor: false, useAccessory: true,  par: 8,  peek: 1500 },
+    { rows: 2, cols: 3, pairs: 3,  useColor: false, useAccessory: true,  par: 12, peek: 1500 },
+    { rows: 3, cols: 4, pairs: 6,  useColor: true,  useAccessory: true,  par: 24, peek: 1500 },
+    { rows: 4, cols: 4, pairs: 8,  useColor: true,  useAccessory: true,  par: 32, peek: 2500 },
     { rows: 4, cols: 5, pairs: 10, useColor: true,  useAccessory: true,  par: 40, peek: 2500 },
     { rows: 4, cols: 5, pairs: 10, useColor: true,  useAccessory: true,  par: 40, peek: 2500 },
     { rows: 5, cols: 6, pairs: 15, useColor: true,  useAccessory: true,  par: 60, peek: 2500 },
@@ -142,14 +142,29 @@ const JestyMemoryGame = (() => {
 
   // ── Show / Hide Overlay ──
 
-  function show() {
+  async function show() {
     // Re-sync source color in case user changed it
     if (typeof currentColor !== 'undefined') {
       sourceColor = { ...currentColor };
     }
+    // Re-load progress from storage (may have been updated by tab game)
+    await loadProgress();
+
     const overlay = document.getElementById('memory-overlay');
     if (overlay) {
       overlay.classList.remove('hidden');
+
+      // Check if game is already open in a tab
+      try {
+        const { memoryGameTab } = await chrome.storage.local.get(['memoryGameTab']);
+        if (memoryGameTab && memoryGameTab.active) {
+          if (typeof showMemoryGameInTabState === 'function') {
+            showMemoryGameInTabState();
+            return;
+          }
+        }
+      } catch (e) {}
+
       showLevelSelect();
     }
   }
@@ -179,17 +194,21 @@ const JestyMemoryGame = (() => {
     for (let i = 0; i < LEVELS.length; i++) {
       const lvl = i + 1;
       const isPremiumLocked = lvl >= 6 && !isPremium;
-      const isUnlocked = lvl <= progress.highestLevel && !isPremiumLocked;
+      const isProgressLocked = lvl > progress.highestLevel && !isPremiumLocked;
+      const isUnlocked = !isPremiumLocked && !isProgressLocked;
       const levelData = progress.levels[lvl];
 
       const btn = document.createElement('button');
       btn.className = 'memory-level-btn';
-      if (!isUnlocked) btn.classList.add('locked');
-      if (isPremiumLocked) btn.classList.add('premium-locked');
-      if (levelData && !isPremiumLocked) btn.classList.add('completed');
+      if (isPremiumLocked) {
+        btn.classList.add('premium-locked');
+      } else if (isProgressLocked) {
+        btn.classList.add('progress-locked');
+      }
+      if (levelData && isUnlocked) btn.classList.add('completed');
 
       let starsHtml = '';
-      if (levelData && levelData.stars && !isPremiumLocked) {
+      if (levelData && levelData.stars && isUnlocked) {
         starsHtml = '<div class="memory-level-stars">';
         for (let s = 0; s < 3; s++) {
           starsHtml += `<span class="memory-star ${s < levelData.stars ? 'earned' : ''}">${s < levelData.stars ? '★' : '☆'}</span>`;
@@ -197,42 +216,47 @@ const JestyMemoryGame = (() => {
         starsHtml += '</div>';
       }
 
+      let lockIcon = '';
+      if (isPremiumLocked) {
+        lockIcon = '<svg class="memory-lock-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+      }
+
       btn.innerHTML = `
         <span class="memory-level-number">${lvl}</span>
         ${starsHtml}
-        ${!isUnlocked ? '<svg class="memory-lock-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : ''}
+        ${lockIcon}
       `;
 
       if (isUnlocked) {
         btn.addEventListener('click', () => startLevel(i));
+      } else if (isPremiumLocked) {
+        btn.addEventListener('click', () => {
+          if (typeof bounceGameUpgradeCard === 'function') bounceGameUpgradeCard();
+        });
       }
       grid.appendChild(btn);
     }
 
-    // Paywall banner for free users
-    const existingPaywall = document.querySelector('.memory-paywall');
-    if (existingPaywall) existingPaywall.remove();
-
-    if (!isPremium) {
-      const paywall = document.createElement('div');
-      paywall.className = 'memory-paywall';
-      paywall.innerHTML = `
-        <p class="memory-paywall-text">Plead Guilty to unlock the harder difficulties</p>
-        <button class="memory-paywall-btn">See plans</button>
-      `;
-      paywall.querySelector('.memory-paywall-btn').addEventListener('click', () => {
-        if (typeof showTierOverlayPlans === 'function') showTierOverlayPlans();
-      });
-      grid.parentNode.appendChild(paywall);
+    // Upgrade card in footer for free users
+    const footer = document.getElementById('memory-upgrade-footer');
+    if (footer) {
+      footer.innerHTML = '';
+      if (!isPremium && typeof renderGameUpgradeCard === 'function') {
+        await renderGameUpgradeCard(footer);
+      }
     }
 
     // Set character expression
     setGameCharacter('smug');
+
+    // Auto-shake upgrade card periodically
+    if (!isPremium && typeof startUpgradeShakeLoop === 'function') startUpgradeShakeLoop();
   }
 
   // ── Start Level ──
 
   function startLevel(levelIndex) {
+    if (typeof stopUpgradeShakeLoop === 'function') stopUpgradeShakeLoop();
     const level = LEVELS[levelIndex];
     state = {
       screen: 'playing',
@@ -254,6 +278,7 @@ const JestyMemoryGame = (() => {
     showScreen('memory-game-board');
     renderBoard(levelIndex);
     updateStats();
+    wireExpandBtn(levelIndex);
 
     setGameCharacter('thinking');
 
@@ -283,7 +308,7 @@ const JestyMemoryGame = (() => {
         const colorKey = level.useColor
           ? COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)]
           : COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)]; // still random but single color per game for early levels
-        const acc = level.useAccessory && Math.random() > 0.5
+        const acc = level.useAccessory && Math.random() > 0.1
           ? ACCESSORIES[Math.floor(Math.random() * ACCESSORIES.length)]
           : null;
         combo = `${expr}|${colorKey}|${acc ? acc.id : 'none'}`;
@@ -451,7 +476,7 @@ const JestyMemoryGame = (() => {
       }
 
       if (state.matchedPairs === state.totalPairs) {
-        handleLevelComplete();
+        setTimeout(() => handleLevelComplete(), 1200);
       }
     }, 300);
   }
@@ -507,6 +532,7 @@ const JestyMemoryGame = (() => {
     // Award XP
     if (typeof awardXP === 'function') {
       await awardXP(xp);
+      if (typeof showXPToast === 'function') showXPToast(xp);
     }
 
     // Pick roast
@@ -634,7 +660,99 @@ const JestyMemoryGame = (() => {
     }
   }
 
+  // ── Play in Tab ──
+
+  function wireExpandBtn(levelIndex) {
+    const btn = document.getElementById('memory-expand-btn');
+    if (!btn) return;
+    // Remove old listener by replacing node
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      stopTimer();
+
+      // Collect matched card indices
+      const matchedIndices = [];
+      document.querySelectorAll('#memory-grid .memory-card').forEach((el, i) => {
+        if (el.classList.contains('matched')) matchedIndices.push(i);
+      });
+
+      // Save full game state for the tab to resume
+      await chrome.storage.local.set({
+        memoryGameTransfer: {
+          currentLevel: state.currentLevel,
+          cards: state.cards,
+          moves: state.moves,
+          mistakes: state.mistakes,
+          streak: state.streak,
+          matchedPairs: state.matchedPairs,
+          totalPairs: state.totalPairs,
+          startTime: state.startTime,
+          matchedIndices,
+          timestamp: Date.now()
+        }
+      });
+
+      // Open tab via background script (most reliable from sidepanel)
+      const url = chrome.runtime.getURL('memory-game.html?resume=true');
+      chrome.runtime.sendMessage({ type: 'open-tab', url });
+
+      if (typeof showMemoryGameInTabState === 'function') {
+        showMemoryGameInTabState();
+      }
+    });
+  }
+
+  // ── Resume from Tab Transfer ──
+
+  function resumeFromTransfer(transfer) {
+    if (typeof currentColor !== 'undefined') {
+      sourceColor = { ...currentColor };
+    }
+
+    const overlay = document.getElementById('memory-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+
+    const level = LEVELS[transfer.currentLevel];
+    state = {
+      screen: 'playing',
+      currentLevel: transfer.currentLevel,
+      cards: transfer.cards,
+      flippedIndices: [],
+      matchedPairs: transfer.matchedPairs,
+      totalPairs: transfer.totalPairs,
+      moves: transfer.moves,
+      mistakes: transfer.mistakes,
+      streak: transfer.streak,
+      startTime: transfer.startTime,
+      timerInterval: null,
+      isLocked: false,
+    };
+
+    setTitle(`Level ${transfer.currentLevel + 1}`);
+    showBackBtn(true);
+    showScreen('memory-game-board');
+    renderBoard(transfer.currentLevel);
+    updateStats();
+    wireExpandBtn(transfer.currentLevel);
+
+    // Mark matched cards
+    const cardEls = document.querySelectorAll('#memory-grid .memory-card');
+    transfer.matchedIndices.forEach(i => {
+      if (cardEls[i]) cardEls[i].classList.add('flipped', 'matched');
+    });
+
+    // Resume timer
+    if (state.startTime) {
+      state.timerInterval = setInterval(updateTimer, 1000);
+      updateTimer();
+    }
+
+    setGameCharacter('smug');
+  }
+
   // ── Public API ──
 
-  return { init, show, hide };
+  return { init, show, hide, resumeFromTransfer };
 })();

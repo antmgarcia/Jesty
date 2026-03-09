@@ -97,7 +97,12 @@ Open side panel
     ├── Stat pills → Tier overlay (all clickable)
     └── Accessories grid → Equip/unequip cosmetics
   → Premium features (if Guilty/Sentenced):
-    ├── Focus Time → Distraction blocker with island UI + XP reward
+    ├── Focus Time → Distraction blocker with floating island iframe
+    │   ├── Island: face circle + timer badge, hover reveals eye/pencil/end-focus
+    │   ├── Eye button: toggle sidepanel open/close (via windowId)
+    │   ├── Pencil button: open sidepanel in focus-note mode, highlight input
+    │   ├── End focus: smooth "End focus" → fade → "Done!" → wait → end session
+    │   └── Same iframe (`focus-island.html`) on all tabs including new tab
     ├── Task Card → User tasks with structured notes (checklist)
     │   ├── Empty state with add button when no tasks
     │   ├── Task detail drawer: title, checklist notes, Done/Delete
@@ -145,10 +150,11 @@ Always running:
 | `calendar.js` | Google Calendar OAuth, event fetching (Pro) | chrome.identity |
 | `theme.js` | Light/dark theme system | chrome.storage (jestyThemePreference) |
 | `focus-time.js` | Focus timer management, session tracking | storage |
-| `focus-island.js` | Focus mode island animation/UI | focus-island.css |
-| `focus-island.html` | Focus mode island markup | — |
-| `focus-island.css` | Focus mode island styles | — |
-| `focus-content.js` | Content script: blocks distractions during focus | chrome.storage (focusSession) |
+| `focus-island.js` | Focus mode island: face, timer, hover actions (eye/pencil), end session | characters, theme, chrome.storage |
+| `focus-island.html` | Focus mode island markup (shared iframe on all tabs including new tab) | focus-island.css |
+| `focus-island.css` | Focus mode island styles (JS-driven `.hovered` class, not CSS `:hover`) | — |
+| `focus-content.js` | Content script: injects island iframe on web pages during focus | chrome.storage (focusSession) |
+| `memory-game-tab.js` | Memory Match browser tab game logic (extracted for MV3 CSP) | characters |
 | `memory-game.js` | Memory Match game (pair-matching with faces) | characters, storage (jestyFunZone) |
 | `tab-quiz.js` | Tab Quiz game (test knowledge of open tabs) | storage (jestyFunZone) |
 | `roast-trivia.js` | Roast Trivia game (remember past roasts) | storage (jestyFunZone) |
@@ -257,7 +263,9 @@ All data in `chrome.storage.local` under `jesty_data`:
 | `focusSession` | Object | Active focus time session state |
 | `sessionStartTime` | Milliseconds | Service worker start time |
 | `loadRoastIntoChat` | `{text, roastId, timestamp}` | Signal: newtab → sidepanel |
-| `sidePanelOpenMode` | `"chat" \| "accessories" \| "levels"` | Signal: open sidepanel to specific view |
+| `sidePanelOpenMode` | `"chat" \| "accessories" \| "levels" \| "focus-note"` | Signal: open sidepanel to specific view |
+| `sidePanelOpenAt` | Milliseconds | Timestamp of sidepanel open request |
+| `focusNoteRequest` | Milliseconds | Signal: island pencil → sidepanel focus note input |
 | `jestyFunZone` | `{memoryGame: {...}}` | Games progression data |
 | `lastBriefingDate` | `"YYYY-MM-DD"` | Last daily report date (Pro) |
 

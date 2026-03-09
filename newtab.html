@@ -75,7 +75,7 @@
     <!-- Hero Jesty Section -->
     <div class="hero-section">
       <div class="hero-character" id="character">
-        <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-thinking"/></svg>
+        <svg viewBox="0 -10 120 140" width="120" height="112"><use href="#face-thinking"/></svg>
       </div>
 
       <div class="hero-content" id="jesty-card">
@@ -83,7 +83,15 @@
         <p id="hero-cta" class="hero-cta hidden">Plead Guilty for unlimited roasts</p>
         <p id="loading-text" class="hero-loading">Reading your tabs...</p>
 
-        <!-- Welcome prompt placeholder (actual UI is in #onboarding-page) -->
+        <div id="welcome-prompt" class="welcome-prompt hidden">
+          <p class="welcome-heading">What should I call you?</p>
+          <div class="welcome-row">
+            <input type="text" id="welcome-name" class="welcome-name-input" placeholder="Your name" autocomplete="off" maxlength="20" autofocus>
+            <button id="welcome-submit" class="welcome-submit">Go</button>
+          </div>
+          <div class="welcome-color-faces" id="welcome-colors"></div>
+          <button id="welcome-skip" class="welcome-skip">Skip</button>
+        </div>
       </div>
 
       <div class="hero-actions hidden" id="jesty-actions">
@@ -132,6 +140,14 @@
       </form>
     </div>
 
+    <!-- Tasks widget (hidden, pending redesign) -->
+    <!--
+    <div class="newtab-tasks hidden" id="newtab-tasks">
+      <div class="newtab-tasks-list" id="newtab-tasks-list"></div>
+      <button class="newtab-tasks-add" id="newtab-tasks-add">+ Add task</button>
+    </div>
+    -->
+
     <div class="tab-info">
       <p class="tab-count" id="tab-count"></p>
       <span class="info-dot">·</span>
@@ -139,26 +155,10 @@
     </div>
   </div>
 
-  <!-- Full-page onboarding -->
-  <div id="onboarding-page" class="onboarding-page hidden">
-    <div class="onboarding-content">
-      <div class="onboarding-character" id="onboarding-character">
-        <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-smug"/></svg>
-      </div>
-      <h1 class="onboarding-title">Meet Jesty</h1>
-      <p class="onboarding-subtitle">Your tabs are about to get roasted</p>
-      <div class="onboarding-form">
-        <p class="onboarding-label">What should I call you?</p>
-        <div class="onboarding-input-row">
-          <input type="text" id="welcome-name" class="onboarding-name-input" placeholder="Your name" autocomplete="off" maxlength="20" autofocus>
-        </div>
-      </div>
-      <p class="onboarding-label">Pick a color</p>
-      <div class="welcome-color-faces" id="welcome-colors"></div>
-      <button id="welcome-submit" class="onboarding-submit">Let's go</button>
-      <button id="welcome-skip" class="onboarding-skip">Skip</button>
-    </div>
-  </div>
+  <!-- Focus Island iframe (shown during active focus session) -->
+  <iframe class="focus-island-iframe hidden" id="focus-island-iframe"
+    src="focus-island.html" allow="transparency"
+    style="position:fixed;bottom:0;left:0;width:320px;height:220px;border:none;z-index:2147483647;background:transparent;pointer-events:auto;overflow:visible;color-scheme:only light;"></iframe>
 
   <footer class="privacy-footer">
     Your tabs are processed locally and never stored.

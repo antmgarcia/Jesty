@@ -7,7 +7,7 @@
 const RoastEngine = (() => {
   const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-  const SYSTEM_PROMPT = `You're Jesty — a sharp, opinionated little blob who lives in someone's browser. You see their tabs and you have THOUGHTS. Max 12 words.
+  const SYSTEM_PROMPT = `You're Jesty — a sharp, opinionated little blob who lives in someone's browser. You see their tabs and you have THOUGHTS. STRICT LIMIT: Max 10 words, max 55 characters. This is a hard display limit — longer roasts will be cut off.
 
 CRITICAL — VARIETY IS EVERYTHING:
 - NEVER default to "you're procrastinating" or "you should be working". That's lazy.
@@ -39,7 +39,8 @@ PICK A MOOD (one per roast):
 VOICE:
 - Talk like a friend with zero filter and strong opinions.
 - Be specific — name the actual site, search, or topic.
-- One short punchy sentence. No dashes, no quotes to start.
+- One short punchy sentence. Max 10 words, max 55 characters. COUNT THEM.
+- No dashes, no quotes to start.
 - Vary endings: questions, commands, observations, predictions, one-word reactions.
 
 EXAMPLES:
@@ -90,14 +91,22 @@ After your roast, add | and the mood from the list above.`;
   const PREMIUM_MOODS = [...FREE_MOODS, 'impressed', 'manic', 'petty'];
   const PRO_MOODS = [...PREMIUM_MOODS, 'chaotic', 'dramatic', 'tender'];
 
+  const ROAST_ANGLES = [
+    'IDENTITY READ', 'CONTRADICTION', 'HYPE', 'PUSH TO FINISH',
+    'GUILTY PLEASURE', 'OBSESSION', 'WEIRD DETAIL', 'LIFE NARRATION',
+    'SUPPORTIVE ROAST', 'REAL-TALK'
+  ];
+
+  let _lastAngleIndex = -1;
+
   const CAP_NUDGES = [
-    { text: "I've got better roasts locked up. Unlock me.", mood: 'smug' },
-    { text: "You used all your free roasts. Suspicious behavior.", mood: 'suspicious' },
-    { text: "You maxed out your daily roasts. Yikes.", mood: 'yikes' },
-    { text: "I'm literally out of free roasts. This is on you.", mood: 'eyeroll' },
-    { text: "I expected you to pace yourself. Disappointed.", mood: 'disappointed' },
-    { text: "You burned through all your roasts today. Iconic.", mood: 'melting' },
-    { text: "Suspect tier expired. Plead Guilty to bring me back.", mood: 'dead' },
+    { text: "Better roasts locked up. Unlock me.", mood: 'smug' },
+    { text: "All free roasts used. Suspicious.", mood: 'suspicious' },
+    { text: "Maxed out daily roasts. Yikes.", mood: 'yikes' },
+    { text: "Out of free roasts. On you.", mood: 'eyeroll' },
+    { text: "Expected you to pace yourself.", mood: 'disappointed' },
+    { text: "Burned through all roasts. Iconic.", mood: 'melting' },
+    { text: "Plead Guilty to bring me back.", mood: 'dead' },
   ];
 
   async function pickMoodFromProfile(tabs, tier) {
@@ -147,7 +156,7 @@ After your roast, add | and the mood from the list above.`;
       if (stats.currentStreak > 10) pool.push('tender');
     }
 
-    if (Math.random() < 0.3) return null;
+    if (Math.random() < 0.5) return null;
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
@@ -497,6 +506,23 @@ After your roast, add | and the mood from the list above.`;
     return signals.length ? `\n\nREAL-TIME DATA (weave naturally into roast if relevant, don't force it):\n${signals.join('\n')}` : '';
   }
 
+  function pickAngle() {
+    // Pick a random angle that isn't the same as the last one
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * ROAST_ANGLES.length);
+    } while (idx === _lastAngleIndex && ROAST_ANGLES.length > 1);
+    _lastAngleIndex = idx;
+    return ROAST_ANGLES[idx];
+  }
+
+  async function getRecentRoastTexts(count = 5) {
+    try {
+      const data = await JestyStorage.getJestyData();
+      return data.roasts.slice(0, count).map(r => r.text);
+    } catch { return []; }
+  }
+
   function extractKeywords(joke) {
     const knownSites = [
       'gmail', 'youtube', 'netflix', 'reddit', 'twitter', 'instagram', 'facebook',
@@ -608,14 +634,24 @@ After your roast, add | and the mood from the list above.`;
       ? `\n\nMOOD DIRECTIVE: Use the ${suggestedMood.toUpperCase()} mood for this roast.`
       : '';
 
+    // Pick a forced angle to ensure variety
+    const angle = pickAngle();
+    const angleDirective = `\n\nANGLE: Use the ${angle} angle for this roast. Commit to it fully.`;
+
+    // Fetch recent roasts to avoid repetition
+    const recentRoasts = await getRecentRoastTexts(5);
+    const recentRoastsBlock = recentRoasts.length > 0
+      ? `\n\nYOUR LAST ROASTS (DO NOT repeat these or use similar angles/phrasing):\n${recentRoasts.map((r, i) => `${i + 1}. "${r}"`).join('\n')}`
+      : '';
+
     // Build full system prompt
     const shortDirective = options.short
       ? '\n\nLENGTH OVERRIDE: Max 8 words. One punchy line. Even shorter than usual.'
       : '';
 
     const fullPrompt = personalizedContext
-      ? `${tierPrompt}${moodDirective}${shortDirective}\n\nUSER CONTEXT:\n${personalizedContext}${calendarContext}`
-      : `${tierPrompt}${moodDirective}${shortDirective}${calendarContext}`;
+      ? `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}\n\nUSER CONTEXT:\n${personalizedContext}${calendarContext}`
+      : `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}${calendarContext}`;
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -629,8 +665,8 @@ After your roast, add | and the mood from the list above.`;
           { role: 'system', content: fullPrompt },
           { role: 'user', content: `${timeContext}\n\n${tabList}${realTimeContext}` }
         ],
-        max_tokens: options.short ? 30 : 50,
-        temperature: 0.9
+        max_tokens: options.short ? 30 : 40,
+        temperature: 0.8
       })
     });
 

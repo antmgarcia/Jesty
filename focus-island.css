@@ -8,44 +8,62 @@ html, body {
 }
 
 body {
-  padding: 8px 10px 14px 8px;
+  padding: 0;
+  height: 100vh;
+  position: relative;
 }
 
+/* Full column wrapper — anchored bottom-left */
 .island {
-  position: relative;
-  width: 52px;
-  height: 52px;
+  position: absolute;
+  bottom: 16px;
+  left: 24px;
   cursor: default;
   user-select: none;
 }
 
-/* Circular face bubble */
+/* ── Face row: circle + expand panel ── */
+.island-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Dark circle */
 .island-face {
   width: 52px;
   height: 52px;
+  min-width: 52px;
   border-radius: 50%;
   overflow: hidden;
   background: #18181B;
   box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 0 2px rgba(255,255,255,0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  transition: box-shadow 0.25s ease;
 }
 
-.island:hover .island-face {
-  transform: scale(1.06);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 2px rgba(255,255,255,0.12);
+.island.hovered .island-face {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.12);
 }
 
 .island-face svg {
-  width: 52px;
-  height: 48px;
+  width: 208px;
+  height: 192px;
   display: block;
+  flex-shrink: 0;
+  margin-top: 34px;
+  margin-left: -20px;
 }
 
-/* Timer badge — pinned below the bubble */
-.island-timer {
+/* Timer badge */
+.island-badge {
   position: absolute;
-  bottom: -6px;
-  left: 50%;
+  bottom: -8px;
+  left: 26px;
   transform: translateX(-50%);
   background: #18181B;
   color: #FFFFFF;
@@ -58,36 +76,133 @@ body {
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
   letter-spacing: -0.2px;
+  z-index: 3;
+  transition: opacity 0.2s ease;
 }
 
-/* End button — hidden until hover */
-.island-end {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 18px;
-  height: 18px;
-  background: #18181B;
-  border: 1.5px solid rgba(255,255,255,0.15);
-  border-radius: 50%;
-  color: #A1A1AA;
-  font-size: 11px;
-  line-height: 14px;
-  text-align: center;
-  cursor: pointer;
+.island.hovered .island-badge {
   opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.15s, transform 0.15s, color 0.15s;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  pointer-events: none;
 }
 
-.island:hover .island-end {
+
+/* Expand panel — slides right */
+.island-expand {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  background: var(--jesty-bg, #FAF8F5);
+  border: 1.5px solid var(--jesty-border, #DDD9D5);
+  border-left: none;
+  border-radius: 0 20px 20px 0;
+  margin-left: -6px;
+  padding: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  z-index: 1;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px var(--jesty-shadow, rgba(0,0,0,0.10));
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease 0.05s,
+              padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.island.hovered .island-expand {
+  max-width: 240px;
   opacity: 1;
-  transform: scale(1);
+  padding: 0 16px 0 14px;
+}
+
+.island-end {
+  background: none;
+  border: none;
+  color: var(--jesty-text-secondary, #6B6560);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.3s ease, opacity 0.3s ease;
+  white-space: nowrap;
 }
 
 .island-end:hover {
+  color: var(--jesty-text, #1C1917);
+}
+
+.island-end.done {
+  color: var(--jesty-text, #1C1917);
+  pointer-events: none;
+}
+
+.island-end.fading {
+  opacity: 0;
+}
+
+/* ── Action buttons — above the face, left-aligned to the circle ── */
+.island-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 52px;
+  margin-bottom: 6px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.island.hovered .island-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.island-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--jesty-bg, #FAF8F5);
+  border: 1.5px solid var(--jesty-border, #DDD9D5);
+  color: var(--jesty-text-secondary, #6B6560);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px var(--jesty-shadow, rgba(0,0,0,0.10));
+  position: relative;
+  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.island-action-btn svg { flex-shrink: 0; }
+
+.island-action-btn:hover {
+  color: var(--jesty-text, #1C1917);
+  border-color: var(--jesty-border-hover, #CCC7C2);
+  transform: scale(1.08);
+}
+
+/* ── Label tooltip ── */
+.island-action-label {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: #18181B;
   color: #FFFFFF;
-  background: #DC2626;
-  border-color: #DC2626;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.island-action-btn:hover .island-action-label {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }

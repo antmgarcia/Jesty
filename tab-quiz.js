@@ -410,6 +410,12 @@ const JestyTabQuiz = (() => {
     `;
 
     document.getElementById('tabquiz-start-btn').addEventListener('click', startGame);
+
+    // Upgrade card for free users
+    if (typeof renderGameUpgradeCard === 'function') {
+      const startDiv = container.querySelector('.quiz-start');
+      if (startDiv) renderGameUpgradeCard(startDiv);
+    }
   }
 
   async function startGame() {
@@ -579,7 +585,10 @@ const JestyTabQuiz = (() => {
     progress.lastPlayed = new Date().toISOString();
     await saveProgress();
 
-    if (typeof awardXP === 'function') await awardXP(xp);
+    if (typeof awardXP === 'function') {
+      await awardXP(xp);
+      if (typeof showXPToast === 'function') showXPToast(xp);
+    }
 
     // Roast
     const cat = state.score === total ? 'perfect' : state.score >= 5 ? 'good' : state.score >= 3 ? 'okay' : 'bad';

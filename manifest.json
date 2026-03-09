@@ -3,7 +3,8 @@
   "name": "Jesty",
   "version": "2.0.0",
   "description": "AI that reads your tabs and judges you. Short, funny, brutal.",
-  "permissions": ["tabs", "storage", "sidePanel", "identity", "identity.email", "alarms"],
+  "permissions": ["tabs", "storage", "sidePanel", "identity", "identity.email", "alarms", "scripting"],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "oauth2": {
     "client_id": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/calendar.readonly"]
@@ -38,7 +39,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["focus-island.html", "focus-island.css", "focus-island.js", "characters.js"],
+      "resources": ["focus-island.html", "focus-island.css", "focus-island.js", "characters.js", "theme.js", "memory-game.html"],
       "matches": ["http://*/*", "https://*/*"]
     }
   ]
