@@ -261,7 +261,7 @@
     showComplete(stars, state.moves, elapsed, xp, roast);
   }
 
-  function showComplete(stars, moves, time, xp, roast) {
+  async function showComplete(stars, moves, time, xp, roast) {
     document.getElementById('stats-bar').style.display = 'none';
     document.getElementById('grid-wrapper').style.display = 'none';
     document.getElementById('complete-screen').classList.add('visible');
@@ -284,9 +284,105 @@
       '<div class="tab-complete-stat"><span class="tab-complete-stat-val">' + moves + '</span><span class="tab-complete-stat-lbl">moves</span></div>' +
       '<div class="tab-complete-stat"><span class="tab-complete-stat-val">' + ts + '</span><span class="tab-complete-stat-lbl">time</span></div>' +
       '<div class="tab-complete-stat"><span class="tab-complete-stat-val">+' + xp + '</span><span class="tab-complete-stat-lbl">XP</span></div>';
-    document.getElementById('btn-next').classList.toggle('hidden', state.currentLevel + 1 >= LEVELS.length);
-    document.getElementById('btn-next').onclick = function() { startLevel(state.currentLevel + 1); };
+
+    // Check if next level is premium-locked for free users
+    var nextLevel = state.currentLevel + 1;
+    var hasNext = nextLevel < LEVELS.length;
+    var isPremium = typeof JestyPremium !== 'undefined' ? await JestyPremium.isPremium() : false;
+    var nextIsPremiumLocked = hasNext && nextLevel + 1 >= 6 && !isPremium;
+
+    var nextBtn = document.getElementById('btn-next');
+    var actionsEl = nextBtn.parentElement;
+
+    // Remove any previous tier card
+    var oldCard = actionsEl.parentElement.querySelector('.tab-tier-card');
+    if (oldCard) oldCard.remove();
+
+    if (hasNext && nextIsPremiumLocked) {
+      // Simplify screen and show Guilty tier card
+      nextBtn.classList.add('hidden');
+      document.getElementById('complete-character').classList.add('hidden');
+      document.getElementById('complete-roast').classList.add('hidden');
+      document.getElementById('complete-stats').classList.add('hidden');
+      // Change title to upgrade message
+      document.getElementById('complete-title').textContent = 'Nice! Plead Guilty to unlock next levels';
+      renderTabGuiltyCard(actionsEl.parentElement);
+    } else {
+      nextBtn.classList.toggle('hidden', !hasNext);
+      nextBtn.onclick = function() { startLevel(nextLevel); };
+    }
     document.getElementById('btn-replay').onclick = function() { startLevel(state.currentLevel); };
+  }
+
+  function renderTabGuiltyCard(container) {
+    var combo = { expression: 'happy', hat: 'acc-crown', glasses: null, color: 'pink' };
+    var color = COLORS[combo.color];
+    var faceSvg = buildRecoloredCombo(combo, color, 52, 48);
+
+    var card = document.createElement('div');
+    card.className = 'tab-tier-card';
+    card.innerHTML =
+      '<div class="tab-tier-card-top">' +
+        '<div class="tab-tier-card-character">' +
+          '<div class="tab-tier-card-character-bg" style="background:' + color.body + '"></div>' +
+          faceSvg +
+        '</div>' +
+        '<div class="tab-tier-card-info">' +
+          '<div class="tab-tier-card-header">' +
+            '<span class="tab-tier-card-name">Guilty</span>' +
+            '<span class="tab-tier-card-badge">Full judgement</span>' +
+          '</div>' +
+          '<div class="tab-tier-card-price">$5 <span>once</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<ul class="tab-tier-card-features">' +
+        '<li>Unlimited roasts &amp; chat</li>' +
+        '<li>All games unlocked</li>' +
+        '<li>Tasks</li>' +
+        '<li>+5 unlockable accessories</li>' +
+      '</ul>' +
+      '<button class="tab-tier-card-cta">Plead Guilty — $5</button>';
+
+    card.querySelector('.tab-tier-card-cta').addEventListener('click', function() {
+      chrome.runtime.sendMessage({ type: 'open-checkout' });
+    });
+
+    container.appendChild(card);
+  }
+
+  function buildRecoloredCombo(combo, targetColor, w, h) {
+    var sym = document.getElementById('face-' + combo.expression);
+    if (!sym) return '';
+    var id = Math.random().toString(36).slice(2, 8);
+    var content = sym.innerHTML;
+    content = content.replace(/id="clip-([^"]+)"/g, 'id="clip-$1-tc-' + id + '"');
+    content = content.replace(/url\(#clip-([^)]+)\)/g, 'url(#clip-$1-tc-' + id + ')');
+
+    // Add accessories (hat/glasses)
+    var accsHtml = '';
+    if (combo.hat) {
+      var hatSym = document.getElementById(combo.hat);
+      if (hatSym) accsHtml += '<g transform="translate(' + ANCHORS.hat.x + ',' + ANCHORS.hat.y + ')">' + hatSym.innerHTML + '</g>';
+    }
+    if (combo.glasses) {
+      var glassesSym = document.getElementById(combo.glasses);
+      if (glassesSym) accsHtml += '<g transform="translate(' + ANCHORS.glasses.x + ',' + ANCHORS.glasses.y + ')">' + glassesSym.innerHTML + '</g>';
+    }
+
+    var replacements = {};
+    for (var key of ['body', 'limb', 'shadow', 'highlight']) {
+      replacements[SRC[key].toUpperCase()] = targetColor[key];
+    }
+    // Create temp div to manipulate
+    var tmp = document.createElement('div');
+    tmp.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -10 150 140" width="' + w + '" height="' + h + '">' + content + accsHtml + '</svg>';
+    tmp.querySelectorAll('*').forEach(function(el) {
+      ['fill', 'stroke'].forEach(function(attr) {
+        var val = el.getAttribute(attr);
+        if (val && replacements[val.toUpperCase()]) el.setAttribute(attr, replacements[val.toUpperCase()]);
+      });
+    });
+    return tmp.innerHTML;
   }
 
   // ── Helpers ──

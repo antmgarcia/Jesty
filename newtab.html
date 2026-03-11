@@ -54,7 +54,7 @@
   <div class="level-panel hidden" id="level-panel">
     <div class="level-panel-header">
       <span class="level-panel-title" id="level-panel-title">Level 1</span>
-      <span class="level-panel-stage" id="level-panel-stage">Baby Blob</span>
+      <span class="level-panel-stage" id="level-panel-stage">Suspect</span>
     </div>
     <div class="level-panel-progress">
       <div class="level-panel-bar">
@@ -75,7 +75,7 @@
     <!-- Hero Jesty Section -->
     <div class="hero-section">
       <div class="hero-character" id="character">
-        <svg viewBox="0 -10 120 140" width="120" height="112"><use href="#face-thinking"/></svg>
+        <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-thinking"/></svg>
       </div>
 
       <div class="hero-content" id="jesty-card">
@@ -140,13 +140,10 @@
       </form>
     </div>
 
-    <!-- Tasks widget (hidden, pending redesign) -->
-    <!--
+    <!-- Tasks hint (below top-bar-left) -->
     <div class="newtab-tasks hidden" id="newtab-tasks">
       <div class="newtab-tasks-list" id="newtab-tasks-list"></div>
-      <button class="newtab-tasks-add" id="newtab-tasks-add">+ Add task</button>
     </div>
-    -->
 
     <div class="tab-info">
       <p class="tab-count" id="tab-count"></p>
@@ -154,6 +151,23 @@
       <p class="roasts-remaining" id="roasts-remaining"></p>
     </div>
   </div>
+
+  <!-- Tab Manager Grid (replaces main content when "XX tabs open" clicked) -->
+  <div class="tab-manager hidden" id="tab-manager">
+    <div class="tab-manager-header">
+      <button class="tab-manager-back" id="tab-manager-back">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="tab-manager-title">
+        <span class="tab-manager-count" id="tab-manager-count">0 tabs</span>
+        <span class="tab-manager-quip" id="tab-manager-quip"></span>
+      </div>
+    </div>
+    <div class="tab-manager-grid" id="tab-manager-grid"></div>
+  </div>
+
+  <!-- Focus Blur Overlay (shown during focus when blur is enabled) -->
+  <div class="focus-blur-overlay hidden" id="newtab-focus-blur"></div>
 
   <!-- Focus Island iframe (shown during active focus session) -->
   <iframe class="focus-island-iframe hidden" id="focus-island-iframe"

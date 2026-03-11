@@ -387,8 +387,7 @@ body {
   width: 120px;
   height: 112px;
   display: block;
-  position: relative;
-  left: -16px;
+  overflow: visible;
 }
 
 .hero-content {
@@ -405,7 +404,7 @@ body {
   line-height: 1.4;
   color: var(--jesty-text);
   font-weight: 600;
-  max-width: 580px;
+  max-width: 600px;
   animation: fadeInUp 0.4s ease-out;
 }
 
@@ -520,30 +519,37 @@ body {
 }
 
 /* ─── Mini Tasks Widget ─── */
+/* Tasks hint (below accessories in top-left) */
 .newtab-tasks {
-  max-width: 480px;
-  width: 100%;
+  position: fixed;
+  top: 50px;
+  left: 16px;
   display: flex;
   flex-direction: column;
-  margin-top: -24px;
+  gap: 2px;
+  z-index: 10;
+  /* Align with top-bar-left: badge(32) + 3×gap(6) + 2×slot(26) + add(26) = 128px */
+  width: 128px;
 }
 
 .newtab-task {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--jesty-border);
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
-.newtab-task:last-of-type {
-  border-bottom: none;
+.newtab-task:hover {
+  background: var(--jesty-bg-secondary);
 }
 
 .newtab-task-check {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--jesty-border-hover);
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--jesty-border-hover);
   border-radius: 50%;
   flex-shrink: 0;
   cursor: pointer;
@@ -560,18 +566,17 @@ body {
 }
 
 .newtab-task-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--jesty-text);
+  color: var(--jesty-text-secondary);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
 }
 
-.newtab-task-title:hover {
-  text-decoration: underline;
+.newtab-task:hover .newtab-task-title {
+  color: var(--jesty-text);
 }
 
 .newtab-task.checked .newtab-task-title {
@@ -580,36 +585,15 @@ body {
 }
 
 .newtab-task-notes {
-  font-size: 12px;
-  color: var(--jesty-text-muted);
+  font-size: 10px;
+  color: var(--jesty-text-faint);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.newtab-tasks-add {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
+.newtab-task-notes.done {
   color: var(--jesty-text-muted);
-  background: none;
-  border: none;
-  padding: 8px 0;
-  cursor: pointer;
-  text-align: left;
-  transition: color 0.15s;
-}
-
-.newtab-tasks-add:hover {
-  color: var(--jesty-text-secondary);
-}
-
-.newtab-tasks-empty {
-  padding: 8px 0;
-  text-align: center;
-}
-
-.newtab-tasks-empty-text {
-  font-size: 13px;
-  color: var(--jesty-text-muted);
+  font-weight: 600;
 }
 
 .tab-info {
@@ -818,8 +802,256 @@ body {
   text-decoration: underline;
 }
 
+/* ─── Tab Manager Grid ─── */
+.tab-manager {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--jesty-bg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: tabManagerIn 0.35s ease-out;
+}
+
+.tab-manager.hidden {
+  display: none;
+}
+
+.tab-manager.closing {
+  animation: tabManagerOut 0.3s ease-in forwards;
+}
+
+@keyframes tabManagerIn {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tabManagerOut {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(30px); }
+}
+
+.tab-manager-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 32px 0;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+}
+
+.tab-manager-back {
+  align-self: flex-start;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--jesty-border);
+  background: var(--jesty-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--jesty-text);
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tab-manager-back:hover {
+  background: var(--jesty-bg-secondary);
+  border-color: var(--jesty-text-muted);
+}
+
+.tab-manager-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 8px;
+}
+
+.tab-manager-quip {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--jesty-text);
+  font-family: 'DM Sans', sans-serif;
+  text-align: center;
+}
+
+.tab-manager-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--jesty-text-muted);
+  font-family: 'DM Sans', sans-serif;
+}
+
+.tab-manager-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 32px 32px;
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.tab-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--jesty-bg);
+  border: 1.5px solid var(--jesty-border);
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  animation: tabCardIn 0.3s ease-out both;
+}
+
+.tab-card:hover {
+  border-color: var(--jesty-text-muted);
+  box-shadow: 0 2px 8px var(--jesty-shadow-md);
+  background: var(--jesty-bg-secondary);
+}
+
+.tab-card.closing {
+  animation: tabCardOut 0.25s ease-in forwards;
+}
+
+@keyframes tabCardIn {
+  0% { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tabCardOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.85); }
+}
+
+.tab-card-favicon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.tab-card-favicon-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--jesty-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--jesty-text-muted);
+  font-family: 'DM Sans', sans-serif;
+}
+
+.tab-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tab-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--jesty-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.tab-card-domain {
+  font-size: 11px;
+  color: var(--jesty-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.tab-card-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--jesty-text-muted);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.tab-card:hover .tab-card-close {
+  opacity: 1;
+}
+
+.tab-card-close:hover {
+  background: #EF4444;
+  color: white;
+}
+
+.tab-card-current {
+  border-color: var(--jesty-text-muted);
+}
+
+.tab-card-current .tab-card-domain::after {
+  content: ' · current';
+  color: var(--jesty-text-faint);
+  font-style: italic;
+}
+
+.tab-count {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tab-count:hover {
+  color: var(--jesty-text);
+}
+
 /* ─── Focus Island (inline, not iframe) ─── */
 /* Focus Island iframe */
+.focus-blur-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 8999;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255,255,255,0.15);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.focus-blur-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+
 .focus-island-iframe {
   position: fixed;
   bottom: 0;

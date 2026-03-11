@@ -357,6 +357,11 @@ async function init() {
     handleFocusNoteMode();
   }
 
+  // If opened from focus island sound — show focus overlay and audio drawer
+  if (sidePanelOpenMode === 'focus-audio') {
+    handleFocusAudioMode();
+  }
+
   // If opened from tier badge — show all plans overlay
   if (sidePanelOpenMode === 'plans') {
     showTierOverlayPlans();
@@ -372,6 +377,7 @@ async function init() {
         else if (mode === 'task-detail' && taskId) openTaskDetail(taskId);
         else if (mode === 'task-new') createAndOpenTask();
         else if (mode === 'focus-note') handleFocusNoteMode();
+        else if (mode === 'focus-audio') handleFocusAudioMode();
         else if (mode === 'plans') showTierOverlayPlans();
       });
     }
@@ -810,8 +816,6 @@ function initSettings() {
   if (!toggle || !panel || !nameInput) return;
 
   let settingsOpen = false;
-  let realTier = 'free';
-  let previewTier = null;
 
   // Load saved name
   JestyStorage.getUserName().then(name => {
@@ -853,13 +857,6 @@ function initSettings() {
     // Re-render faces with fresh random expressions each time
     const activeColor = currentColor.body || '#A78BFA';
     renderSettingsColorFaces(activeColor);
-    // Highlight real tier in preview picker
-    realTier = await JestyPremium.getTier();
-    if (tierContainer) {
-      tierContainer.querySelectorAll('.settings-tier-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.tier === realTier);
-      });
-    }
     panel.classList.remove('hidden');
     panel.offsetHeight;
     panel.classList.add('visible');
@@ -939,48 +936,6 @@ function initSettings() {
     });
   }
 
-  // Tier preview picker
-  const tierContainer = document.getElementById('settings-tier-preview');
-  if (tierContainer) {
-    tierContainer.addEventListener('click', (e) => {
-      const btn = e.target.closest('.settings-tier-btn');
-      if (!btn) return;
-      tierContainer.querySelectorAll('.settings-tier-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const tier = btn.dataset.tier;
-      if (tier === realTier) {
-        applyTierPreview(null);
-      } else {
-        applyTierPreview(tier);
-      }
-    });
-  }
-
-  async function applyTierPreview(tier) {
-    previewTier = tier;
-    // Set override so all JestyPremium.isPremium/getTier calls reflect the preview
-    JestyPremium.setTierOverride(tier);
-
-    const isPrem = await JestyPremium.isPremium();
-    const isPro = await JestyPremium.isPro();
-
-    // Task card state
-    await reinitTaskCard(isPrem);
-
-    // Schedule card
-    const scheduleCard = document.getElementById('schedule-card');
-    if (scheduleCard) {
-      if (isPro) {
-        scheduleCard.classList.remove('hidden');
-      } else {
-        scheduleCard.classList.add('hidden');
-      }
-    }
-
-    // Fun Zone quiz/trivia lock state
-    reinitFunZoneLocks(isPrem);
-  }
-
   // Click outside panel to close + save
   document.addEventListener('click', (e) => {
     if (settingsOpen && !panel.contains(e.target) && !toggle.contains(e.target)) {
@@ -991,6 +946,12 @@ function initSettings() {
 
 function applyColor(color) {
   recolorSVGs(color);
+  // Re-render inlined face + accessories so they pick up the new color
+  const svg = document.getElementById('animated-character');
+  if (svg) {
+    const expr = JestyAnimator.getExpression();
+    JestyAccessories.renderAccessories(expr, svg);
+  }
 }
 
 function recolorSVGs(color) {
@@ -1098,6 +1059,10 @@ function initAccessoryPicker() {
     await refreshAllAccessoryUI();
   });
 
+  // Wire "Play to level up"
+  const accPlayBtn = document.getElementById('acc-play-btn');
+  if (accPlayBtn) accPlayBtn.addEventListener('click', () => { closeAccDrawer(); JestyMemoryGame.show(); });
+
   // Init gallery
   initAccessoryGallery();
 
@@ -1182,7 +1147,7 @@ function updateDrawerPreview(overrideExpr) {
   const moodLabel = document.getElementById('acc-preview-mood');
   if (moodLabel) moodLabel.textContent = expr;
   // Remove old accessories from preview, re-render
-  svg.querySelectorAll('.jesty-accessory, .jesty-stage-effect, .jesty-acc-group').forEach(el => el.remove());
+  svg.querySelectorAll('.jesty-accessory, .jesty-acc-group').forEach(el => el.remove());
   JestyAccessories.renderAccessories(expr, svg);
 }
 
@@ -1292,49 +1257,54 @@ async function renderAccessoryGrid(refreshId) {
   const catalog = JestyAccessories.getCatalog();
   const equipped = JestyAccessories.getEquipped();
 
+  // Resolve unlock status for all items
+  const items = [];
+  for (const acc of catalog) {
+    if (refreshId !== undefined && refreshId !== _accRefreshId) return;
+    const unlocked = await JestyAccessories.isUnlocked(acc.id);
+    items.push({ acc, unlocked });
+  }
+  if (refreshId !== undefined && refreshId !== _accRefreshId) return;
+
+  // Sort: unlocked first, then locked — preserve catalog order within each group
+  items.sort((a, b) => (a.unlocked === b.unlocked ? 0 : a.unlocked ? -1 : 1));
+
   const fragment = document.createDocumentFragment();
-  let count = 0;
   const MAX_MAIN_GRID = 12;
-  for (const slot of ['hat', 'glasses']) {
-    const slotItems = catalog.filter(a => a.slot === slot);
-    for (const acc of slotItems) {
-      if (count >= MAX_MAIN_GRID) break;
-      if (refreshId !== undefined && refreshId !== _accRefreshId) return;
 
-      const unlocked = await JestyAccessories.isUnlocked(acc.id);
-      if (refreshId !== undefined && refreshId !== _accRefreshId) return;
+  for (let i = 0; i < Math.min(items.length, MAX_MAIN_GRID); i++) {
+    const { acc, unlocked } = items[i];
+    const slot = acc.slot;
 
-      const btn = document.createElement('button');
-      btn.className = 'accessory-item';
-      if (equipped[slot] === acc.id) btn.classList.add('equipped');
-      if (!unlocked) btn.classList.add('locked');
+    const btn = document.createElement('button');
+    btn.className = 'accessory-item';
+    if (equipped[slot] === acc.id) btn.classList.add('equipped');
+    if (!unlocked) btn.classList.add('locked');
 
-      const vb = ACC_VIEWBOXES[acc.symbolId] || '0 0 44 30';
-      let badgeHtml = '';
-      if (!unlocked) {
-        if (acc.tier === 'pro') badgeHtml = '<span class="acc-badge pro">SENTENCED</span>';
-        else if (acc.unlockLevel) badgeHtml = `<span class="acc-badge level">Lv${acc.unlockLevel}</span>`;
-        else badgeHtml = '<span class="acc-badge premium">GUILTY</span>';
-      }
-
-      const funName = ACC_FUN_NAMES[acc.id] || acc.name;
-      btn.innerHTML = `<svg viewBox="${vb}"><use href="#${acc.symbolId}"/></svg>${badgeHtml}<span class="accessory-item-name">${funName}</span>`;
-
-      if (unlocked) {
-        btn.addEventListener('click', async () => {
-          if (equipped[slot] === acc.id) {
-            await JestyAccessories.unequipAccessory(slot);
-          } else {
-            await JestyAccessories.equipAccessory(slot, acc.id);
-          }
-          await refreshAllAccessoryUI();
-        });
-      } else {
-        btn.addEventListener('click', () => openAccGallery(acc.id));
-      }
-      fragment.appendChild(btn);
-      count++;
+    const vb = ACC_VIEWBOXES[acc.symbolId] || '0 0 44 30';
+    let badgeHtml = '';
+    if (!unlocked) {
+      if (acc.tier === 'pro') badgeHtml = '<span class="acc-badge pro">SENTENCED</span>';
+      else if (acc.unlockLevel) badgeHtml = `<span class="acc-badge level">Lv${acc.unlockLevel}</span>`;
+      else badgeHtml = '<span class="acc-badge premium">GUILTY</span>';
     }
+
+    const funName = ACC_FUN_NAMES[acc.id] || acc.name;
+    btn.innerHTML = `<svg viewBox="${vb}"><use href="#${acc.symbolId}"/></svg>${badgeHtml}<span class="accessory-item-name">${funName}</span>`;
+
+    if (unlocked) {
+      btn.addEventListener('click', async () => {
+        if (equipped[slot] === acc.id) {
+          await JestyAccessories.unequipAccessory(slot);
+        } else {
+          await JestyAccessories.equipAccessory(slot, acc.id);
+        }
+        await refreshAllAccessoryUI();
+      });
+    } else {
+      btn.addEventListener('click', () => openAccGallery(acc.id));
+    }
+    fragment.appendChild(btn);
   }
 
   grid.innerHTML = '';
@@ -1730,9 +1700,13 @@ function hideFocusOverlay() {
   const overlay = document.getElementById('focus-overlay');
   const wrapper = document.querySelector('.layer-wrapper');
   const container = document.querySelector('.container');
-  if (overlay) overlay.classList.add('hidden');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.classList.remove('audio-open');
+  }
   if (wrapper) wrapper.classList.remove('focus-mode');
   if (container) container.classList.remove('focus-mode');
+  _focusAudioOpen = false;
   clearInterval(focusMsgInterval);
   focusMsgInterval = null;
 }
@@ -1754,6 +1728,10 @@ async function handleFocusNoteMode() {
     await showFocusOverlay();
   }
 
+  // Close audio drawer if open
+  if (_focusAudioOpen) toggleFocusAudioDrawer(false);
+
+  // Play "Write it down" animation
   const timerEl = document.getElementById('focus-overlay-timer');
   if (timerEl && !timerEl._noteAnimating) {
     timerEl._noteAnimating = true;
@@ -1940,6 +1918,17 @@ async function handleFocusEnd() {
   stopFocusTimer();
   focusActive = false;
 
+  // Stop audio playback
+  if (typeof JestyFocusAudio !== 'undefined') {
+    JestyFocusAudio.stop();
+  }
+
+  // Close audio drawer if open
+  if (_focusAudioOpen) toggleFocusAudioDrawer(false);
+
+  // Clean up blur
+  chrome.storage.local.set({ focusBlurEnabled: false });
+
   const focusBtn = document.getElementById('focus-btn');
   if (focusBtn) {
     focusBtn.textContent = 'Focus time';
@@ -2035,6 +2024,157 @@ async function updateFocusTimerDisplay() {
   if (timerEl && !timerEl._noteAnimating) timerEl.textContent = timeStr;
 }
 
+/* ─── Focus Audio Drawer ─── */
+
+let _focusAudioOpen = false;
+
+async function handleFocusAudioMode() {
+  // Ensure focus overlay is visible
+  if (!focusActive) {
+    focusActive = true;
+    await showFocusOverlay();
+  }
+  toggleFocusAudioDrawer(true);
+}
+
+function toggleFocusAudioDrawer(open) {
+  const overlay = document.getElementById('focus-overlay');
+  const soundBtn = document.getElementById('focus-action-sound');
+  if (!overlay) return;
+
+  _focusAudioOpen = open !== undefined ? open : !_focusAudioOpen;
+  overlay.classList.toggle('audio-open', _focusAudioOpen);
+  if (soundBtn) soundBtn.classList.toggle('active', _focusAudioOpen);
+
+  if (_focusAudioOpen) {
+    renderFocusAudioTracks();
+  }
+}
+
+async function renderFocusAudioTracks() {
+  const container = document.getElementById('focus-audio-tracks');
+  if (!container) return;
+
+  const tracks = JestyFocusAudio.getTracks();
+  const currentTrack = JestyFocusAudio.getCurrentTrack();
+  const adaptive = await JestyFocusAudio.getAdaptiveTrack();
+
+  // Show adaptive suggestion
+  const adaptiveEl = document.getElementById('focus-audio-adaptive');
+  if (adaptiveEl) {
+    const trackName = tracks.find(t => t.id === adaptive)?.name || 'Brown Noise';
+    adaptiveEl.textContent = `Suggested for your tabs: ${trackName}`;
+  }
+
+  container.innerHTML = '';
+
+  for (const track of tracks) {
+    const isPlaying = currentTrack === track.id;
+    const div = document.createElement('div');
+    div.className = `focus-audio-track${isPlaying ? ' playing' : ''}`;
+
+    const isSuggested = track.id === adaptive;
+    const descText = isSuggested ? `${track.desc} · Suggested` : track.desc;
+
+    div.innerHTML = `
+      <div class="focus-audio-track-icon">
+        <div class="focus-audio-wave">
+          <div class="focus-audio-wave-bar"></div>
+          <div class="focus-audio-wave-bar"></div>
+          <div class="focus-audio-wave-bar"></div>
+          <div class="focus-audio-wave-bar"></div>
+          <div class="focus-audio-wave-bar"></div>
+        </div>
+      </div>
+      <div class="focus-audio-track-info">
+        <span class="focus-audio-track-name">${track.name}</span>
+        <span class="focus-audio-track-desc">${descText}</span>
+      </div>
+      <button class="focus-audio-track-action">
+        ${isPlaying
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>'
+          : '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
+        }
+      </button>
+    `;
+
+    div.addEventListener('click', () => {
+      if (isPlaying) {
+        JestyFocusAudio.stop();
+      } else {
+        JestyFocusAudio.play(track.id);
+      }
+      renderFocusAudioTracks();
+      updateFocusSoundBtnState();
+    });
+
+    container.appendChild(div);
+  }
+
+  // Volume slider
+  const slider = document.getElementById('focus-audio-slider');
+  if (slider) {
+    slider.value = Math.round(JestyFocusAudio.getVolume() * 100);
+    slider.oninput = () => {
+      JestyFocusAudio.setVolume(slider.value / 100);
+    };
+  }
+}
+
+function updateFocusSoundBtnState() {
+  const soundBtn = document.getElementById('focus-action-sound');
+  const islandIndicator = JestyFocusAudio.isPlaying();
+  // The sound icon in the overlay shows active state when audio is playing
+  if (soundBtn && !_focusAudioOpen) {
+    soundBtn.classList.toggle('active', islandIndicator);
+  }
+}
+
+/* ─── Focus overlay action buttons ─── */
+
+function initFocusOverlayActions() {
+  const blurBtn = document.getElementById('focus-action-blur');
+  const soundBtn = document.getElementById('focus-action-sound');
+  const pencilBtn = document.getElementById('focus-action-pencil');
+
+  if (blurBtn) {
+    // Sync initial state
+    chrome.storage.local.get(['focusBlurEnabled'], (result) => {
+      blurBtn.classList.toggle('active', !!result.focusBlurEnabled);
+    });
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.focusBlurEnabled) {
+        blurBtn.classList.toggle('active', !!changes.focusBlurEnabled.newValue);
+      }
+    });
+
+    blurBtn.addEventListener('click', async () => {
+      const { focusBlurEnabled } = await chrome.storage.local.get(['focusBlurEnabled']);
+      const newState = !focusBlurEnabled;
+      await chrome.storage.local.set({ focusBlurEnabled: newState });
+      blurBtn.classList.toggle('active', newState);
+    });
+  }
+
+  if (soundBtn) {
+    soundBtn.addEventListener('click', () => {
+      toggleFocusAudioDrawer();
+    });
+  }
+
+  if (pencilBtn) {
+    pencilBtn.addEventListener('click', () => {
+      handleFocusNoteMode();
+    });
+  }
+
+  // Audio drawer back button
+  const audioBack = document.getElementById('focus-audio-back');
+  if (audioBack) {
+    audioBack.addEventListener('click', () => toggleFocusAudioDrawer(false));
+  }
+}
+
 function initFocusClickHandler() {
   // Focus button (main screen)
   const focusBtn = document.getElementById('focus-btn');
@@ -2053,6 +2193,9 @@ function initFocusClickHandler() {
   if (overlayEnd) {
     overlayEnd.addEventListener('click', () => handleFocusEnd());
   }
+
+  // Focus overlay action buttons
+  initFocusOverlayActions();
 }
 
 /* ──────────────────────────────────────────────
@@ -2085,6 +2228,10 @@ async function initPremiumFeatures() {
       focusBtn.textContent = 'End focus';
       focusBtn.classList.add('active');
     }
+    // Restore audio if it was playing
+    if (typeof JestyFocusAudio !== 'undefined') {
+      JestyFocusAudio.restore();
+    }
   }
   initFocusClickHandler();
 
@@ -2110,22 +2257,28 @@ async function reinitTaskCard(isPremium) {
   const card = document.getElementById('task-card');
   if (!card) return;
   card.classList.remove('hidden');
+  card.classList.remove('task-card-locked');
 
-  const listEl = document.getElementById('task-card-list');
   const addBtn = document.getElementById('task-add-btn');
   const viewAll = document.getElementById('task-viewall');
 
   if (!isPremium) {
-    card.classList.add('task-card-locked');
-    if (listEl) listEl.innerHTML = '<p class="task-card-locked-msg">Plead Guilty to start tracking tasks</p>';
-    if (addBtn) addBtn.style.display = 'none';
+    // Free users: show default task, can edit it, but only 1 task
+    if (addBtn) {
+      addBtn.textContent = 'Plead Guilty to add more';
+      addBtn.style.display = '';
+      addBtn.dataset.upgrade = 'true';
+    }
     if (viewAll) viewAll.style.display = 'none';
   } else {
-    card.classList.remove('task-card-locked');
-    if (addBtn) addBtn.style.display = '';
+    if (addBtn) {
+      addBtn.textContent = '+ Add task';
+      addBtn.style.display = '';
+      delete addBtn.dataset.upgrade;
+    }
     if (viewAll) viewAll.style.display = '';
-    await renderTaskList();
   }
+  await renderTaskList();
 }
 
 /**
@@ -2193,12 +2346,19 @@ async function initFunZone(isPremium) {
     });
   }
 
+  // Jesty Generator — free for all tiers
+  const generatorCard = document.getElementById('generator-card');
+  if (generatorCard && !funZoneInited) {
+    generatorCard.addEventListener('click', () => JestyGenerator.show());
+  }
+
   // Apply lock visuals
   reinitFunZoneLocks(isPremium);
 
   // Init memory game (always available)
   if (!funZoneInited) {
     await JestyMemoryGame.init();
+    JestyGenerator.init();
   }
 
   funZoneInited = true;
@@ -2298,6 +2458,7 @@ async function hideMemoryGameInTabState() {
     }
   } catch (e) {}
 }
+
 
 /* ──────────────────────────────────────────────
    PLANS UPGRADE SECTION
@@ -2472,23 +2633,50 @@ const TASK_TEMPLATES = [
 let taskSystemInited = false;
 let taskCheckInterval = null;
 
+async function seedDefaultTask() {
+  const { jestyTaskSeeded } = await chrome.storage.local.get(['jestyTaskSeeded']);
+  if (jestyTaskSeeded) return;
+
+  await chrome.storage.local.set({ jestyTaskSeeded: true });
+
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  const data = jesty_data || {};
+  const tasks = data.user_tasks || [];
+
+  if (tasks.length > 0) return;
+
+  const onboardingTask = {
+    id: 'user_onboarding',
+    title: 'Try managing tasks with Jesty',
+    notes: [
+      { text: 'Tap a task to open its details', done: false },
+      { text: 'Add notes to break it into steps', done: false },
+      { text: 'Check items off as you go', done: false }
+    ],
+    completed: false,
+    completedAt: null,
+    createdAt: Date.now()
+  };
+
+  data.user_tasks = [onboardingTask];
+  await chrome.storage.local.set({ jesty_data: data });
+}
+
 async function initProductivityTasks(isPremium) {
   const card = document.getElementById('task-card');
   if (!card) return;
 
   card.classList.remove('hidden');
 
+  // Seed default task for all users (once)
+  await seedDefaultTask();
+
   // Apply visual state
   await reinitTaskCard(isPremium);
 
   if (!taskSystemInited) {
     // Bind event listeners once — they check tier at runtime
-    card.addEventListener('click', async (e) => {
-      // Only handle clicks on the locked card overlay (not child buttons)
-      if (card.classList.contains('task-card-locked')) {
-        showTierOverlayPlans();
-      }
-    });
+    // (No locked card overlay — free users can interact with their single task)
 
     const viewAll = document.getElementById('task-viewall');
     if (viewAll) viewAll.addEventListener('click', (e) => {
@@ -2497,9 +2685,13 @@ async function initProductivityTasks(isPremium) {
     });
 
     const addBtn = document.getElementById('task-add-btn');
-    if (addBtn) addBtn.addEventListener('click', (e) => {
+    if (addBtn) addBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      createAndOpenTask();
+      if (addBtn.dataset.upgrade) {
+        showTierOverlayPlans();
+      } else {
+        createAndOpenTask();
+      }
     });
 
     initTaskDrawers();
@@ -2596,17 +2788,28 @@ async function renderTaskList() {
   const listEl = document.getElementById('task-card-list');
   if (!listEl) return;
 
+  const isPremium = await JestyPremium.isPremium();
   const { currentTask } = await chrome.storage.local.get(['currentTask']);
   const userTasks = await loadUserTasks();
 
-  // Build combined list: auto-task first, then user tasks
+  // Build combined list: auto-task first (premium only), then user tasks
   const allTasks = [];
-  if (currentTask && !currentTask.completed) {
+  if (isPremium && currentTask && !currentTask.completed) {
     allTasks.push({ id: 'auto_' + currentTask.id, title: currentTask.title, type: 'auto', completed: false });
   }
-  userTasks.filter(t => !t.completed).forEach(t => {
-    allTasks.push({ id: t.id, title: t.title, type: 'user', notes: t.notes, completed: false });
-  });
+
+  if (isPremium) {
+    // Premium: show all incomplete user tasks
+    userTasks.filter(t => !t.completed).forEach(t => {
+      allTasks.push({ id: t.id, title: t.title, type: 'user', notes: t.notes, completed: false });
+    });
+  } else {
+    // Free: show only the first user task (the default one)
+    const firstTask = userTasks[0];
+    if (firstTask) {
+      allTasks.push({ id: firstTask.id, title: firstTask.title, type: 'user', notes: firstTask.notes, completed: firstTask.completed });
+    }
+  }
 
   // Show max 3
   const display = allTasks.slice(0, 3);
@@ -2738,10 +2941,18 @@ async function openTaskDrawer() {
     content.appendChild(el);
   }
 
+  // Tier check — free users only see their first task
+  const isPremDrawer = await JestyPremium.isPremium();
+
   // User tasks (incomplete first, then completed)
-  const incomplete = userTasks.filter(t => !t.completed);
-  const completed = userTasks.filter(t => t.completed);
-  const hasAuto = currentTask && !currentTask.completed;
+  let visibleTasks = userTasks;
+  if (!isPremDrawer) {
+    // Free: only show first task
+    visibleTasks = userTasks.slice(0, 1);
+  }
+  const incomplete = visibleTasks.filter(t => !t.completed);
+  const completed = visibleTasks.filter(t => t.completed);
+  const hasAuto = isPremDrawer && currentTask && !currentTask.completed;
 
   const isEmpty = !hasAuto && incomplete.length === 0 && completed.length === 0;
 
@@ -2808,14 +3019,22 @@ async function openTaskDrawer() {
     content.appendChild(el);
   });
 
-  // Add task button
+  // Add task button (or upgrade prompt for free users)
   const addBtn = document.createElement('button');
   addBtn.className = 'task-drawer-add-btn';
-  addBtn.textContent = '+ Add task';
-  addBtn.addEventListener('click', () => {
-    closeTaskDrawer();
-    createAndOpenTask();
-  });
+  if (isPremDrawer) {
+    addBtn.textContent = '+ Add task';
+    addBtn.addEventListener('click', () => {
+      closeTaskDrawer();
+      createAndOpenTask();
+    });
+  } else {
+    addBtn.textContent = 'Plead Guilty to add more';
+    addBtn.addEventListener('click', () => {
+      closeTaskDrawer();
+      showTierOverlayPlans();
+    });
+  }
   content.appendChild(addBtn);
 }
 
@@ -3024,6 +3243,7 @@ async function openTaskDetail(taskId, unsavedTask) {
         task.title = task.title || 'Untitled';
         task.completed = true;
         task.completedAt = Date.now();
+        delete task.draft;
         await saveUserTask(task);
       }
       closeTaskDetail();
@@ -3050,10 +3270,14 @@ async function closeTaskDetail() {
   }
   clearTimeout(taskDetailSaveTimer);
 
-  // Clean up empty tasks on close
+  // Clean up empty tasks on close, publish drafts with content
   if (taskDetailCurrentTask && !taskDetailDismissed) {
     if (isTaskEmpty(taskDetailCurrentTask)) {
       await deleteUserTask(taskDetailCurrentTask.id);
+      renderTaskList();
+    } else if (taskDetailCurrentTask.draft) {
+      delete taskDetailCurrentTask.draft;
+      await saveUserTask(taskDetailCurrentTask);
       renderTaskList();
     }
   }
@@ -3066,6 +3290,7 @@ async function createAndOpenTask() {
     title: '',
     notes: [],
     completed: false,
+    draft: true,
     createdAt: Date.now()
   };
   openTaskDetail(newTask.id, newTask);
@@ -3107,51 +3332,45 @@ const LEVEL_THRESHOLDS = [
 ];
 
 const LEVEL_UNLOCKS = {
-  2: 'Party Hat',
-  3: 'Sunglasses',
-  4: 'Bandana',
-  5: 'Heart Shades',
-  6: 'Beanie',
-  7: 'Aviators · Teen Blob',
-  8: 'Chef Hat',
-  9: '3D Glasses',
-  10: 'Monocle',
-  11: 'Propeller Hat',
-  12: 'Star Glasses',
-  13: 'Crown',
-  14: 'Bow Tie · Adult Blob',
-  15: 'Detective Hat',
-  16: 'Headband',
-  17: 'Viking Helmet',
-  18: 'Top Hat',
-  19: 'Pirate Hat',
-  20: 'Halo · Legendary Blob'
+  2: 'Bandana',
+  3: 'Heart Shades',
+  4: 'Chef Hat',
+  5: '3D Glasses',
+  6: 'Monocle',
+  7: 'Propeller Hat',
+  8: 'Star Glasses',
+  9: 'Crown',
+  10: 'Bow Tie',
+  11: 'Detective Hat',
+  12: 'Headband',
+  13: 'Viking Helmet',
+  14: 'Top Hat',
+  15: 'Pirate Hat',
+  16: 'Halo'
 };
 
 const LEVEL_UNLOCK_IDS = {
-  2: 'party-hat',
-  3: 'sunglasses',
-  4: 'bandana',
-  5: 'heart-shades',
-  6: 'beanie',
-  7: 'aviators',
-  8: 'chef-hat',
-  9: '3d-glasses',
-  10: 'monocle',
-  11: 'propeller-hat',
-  12: 'star-glasses',
-  13: 'crown',
-  14: 'bow-tie',
-  15: 'detective-hat',
-  16: 'headband',
-  17: 'viking-helmet',
-  18: 'top-hat',
-  19: 'pirate-hat',
-  20: 'halo'
+  2: 'bandana',
+  3: 'heart-shades',
+  4: 'chef-hat',
+  5: '3d-glasses',
+  6: 'monocle',
+  7: 'propeller-hat',
+  8: 'star-glasses',
+  9: 'crown',
+  10: 'bow-tie',
+  11: 'detective-hat',
+  12: 'headband',
+  13: 'viking-helmet',
+  14: 'top-hat',
+  15: 'pirate-hat',
+  16: 'halo'
 };
 
 const XP_SOURCES = [
   { label: 'Tab Cleanup', desc: '5-15 XP per closed tab' },
+  { label: 'Milestones', desc: '50-1000 XP per milestone' },
+  { label: 'Streaks', desc: '30-1500 XP per streak' },
   { label: 'Memory Match', desc: '10-30 XP per level' },
   { label: 'Tab Quiz', desc: '10-15 XP per question' },
   { label: 'Roast Trivia', desc: '10-15 XP per question' },
@@ -3222,34 +3441,32 @@ async function initProgression() {
   const levelsBackdrop = document.getElementById('levels-drawer-backdrop');
   if (levelsClose) levelsClose.addEventListener('click', closeLevelsDrawer);
   if (levelsBackdrop) levelsBackdrop.addEventListener('click', closeLevelsDrawer);
+  const levelsPlayBtn = document.getElementById('levels-play-btn');
+  if (levelsPlayBtn) levelsPlayBtn.addEventListener('click', () => { closeLevelsDrawer(); JestyMemoryGame.show(); });
 
   await renderLevelBadge();
 }
 
 const LEVEL_QUIPS = {
-  2: 'A party hat at level 2? Celebrating mediocrity. On brand.',
-  3: 'Shades to hide the shame in your eyes. Smart move.',
-  4: 'A bandana? Are you browsing or starting a revolution?',
-  5: 'Heart-shaped glasses. Because you clearly love wasting time.',
-  6: 'A beanie to keep your one brain cell warm. Thoughtful.',
-  7: 'Aviators AND a growth spurt? Don\'t let it go to your head.',
-  8: 'Chef hat unlocked. Finally cooking something besides tabs.',
-  9: '3D glasses for someone living in a 2D reality. The irony.',
-  10: 'A monocle to inspect your life choices in high definition.',
-  11: 'A propeller hat. Your maturity level checks out.',
-  12: 'Star glasses because you\'re the star of your own delusion.',
-  13: 'A crown for the reigning champion of procrastination.',
-  14: 'A bow tie AND Adult Blob? Growing up is overrated anyway.',
-  15: 'Detective hat. Now investigate where your day went.',
-  16: 'A headband for all that mental gymnastics you do daily.',
-  17: 'A viking helmet. Pillaging productivity like a true warrior.',
-  18: 'Sir Roasts-a-Lot has entered the building. Finally.',
-  19: 'A pirate hat. Navigating the seven tabs of the sea.',
-  20: 'A halo? You? THAT is the funniest thing I\'ve ever seen.',
+  2: 'A bandana? Are you browsing or starting a revolution?',
+  3: 'Aviators to hide the shame in your eyes. Smart move.',
+  4: 'Chef hat unlocked. Finally cooking something besides tabs.',
+  5: '3D glasses for someone living in a 2D reality. The irony.',
+  6: 'A monocle to inspect your life choices in high definition.',
+  7: 'A propeller hat AND a growth spurt? Don\'t let it go to your head.',
+  8: 'Star glasses because you\'re the star of your own delusion.',
+  9: 'A crown for the reigning champion of procrastination.',
+  10: 'A bow tie. Formally savage. Informally a mess.',
+  11: 'Detective hat. Now investigate where your day went.',
+  12: 'A headband for all that mental gymnastics you do daily.',
+  13: 'A viking helmet. Pillaging productivity like a true warrior.',
+  14: 'Sir Roasts-a-Lot has entered the building. Finally.',
+  15: 'A pirate hat. Navigating the seven tabs of the sea.',
+  16: 'A halo? You? THAT is the funniest thing I\'ve ever seen.',
 };
 
 const HERO_STATUS_QUIPS = [
-  'Still a baby blob. Adorable. Pathetic, but adorable.',
+  'Adorable. Pathetic, but adorable.',
   'Level %d and already addicted. Classic.',
   'You\'re speed-running mediocrity. Respect.',
   'At this rate you\'ll peak by retirement.',
@@ -3271,7 +3488,7 @@ async function openLevelsDrawer() {
   if (heroEl) {
     const quip = HERO_STATUS_QUIPS[prog.level % HERO_STATUS_QUIPS.length].replace('%d', prog.level);
     heroEl.innerHTML = `
-      <div class="levels-hero-level">${prog.level}</div>
+      <div class="levels-hero-level"><span class="levels-hero-lv">LEVEL</span>${prog.level}</div>
       <div class="levels-hero-bar"><div class="levels-hero-fill" style="width:${pct * 100}%"></div></div>
       <div class="levels-hero-xp">${prog.xp} / ${prog.xp_to_next} XP</div>
       <div class="levels-hero-quip">${quip}</div>
@@ -3324,6 +3541,288 @@ function closeLevelsDrawer() {
   if (drawer) drawer.classList.remove('visible');
 }
 
+/* ──────────────────────────────────────────────
+   MILESTONES DRAWER
+   ────────────────────────────────────────────── */
+
+const MILESTONE_DEFS = [
+  { count: 25, key: 'roast_25', xp: 50, icon: '25', label: '25 Roasts', quip: 'You actually came back.' },
+  { count: 60, key: 'roast_60', xp: 100, icon: '60', label: '60 Roasts', quip: 'This is becoming a habit.' },
+  { count: 100, key: 'roast_100', xp: 200, icon: '100', label: '100 Roasts', quip: 'Triple digits of poor choices.' },
+  { count: 500, key: 'roast_500', xp: 500, icon: '500', label: '500 Roasts', quip: 'At this point, I owe you rent.' },
+  { count: 1000, key: 'roast_1000', xp: 1000, icon: '1K', label: '1000 Roasts', quip: 'A legend. A fool. Both.' }
+];
+
+const MILESTONE_HERO_QUIPS = [
+  'Every roast is a badge of dishonor.',
+  'You collect roasts like trophies.',
+  'Most people stop. You accelerated.',
+  'Your dedication is alarming.',
+  'A monument to poor decisions.'
+];
+
+async function openMilestoneDrawer() {
+  const drawer = document.getElementById('milestone-drawer');
+  const hero = document.getElementById('milestone-drawer-hero');
+  const timeline = document.getElementById('milestone-timeline');
+  if (!drawer || !hero || !timeline) return;
+
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  const totalRoasts = jesty_data?.profile?.total_roasts || 0;
+  const milestoneData = jesty_data?.milestones?.roasts || {};
+
+  // Hero
+  const quip = MILESTONE_HERO_QUIPS[Math.floor(Math.random() * MILESTONE_HERO_QUIPS.length)];
+  hero.innerHTML = `
+    <div class="levels-hero-level">
+      <span class="levels-hero-lv">ROASTS</span>
+      ${totalRoasts}
+    </div>
+    <div class="levels-hero-quip">${quip}</div>
+  `;
+
+  // Timeline
+  timeline.innerHTML = '';
+  MILESTONE_DEFS.forEach(m => {
+    const reached = !!milestoneData[m.key];
+    const isNext = !reached && MILESTONE_DEFS.filter(d => !!milestoneData[d.key]).length === MILESTONE_DEFS.indexOf(m);
+
+    const card = document.createElement('div');
+    card.className = `level-card${reached ? ' reached' : ''}${isNext ? ' next-up' : ''}`;
+    card.innerHTML = `
+      <div class="milestone-card-icon">${m.icon}</div>
+      <div class="level-card-info">
+        <div class="level-card-top">
+          <span class="level-card-lvl">${m.label}</span>
+          ${isNext ? '<span class="level-card-next-chip">Next</span>' : ''}
+        </div>
+        <div class="level-card-quip">${m.quip}</div>
+        <div class="milestone-card-xp">${reached ? 'Claimed' : `+${m.xp} XP`}</div>
+      </div>
+    `;
+    timeline.appendChild(card);
+  });
+
+  // Show
+  drawer.classList.add('visible');
+
+  // Close handlers
+  document.getElementById('milestone-drawer-close').onclick = () => drawer.classList.remove('visible');
+  document.getElementById('milestone-drawer-backdrop').onclick = () => drawer.classList.remove('visible');
+  document.getElementById('milestone-play-btn').onclick = () => { drawer.classList.remove('visible'); JestyMemoryGame.show(); };
+}
+
+/* ──────────────────────────────────────────────
+   STREAKS DRAWER
+   ────────────────────────────────────────────── */
+
+const STREAK_DEFS = [
+  { streak: 1, xp: 0, icon: '1', label: '1-Day Streak', quip: 'Everyone starts somewhere.' },
+  { streak: 3, xp: 30, icon: '3', label: '3-Day Streak', quip: 'Three days in a row. Cute.' },
+  { streak: 7, xp: 75, icon: '7', label: '7-Day Streak', quip: 'A full week of this. Committed.' },
+  { streak: 14, xp: 150, icon: '14', label: '14-Day Streak', quip: 'Two weeks. This is a relationship now.' },
+  { streak: 30, xp: 350, icon: '30', label: '30-Day Streak', quip: 'A month. Honestly impressive.' },
+  { streak: 60, xp: 750, icon: '60', label: '60-Day Streak', quip: 'Two months. You need an intervention.' },
+  { streak: 100, xp: 1500, icon: '100', label: '100-Day Streak', quip: 'A hundred days. I live here now.' }
+];
+
+// Pre-defined character compositions for each streak tier
+// Each entry: { color, expression } — deterministic so they look the same every time
+const STREAK_COMPOSITIONS = {
+  1: [
+    { color: 'purple', expression: 'smug' }
+  ],
+  3: [
+    { color: 'purple', expression: 'smug' },
+    { color: 'pink', expression: 'happy' },
+    { color: 'sky', expression: 'impressed' }
+  ],
+  7: [
+    { color: 'purple', expression: 'smug' },
+    { color: 'pink', expression: 'happy' },
+    { color: 'sky', expression: 'impressed' },
+    { color: 'mint', expression: 'manic' },
+    { color: 'peach', expression: 'eyeroll' },
+    { color: 'lime', expression: 'suspicious' },
+    { color: 'purple', expression: 'yikes' }
+  ],
+  14: [
+    { color: 'purple', expression: 'smug' },
+    { color: 'pink', expression: 'happy' },
+    { color: 'sky', expression: 'impressed' },
+    { color: 'mint', expression: 'manic' },
+    { color: 'peach', expression: 'eyeroll' },
+    { color: 'lime', expression: 'suspicious' },
+    { color: 'purple', expression: 'yikes' },
+    { color: 'pink', expression: 'melting' },
+    { color: 'sky', expression: 'petty' },
+    { color: 'mint', expression: 'dramatic' },
+    { color: 'peach', expression: 'chaotic' },
+    { color: 'lime', expression: 'dead' },
+    { color: 'purple', expression: 'disappointed' },
+    { color: 'pink', expression: 'tender' }
+  ],
+  30: [
+    { color: 'purple', expression: 'smug' },
+    { color: 'pink', expression: 'happy' },
+    { color: 'sky', expression: 'impressed' },
+    { color: 'mint', expression: 'manic' },
+    { color: 'peach', expression: 'eyeroll' },
+    { color: 'lime', expression: 'suspicious' },
+    { color: 'purple', expression: 'yikes' },
+    { color: 'pink', expression: 'melting' },
+    { color: 'sky', expression: 'petty' },
+    { color: 'mint', expression: 'dramatic' },
+    { color: 'peach', expression: 'chaotic' },
+    { color: 'lime', expression: 'dead' },
+    { color: 'purple', expression: 'disappointed' },
+    { color: 'pink', expression: 'tender' },
+    { color: 'sky', expression: 'smug' },
+    { color: 'mint', expression: 'happy' },
+    { color: 'peach', expression: 'impressed' },
+    { color: 'lime', expression: 'manic' },
+    { color: 'purple', expression: 'melting' },
+    { color: 'pink', expression: 'eyeroll' },
+    { color: 'sky', expression: 'suspicious' },
+    { color: 'mint', expression: 'yikes' },
+    { color: 'peach', expression: 'petty' },
+    { color: 'lime', expression: 'dramatic' },
+    { color: 'purple', expression: 'chaotic' },
+    { color: 'pink', expression: 'dead' },
+    { color: 'sky', expression: 'disappointed' },
+    { color: 'mint', expression: 'tender' },
+    { color: 'peach', expression: 'smug' },
+    { color: 'lime', expression: 'happy' }
+  ],
+  60: null,  // reuse 30
+  100: null  // reuse 30
+};
+
+/**
+ * Build a crowd composition SVG for streak cards.
+ * Returns an HTML string of N characters arranged in rows.
+ */
+function buildStreakCrowd(count) {
+  const comp = STREAK_COMPOSITIONS[count] || STREAK_COMPOSITIONS[30] || STREAK_COMPOSITIONS[14];
+  if (!comp) return '';
+
+  // Layout config based on actual character count
+  const n = comp.length;
+  let charW, charH, rows;
+  if (n <= 1) {
+    charW = 48; charH = 44;
+    rows = [comp];
+  } else if (n <= 3) {
+    charW = 40; charH = 37;
+    rows = [comp];  // single row
+  } else if (n <= 7) {
+    charW = 30; charH = 28;
+    const mid = Math.ceil(n / 2);
+    rows = [comp.slice(0, mid), comp.slice(mid)];
+  } else if (n <= 14) {
+    charW = 22; charH = 20;
+    const perRow = Math.ceil(n / 3);
+    rows = [];
+    for (let i = 0; i < n; i += perRow) rows.push(comp.slice(i, i + perRow));
+  } else {
+    charW = 17; charH = 16;
+    const perRow = Math.ceil(n / 5);
+    rows = [];
+    for (let i = 0; i < n; i += perRow) rows.push(comp.slice(i, i + perRow));
+  }
+
+  const gap = Math.max(2, Math.round(charW * 0.15));
+  const rowGap = Math.max(0, Math.round(charH * 0.05));
+  const totalH = rows.length * charH + (rows.length - 1) * rowGap;
+  const maxRowW = Math.max(...rows.map(r => r.length * charW + (r.length - 1) * gap));
+  const svgW = maxRowW + 4;
+  const svgH = totalH + 4;
+
+  let inner = '';
+  rows.forEach((row, ri) => {
+    const rowW = row.length * charW + (row.length - 1) * gap;
+    const offsetX = (svgW - rowW) / 2;
+    const offsetY = 2 + ri * (charH + rowGap);
+
+    row.forEach((ch, ci) => {
+      const x = offsetX + ci * (charW + gap);
+      let charSvg = buildTierComboSvg({ color: ch.color, expression: ch.expression }, charW, charH);
+      // Add x/y position to the nested <svg> element
+      charSvg = charSvg.replace('<svg ', `<svg x="${x}" y="${offsetY}" `);
+      inner += charSvg;
+    });
+  });
+
+  return `<svg viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" class="streak-crowd">${inner}</svg>`;
+}
+
+const STREAK_HERO_QUIPS = [
+  'Consistency is your love language.',
+  'One day at a time. Every single day.',
+  'You don\'t skip days. Days skip you.',
+  'The streak owns you now.',
+  'Showing up is your whole personality.'
+];
+
+async function openStreakDrawer() {
+  const drawer = document.getElementById('streak-drawer');
+  const hero = document.getElementById('streak-drawer-hero');
+  const timeline = document.getElementById('streak-timeline');
+  if (!drawer || !hero || !timeline) return;
+
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  const streaks = jesty_data?.milestones?.streaks || {};
+  const current = streaks.current_daily_streak || 0;
+  const longest = streaks.longest_daily_streak || 0;
+  const claimed = streaks.claimed_streak_rewards || [];
+
+  // Hero
+  const quip = STREAK_HERO_QUIPS[Math.floor(Math.random() * STREAK_HERO_QUIPS.length)];
+  hero.innerHTML = `
+    <div class="levels-hero-level">
+      <span class="levels-hero-lv">CURRENT STREAK</span>
+      ${current}
+    </div>
+    <div class="levels-hero-label">Best: ${longest} day${longest !== 1 ? 's' : ''}</div>
+    <div class="levels-hero-quip">${quip}</div>
+  `;
+
+  // Timeline
+  timeline.innerHTML = '';
+  STREAK_DEFS.forEach((s, i) => {
+    const isCurrent = s.streak === 1;
+    const reached = !isCurrent && claimed.includes(s.streak);
+    const isNext = !isCurrent && !reached && STREAK_DEFS.filter(d => d.streak !== 1 && claimed.includes(d.streak)).length === (i - 1);
+
+    const card = document.createElement('div');
+    card.className = `streak-card-v2${isCurrent ? ' current' : ''}${reached ? ' reached' : ''}${isNext ? ' next-up' : ''}`;
+
+    const crowd = buildStreakCrowd(s.streak);
+
+    card.innerHTML = `
+      <div class="streak-card-header">
+        <span class="streak-card-label">${s.label}</span>
+        ${isCurrent ? '<span class="streak-card-current-chip">Current</span>' : ''}
+        ${isNext ? '<span class="level-card-next-chip">Next</span>' : ''}
+      </div>
+      <div class="streak-card-crowd">${crowd}</div>
+      <div class="streak-card-footer">
+        <div class="streak-card-quip">${s.quip}</div>
+        ${!isCurrent ? `<div class="streak-card-xp-pill">${reached ? 'Claimed' : `+${s.xp} XP`}</div>` : ''}
+      </div>
+    `;
+    timeline.appendChild(card);
+  });
+
+  // Show
+  drawer.classList.add('visible');
+
+  // Close handlers
+  document.getElementById('streak-drawer-close').onclick = () => drawer.classList.remove('visible');
+  document.getElementById('streak-drawer-backdrop').onclick = () => drawer.classList.remove('visible');
+  document.getElementById('streak-play-btn').onclick = () => { drawer.classList.remove('visible'); JestyMemoryGame.show(); };
+}
+
 let _lastKnownLevel = null;
 
 async function renderLevelBadge() {
@@ -3338,6 +3837,8 @@ async function renderLevelBadge() {
     const unlock = LEVEL_UNLOCKS[prog.level];
     // Small delay so XP toast (if any) shows first
     setTimeout(() => showLevelUpToast(prog.level, unlock), 3200);
+    // Refresh accessory grid so newly unlocked items are selectable
+    refreshAllAccessoryUI();
   }
   _lastKnownLevel = prog.level;
 
@@ -3424,6 +3925,9 @@ async function renderGameUpgradeCard(container) {
   const tier = typeof JestyPremium !== 'undefined' ? await JestyPremium.getTier() : 'free';
   if (tier !== 'free') return null;
 
+  // Clear any previous content (guards against async race conditions)
+  container.innerHTML = '';
+
   const hint = document.createElement('p');
   hint.className = 'game-upgrade-hint';
   hint.textContent = 'Want harder levels and unlimited fun?';
@@ -3478,6 +3982,49 @@ function bounceUpgradeCard(el) {
   void el.offsetWidth;
   el.classList.add('bounce');
   setTimeout(() => el.classList.remove('bounce'), 700);
+}
+
+/**
+ * Renders the full Guilty tier card (same as plans page) into a container.
+ * Used in memory game after completing the last free level.
+ */
+function renderGuiltyTierCard(container) {
+  const tier = TIER_DATA.find(t => t.key === 'premium');
+  if (!tier) return;
+
+  // Exact same rendering as showAllPlans() for the Guilty card
+  const combo = TIER_COMBOS.premium;
+  const characterHtml = combo ? buildTierCharacterSvg(combo) : '';
+  const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
+  const ctaHtml = tier.cta
+    ? `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`
+    : '';
+
+  const card = document.createElement('div');
+  card.className = 'tier-card highlighted';
+  card.innerHTML = `
+    <div class="tier-card-top">
+      ${characterHtml}
+      <div class="tier-card-top-info">
+        <div class="tier-card-header">
+          <span class="tier-card-name">${tier.name}</span>
+          <span class="tier-card-badge badge-${tier.key}">${tier.tagline}</span>
+        </div>
+        <div class="tier-card-price">${tier.price} <span>${tier.priceSub}</span></div>
+      </div>
+    </div>
+    <ul class="tier-card-features">${featuresHtml}</ul>
+    ${ctaHtml}
+  `;
+
+  const ctaBtn = card.querySelector('.tier-card-cta');
+  if (ctaBtn) {
+    ctaBtn.addEventListener('click', () => {
+      openPremiumCheckout();
+    });
+  }
+
+  container.appendChild(card);
 }
 
 // Auto-shake visible upgrade cards every 15–30s
@@ -4374,12 +4921,21 @@ async function showAllPlans() {
     const combo = TIER_COMBOS[tier.key];
     const card = document.createElement('div');
     card.className = 'tier-card';
-    if (tier.key === nextTier) card.classList.add('highlighted');
+
+    const tierIdx = tierOrder.indexOf(tier.key);
+    const isCurrent = tier.key === currentTier;
+    const isUpgrade = tierIdx > currentIdx;
+
+    if (isUpgrade && tier.key === nextTier) card.classList.add('highlighted');
+    if (isCurrent && currentTier !== 'free') card.classList.add('current');
 
     const characterHtml = combo ? buildTierCharacterSvg(combo) : '';
     const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
+
     let ctaHtml = '';
-    if (tier.cta) {
+    if (isCurrent && currentTier !== 'free') {
+      ctaHtml = `<div class="tier-card-current-label">Your current plan</div>`;
+    } else if (isUpgrade && tier.cta) {
       ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`;
     }
 
@@ -4464,11 +5020,25 @@ function hideTierOverlay() {
 }
 
 function initTierOverlay() {
-  document.querySelectorAll('.stat-pill').forEach(pill => {
-    pill.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showTierOverlayPlans();
-    });
+  // Roasts pill → milestones drawer
+  const roastPill = document.getElementById('stat-pill-roasts');
+  if (roastPill) roastPill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openMilestoneDrawer();
+  });
+
+  // Streak pill → streaks drawer
+  const streakPill = document.getElementById('stat-pill-streak');
+  if (streakPill) streakPill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openStreakDrawer();
+  });
+
+  // Remaining pill → tier overlay (upgrade CTA)
+  const remainingPill = document.getElementById('remaining-pill');
+  if (remainingPill) remainingPill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showTierOverlayPlans();
   });
 
   const backdrop = document.getElementById('tier-overlay-backdrop');
@@ -4653,17 +5223,51 @@ function showLevelUpToast(level, unlock) {
   label.textContent = 'Level Up';
   overlay.appendChild(label);
 
-  // Big number
+  // Build accessory SVG for the back face (if this level unlocks one)
+  const unlockId = LEVEL_UNLOCK_IDS[level];
+  const catalog = typeof JestyAccessories !== 'undefined' ? JestyAccessories.getCatalog() : [];
+  const accItem = unlockId ? catalog.find(a => a.id === unlockId) : null;
+  const hasFlip = !!accItem;
+
+  // 3D flip container: front = number, back = accessory
+  const flipper = document.createElement('div');
+  flipper.className = 'level-up-flipper';
+
+  // Front face — big number
+  const front = document.createElement('div');
+  front.className = 'level-up-flip-front';
   const num = document.createElement('div');
   num.className = 'level-up-number';
   num.textContent = level;
   num.dataset.num = level;
-  overlay.appendChild(num);
+  front.appendChild(num);
+  flipper.appendChild(front);
 
-  // Unlock text
+  // Back face — accessory SVG
+  if (hasFlip) {
+    const back = document.createElement('div');
+    back.className = 'level-up-flip-back';
+    const vb = ACC_VIEWBOXES[accItem.symbolId] || '0 0 44 30';
+    const symbol = document.getElementById(accItem.symbolId);
+    if (symbol) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', vb);
+      svg.setAttribute('width', '120');
+      svg.setAttribute('height', '90');
+      svg.classList.add('level-up-acc-svg');
+      svg.innerHTML = symbol.innerHTML;
+      back.appendChild(svg);
+    }
+    flipper.appendChild(back);
+  }
+
+  overlay.appendChild(flipper);
+
+  // Unlock text (delay synced to flip if accessory present)
   if (unlock) {
     const unlockEl = document.createElement('div');
     unlockEl.className = 'level-up-unlock';
+    if (hasFlip) unlockEl.style.animationDelay = '1.8s';
     unlockEl.innerHTML = `<span>${unlock.split(' · ')[0]}</span> unlocked`;
     overlay.appendChild(unlockEl);
   }
@@ -4678,9 +5282,18 @@ function showLevelUpToast(level, unlock) {
   // Trigger fade in
   requestAnimationFrame(() => overlay.classList.add('visible'));
 
+  // Trigger flip after 1.5s to reveal accessory
+  if (hasFlip) {
+    setTimeout(() => {
+      flipper.classList.add('flipped');
+      // Second spark burst on flip
+      spawnBurst(particles, 0);
+    }, 1500);
+  }
+
   // Spawn spark bursts
   const sparkColors = ['#EAB308', '#FDE047', '#FFFFFF', '#CA8A04', '#A78BFA', '#F59E0B'];
-  function spawnBurst(delay) {
+  function spawnBurst(container, delay) {
     setTimeout(() => {
       for (let i = 0; i < 24; i++) {
         const spark = document.createElement('div');
@@ -4705,18 +5318,18 @@ function showLevelUpToast(level, unlock) {
           spark.style.height = `${size}px`;
         }
 
-        particles.appendChild(spark);
+        container.appendChild(spark);
       }
     }, delay);
   }
 
-  spawnBurst(200);
-  spawnBurst(600);
-  spawnBurst(1200);
+  spawnBurst(particles, 200);
+  spawnBurst(particles, 600);
+  spawnBurst(particles, 1200);
 
-  // Fade out and remove
+  // Fade out and remove (extended to 5.5s to give time to see accessory)
   setTimeout(() => {
     overlay.classList.remove('visible');
     setTimeout(() => overlay.remove(), 500);
-  }, 4000);
+  }, hasFlip ? 5500 : 4000);
 }

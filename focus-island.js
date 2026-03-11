@@ -2,6 +2,11 @@
  * Jesty Focus Island — Floating iframe overlay
  * Shows Jesty's clipped face + timer during focus sessions.
  * Injected into pages by focus-content.js as an iframe.
+ *
+ * Actions:
+ *   Eye    → toggle blur overlay on all tabs
+ *   Pencil → open sidepanel to focus notes
+ *   Sound  → open sidepanel to audio drawer
  */
 
 const ISLAND_STATE_TO_FACE = {
@@ -25,23 +30,30 @@ const SOURCE_COLOR = {
 let currentColor = { ...SOURCE_COLOR };
 let timerInterval = null;
 let _cachedTabId = null;
-let _panelOpen = false;
+let _blurEnabled = false;
 
 // Pre-cache the active tab ID so background can call sidePanel.open() synchronously
 chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   _cachedTabId = tabs[0]?.id || null;
-  console.log('[Jesty Island] cached tabId:', _cachedTabId);
 });
 
-// Read current sidepanel state from storage, then listen for changes
-chrome.storage.local.get(['_sidePanelOpen'], (result) => {
-  _panelOpen = !!result._sidePanelOpen;
+// Read current blur state from storage
+chrome.storage.local.get(['focusBlurEnabled'], (result) => {
+  _blurEnabled = !!result.focusBlurEnabled;
+  updateEyeIcon();
 });
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes._sidePanelOpen) {
-    _panelOpen = !!changes._sidePanelOpen.newValue;
+  if (changes.focusBlurEnabled) {
+    _blurEnabled = !!changes.focusBlurEnabled.newValue;
+    updateEyeIcon();
   }
 });
+
+function updateEyeIcon() {
+  const btn = document.getElementById('island-eye');
+  if (!btn) return;
+  btn.classList.toggle('active', _blurEnabled);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Apply theme (for expand panel colors)
@@ -103,17 +115,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.runtime.sendMessage({ type: 'open-sidepanel', tabId: _cachedTabId });
   });
 
-  // Eye button — toggle sidepanel (pass tabId so background can call open() synchronously)
+  // Eye button — toggle blur overlay on all tabs
   document.getElementById('island-eye').addEventListener('click', () => {
-    console.log('[Jesty Island] eye click, tabId:', _cachedTabId);
-    chrome.runtime.sendMessage({ type: 'toggle-sidepanel', tabId: _cachedTabId }, (resp) => {
-      if (chrome.runtime.lastError) {
-        console.error('[Jesty Island] sendMessage error:', chrome.runtime.lastError.message);
-      } else {
-        console.log('[Jesty Island] toggle response:', resp);
-      }
-    });
+    _blurEnabled = !_blurEnabled;
+    chrome.storage.local.set({ focusBlurEnabled: _blurEnabled });
+    updateEyeIcon();
   });
+
+  // Sound button — open sidepanel to audio drawer
+  document.getElementById('island-sound').addEventListener('click', () => {
+    chrome.storage.local.set({
+      sidePanelOpenMode: 'focus-audio',
+      sidePanelOpenAt: Date.now()
+    });
+    chrome.runtime.sendMessage({ type: 'open-sidepanel', tabId: _cachedTabId });
+  });
+
+  // Update eye icon state
+  updateEyeIcon();
 });
 
 async function render() {
@@ -187,6 +206,9 @@ async function endSession() {
       }
     });
   }
+
+  // Clean up blur state
+  await chrome.storage.local.set({ focusBlurEnabled: false });
 }
 
 // Recolor SVGs to match user's chosen color
@@ -212,4 +234,3 @@ function recolorSVGs(color) {
 
   currentColor = { ...color };
 }
-

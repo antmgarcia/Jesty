@@ -44,7 +44,7 @@
       <div class="level-panel hidden" id="level-panel">
         <div class="level-panel-header">
           <span class="level-panel-title" id="level-panel-title">Level 1</span>
-          <span class="level-panel-stage" id="level-panel-stage">Baby Blob</span>
+          <span class="level-panel-stage" id="level-panel-stage">Suspect</span>
         </div>
         <div class="level-panel-progress">
           <div class="level-panel-bar">
@@ -75,26 +75,56 @@
           <button class="settings-theme-btn" data-theme="dark">Dark</button>
         </div>
         <div class="settings-plan" id="settings-plan"></div>
-        <div class="settings-tier-preview" id="settings-tier-preview">
-          <button class="settings-tier-btn" data-tier="free">Suspect</button>
-          <button class="settings-tier-btn" data-tier="premium">Guilty</button>
-          <button class="settings-tier-btn" data-tier="pro">Sentenced</button>
-        </div>
       </div>
 
 
       <!-- FOCUS OVERLAY (covers main-screen when focus is active) -->
       <div class="focus-overlay hidden" id="focus-overlay">
-        <div class="focus-overlay-center">
-          <div class="focus-overlay-timer" id="focus-overlay-timer">0:00</div>
-          <div class="focus-overlay-character">
-            <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-smug" id="focus-overlay-face"/></svg>
-          </div>
-          <p class="focus-overlay-msg" id="focus-overlay-msg">Stay focused. I'm watching.</p>
-          <button class="focus-overlay-end" id="focus-overlay-end">End focus</button>
+        <!-- Top-right action icons (mirror island actions) -->
+        <div class="focus-overlay-actions" id="focus-overlay-actions">
+          <button class="focus-action-btn" id="focus-action-blur" title="Toggle blur">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="focus-action-btn" id="focus-action-sound" title="Sounds">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </button>
+          <button class="focus-action-btn" id="focus-action-pencil" title="Notes">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
         </div>
-        <div class="focus-overlay-notes">
-          <div class="focus-notes-list" id="focus-notes-list"></div>
+
+        <!-- Main content (slides left when audio drawer opens) -->
+        <div class="focus-overlay-main" id="focus-overlay-main">
+          <div class="focus-overlay-center">
+            <div class="focus-overlay-timer" id="focus-overlay-timer">0:00</div>
+            <div class="focus-overlay-character">
+              <svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-smug" id="focus-overlay-face"/></svg>
+            </div>
+            <p class="focus-overlay-msg" id="focus-overlay-msg">Stay focused. I'm watching.</p>
+            <button class="focus-overlay-end" id="focus-overlay-end">End focus</button>
+          </div>
+          <div class="focus-overlay-notes">
+            <div class="focus-notes-list" id="focus-notes-list"></div>
+          </div>
+        </div>
+
+        <!-- Audio drawer (slides in from right) -->
+        <div class="focus-audio-drawer" id="focus-audio-drawer">
+          <div class="focus-audio-header">
+            <button class="focus-audio-back" id="focus-audio-back">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="focus-audio-header-text">
+              <span class="focus-audio-title">Focus Sounds</span>
+              <span class="focus-audio-adaptive" id="focus-audio-adaptive"></span>
+            </div>
+          </div>
+          <div class="focus-audio-tracks" id="focus-audio-tracks"></div>
+          <div class="focus-audio-volume" id="focus-audio-volume-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+            <input type="range" class="focus-audio-slider" id="focus-audio-slider" min="0" max="100" value="50">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </div>
         </div>
       </div>
 
@@ -122,11 +152,11 @@
 
         <!-- Stats -->
         <div class="stats-row" id="stats-row">
-          <div class="stat-pill">
+          <div class="stat-pill" id="stat-pill-roasts">
             <span class="stat-value" id="roast-count">0</span>
             <span class="stat-label">roasts</span>
           </div>
-          <div class="stat-pill">
+          <div class="stat-pill" id="stat-pill-streak">
             <span class="stat-value" id="streak-count">0</span>
             <span class="stat-label">day streak</span>
           </div>
@@ -201,6 +231,16 @@
               </div>
               <svg class="funzone-card-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
             </button>
+            <button class="funzone-card" id="generator-card">
+              <div class="funzone-card-icon">
+                <svg viewBox="-15 -10 150 140" width="32" height="30"><use href="#face-manic"/></svg>
+              </div>
+              <div class="funzone-card-info">
+                <span class="funzone-card-title">Pattern Generator</span>
+                <span class="funzone-card-desc">Generate pattern art</span>
+              </div>
+              <svg class="funzone-card-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
           </div>
         </div>
 
@@ -208,7 +248,7 @@
         <div class="accessories-section" id="accessories-section">
           <div class="accessories-header">
             <span class="accessories-label">Accessories</span>
-            <button class="accessories-customize" id="accessories-customize">Customize</button>
+            <button class="accessories-customize" id="accessories-customize">View all</button>
           </div>
           <div class="accessory-grid" id="accessory-grid"></div>
         </div>
@@ -350,6 +390,74 @@
       </div>
     </div>
 
+    <!-- Jesty Generator Overlay -->
+    <div class="generator-overlay hidden" id="generator-overlay">
+      <div class="generator-overlay-backdrop" id="generator-overlay-backdrop"></div>
+      <div class="generator-overlay-sheet">
+        <!-- Start Screen -->
+        <div class="generator-start" id="generator-start">
+          <div class="generator-overlay-header">
+            <span class="generator-overlay-title">Pattern Generator</span>
+            <div class="generator-header-actions">
+              <button class="generator-overlay-close" id="generator-start-close">&times;</button>
+            </div>
+          </div>
+          <div class="quiz-start">
+            <div class="game-start-hero" id="generator-start-hero">
+              <svg viewBox="-15 -10 150 140" width="100" height="93"><use href="#face-manic"/></svg>
+            </div>
+            <p class="game-start-desc">Create unique patterns with all 15 Jesty expressions and 6 colors. Download and share your art.</p>
+            <span class="game-start-xp">Earn 20 XP on first download</span>
+            <button class="quiz-start-btn" id="generator-start-btn">Generate</button>
+          </div>
+        </div>
+        <!-- Generator View -->
+        <div class="generator-view hidden" id="generator-view">
+          <div class="generator-overlay-header">
+            <span class="generator-overlay-title">Pattern Generator</span>
+            <div class="generator-header-actions">
+              <button class="generator-overlay-close" id="generator-overlay-close">&times;</button>
+            </div>
+          </div>
+          <div class="generator-viewport" id="generator-viewport">
+            <div class="generator-canvas" id="generator-canvas"></div>
+          </div>
+          <!-- Floating island (outside viewport to avoid overflow:hidden clipping) -->
+          <div class="generator-island">
+            <button class="generator-island-btn" id="generator-island-text" title="Add text">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <div class="generator-share-wrapper">
+              <button class="generator-island-btn" id="generator-island-share" title="Download">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <div class="generator-share-menu hidden" id="generator-share-menu">
+                <button class="generator-share-option" data-action="copy">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy image
+                </button>
+                <button class="generator-share-option" data-action="download-portrait">
+                  <span class="generator-ratio-icon generator-ratio-icon--portrait"></span>
+                  Download 4:5
+                </button>
+                <button class="generator-share-option" data-action="download-square">
+                  <span class="generator-ratio-icon generator-ratio-icon--square"></span>
+                  Download 1:1
+                </button>
+                <button class="generator-share-option" data-action="download-landscape">
+                  <span class="generator-ratio-icon generator-ratio-icon--landscape"></span>
+                  Download 16:9
+                </button>
+              </div>
+            </div>
+            <button class="generator-island-btn generator-island-btn--primary" id="generator-island-generate" title="Generate new pattern">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Accessories Drawer -->
     <div class="acc-drawer hidden" id="acc-drawer">
       <div class="acc-drawer-backdrop" id="acc-drawer-backdrop"></div>
@@ -374,6 +482,7 @@
           </button>
         </div>
         <div class="acc-drawer-sections" id="acc-drawer-sections"></div>
+        <button class="drawer-play-btn" id="acc-play-btn">Play to level up</button>
       </div>
     </div>
 
@@ -454,6 +563,37 @@
         <div class="levels-drawer-body">
           <div class="levels-timeline" id="levels-timeline"></div>
         </div>
+        <button class="drawer-play-btn" id="levels-play-btn">Play to level up</button>
+      </div>
+    </div>
+
+    <!-- Milestones Drawer -->
+    <div class="milestone-drawer" id="milestone-drawer">
+      <div class="levels-drawer-backdrop" id="milestone-drawer-backdrop"></div>
+      <div class="levels-drawer-sheet">
+        <div class="levels-drawer-header">
+          <button class="levels-drawer-close" id="milestone-drawer-close">&times;</button>
+        </div>
+        <div class="levels-drawer-hero" id="milestone-drawer-hero"></div>
+        <div class="levels-drawer-body">
+          <div class="levels-grid" id="milestone-timeline"></div>
+        </div>
+        <button class="drawer-play-btn" id="milestone-play-btn">Play to level up</button>
+      </div>
+    </div>
+
+    <!-- Streaks Drawer -->
+    <div class="streak-drawer" id="streak-drawer">
+      <div class="levels-drawer-backdrop" id="streak-drawer-backdrop"></div>
+      <div class="levels-drawer-sheet">
+        <div class="levels-drawer-header">
+          <button class="levels-drawer-close" id="streak-drawer-close">&times;</button>
+        </div>
+        <div class="levels-drawer-hero" id="streak-drawer-hero"></div>
+        <div class="levels-drawer-body">
+          <div class="levels-grid" id="streak-timeline"></div>
+        </div>
+        <button class="drawer-play-btn" id="streak-play-btn">Play to level up</button>
       </div>
     </div>
 
@@ -496,6 +636,8 @@
   <script src="tab-quiz.js"></script>
   <script src="roast-trivia.js"></script>
   <script src="focus-time.js"></script>
+  <script src="focus-audio.js"></script>
+  <script src="jesty-generator.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

@@ -1,8 +1,7 @@
 /**
  * Jesty Accessories System
  * Manages hat/glasses overlays on the character SVG.
- * Each accessory is a <symbol> element, rendered via <use> positioned per expression.
- * Also handles evolution stages (teen, adult, legend) with visual transforms.
+ * Each accessory is a <symbol> element, rendered via inline paths positioned per expression.
  */
 const JestyAccessories = (() => {
   /**
@@ -10,26 +9,27 @@ const JestyAccessories = (() => {
    * Each entry: { id, name, slot, tier, symbolId, unlockLevel? }
    */
   const CATALOG = [
-    // Level unlocks (linear 2-20)
-    { id: 'party-hat', name: 'Party Hat', slot: 'hat', tier: 'free', symbolId: 'acc-party-hat', unlockLevel: 2 },
-    { id: 'sunglasses', name: 'Sunglasses', slot: 'glasses', tier: 'free', symbolId: 'acc-sunglasses', unlockLevel: 3 },
-    { id: 'bandana', name: 'Bandana', slot: 'hat', tier: 'free', symbolId: 'acc-bandana', unlockLevel: 4 },
-    { id: 'heart-shades', name: 'Heart Shades', slot: 'glasses', tier: 'free', symbolId: 'acc-heart-shades', unlockLevel: 5 },
-    { id: 'beanie', name: 'Beanie', slot: 'hat', tier: 'premium', symbolId: 'acc-beanie', unlockLevel: 6 },
-    { id: 'aviators', name: 'Aviators', slot: 'glasses', tier: 'premium', symbolId: 'acc-aviators', unlockLevel: 7 },
-    { id: 'chef-hat', name: 'Chef Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-chef-hat', unlockLevel: 8 },
-    { id: '3d-glasses', name: '3D Glasses', slot: 'glasses', tier: 'premium', symbolId: 'acc-3d-glasses', unlockLevel: 9 },
-    { id: 'monocle', name: 'Monocle', slot: 'glasses', tier: 'premium', symbolId: 'acc-monocle', unlockLevel: 10 },
-    { id: 'propeller-hat', name: 'Propeller Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-propeller-hat', unlockLevel: 11 },
-    { id: 'star-glasses', name: 'Star Glasses', slot: 'glasses', tier: 'premium', symbolId: 'acc-star-glasses', unlockLevel: 12 },
-    { id: 'crown', name: 'Crown', slot: 'hat', tier: 'premium', symbolId: 'acc-crown', unlockLevel: 13 },
-    { id: 'bow-tie', name: 'Bow Tie', slot: 'glasses', tier: 'premium', symbolId: 'acc-bow-tie', unlockLevel: 14 },
-    { id: 'detective-hat', name: 'Detective Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-detective-hat', unlockLevel: 15 },
-    { id: 'headband', name: 'Headband', slot: 'hat', tier: 'premium', symbolId: 'acc-headband', unlockLevel: 16 },
-    { id: 'viking-helmet', name: 'Viking Helmet', slot: 'hat', tier: 'premium', symbolId: 'acc-viking-helmet', unlockLevel: 17 },
-    { id: 'top-hat', name: 'Top Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-top-hat', unlockLevel: 18 },
-    { id: 'pirate-hat', name: 'Pirate Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-pirate-hat', unlockLevel: 19 },
-    { id: 'halo', name: 'Halo', slot: 'hat', tier: 'premium', symbolId: 'acc-halo', unlockLevel: 20 },
+    // Always unlocked (free, no level requirement)
+    { id: 'party-hat', name: 'Party Hat', slot: 'hat', tier: 'free', symbolId: 'acc-party-hat' },
+    { id: 'sunglasses', name: 'Sunglasses', slot: 'glasses', tier: 'free', symbolId: 'acc-sunglasses' },
+    { id: 'beanie', name: 'Beanie', slot: 'hat', tier: 'free', symbolId: 'acc-beanie' },
+    { id: 'aviators', name: 'Aviators', slot: 'glasses', tier: 'free', symbolId: 'acc-aviators' },
+    // Level unlocks (premium required)
+    { id: 'bandana', name: 'Bandana', slot: 'hat', tier: 'premium', symbolId: 'acc-bandana', unlockLevel: 2 },
+    { id: 'heart-shades', name: 'Heart Shades', slot: 'glasses', tier: 'premium', symbolId: 'acc-heart-shades', unlockLevel: 3 },
+    { id: 'chef-hat', name: 'Chef Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-chef-hat', unlockLevel: 4 },
+    { id: '3d-glasses', name: '3D Glasses', slot: 'glasses', tier: 'premium', symbolId: 'acc-3d-glasses', unlockLevel: 5 },
+    { id: 'monocle', name: 'Monocle', slot: 'glasses', tier: 'premium', symbolId: 'acc-monocle', unlockLevel: 6 },
+    { id: 'propeller-hat', name: 'Propeller Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-propeller-hat', unlockLevel: 7 },
+    { id: 'star-glasses', name: 'Star Glasses', slot: 'glasses', tier: 'premium', symbolId: 'acc-star-glasses', unlockLevel: 8 },
+    { id: 'crown', name: 'Crown', slot: 'hat', tier: 'premium', symbolId: 'acc-crown', unlockLevel: 9 },
+    { id: 'bow-tie', name: 'Bow Tie', slot: 'glasses', tier: 'premium', symbolId: 'acc-bow-tie', unlockLevel: 10 },
+    { id: 'detective-hat', name: 'Detective Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-detective-hat', unlockLevel: 11 },
+    { id: 'headband', name: 'Headband', slot: 'hat', tier: 'premium', symbolId: 'acc-headband', unlockLevel: 12 },
+    { id: 'viking-helmet', name: 'Viking Helmet', slot: 'hat', tier: 'premium', symbolId: 'acc-viking-helmet', unlockLevel: 13 },
+    { id: 'top-hat', name: 'Top Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-top-hat', unlockLevel: 14 },
+    { id: 'pirate-hat', name: 'Pirate Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-pirate-hat', unlockLevel: 15 },
+    { id: 'halo', name: 'Halo', slot: 'hat', tier: 'premium', symbolId: 'acc-halo', unlockLevel: 16 },
     // Pro-exclusive accessories
     { id: 'flame-crown', name: 'Flame Crown', slot: 'hat', tier: 'pro', symbolId: 'acc-flame-crown' },
     { id: 'neon-shades', name: 'Neon Shades', slot: 'glasses', tier: 'pro', symbolId: 'acc-neon-shades' },
@@ -37,20 +37,8 @@ const JestyAccessories = (() => {
   ];
 
   /**
-   * Evolution stages
-   * Each stage applies a scale and optional visual effects to the character.
-   */
-  const EVOLUTION_STAGES = {
-    baby:   { minLevel: 1,  scale: 1.0,  label: 'Baby Blob', glow: false },
-    teen:   { minLevel: 7,  scale: 1.06, label: 'Teen Blob', glow: false },
-    adult:  { minLevel: 14, scale: 1.12, label: 'Adult Blob', glow: false },
-    legend: { minLevel: 20, scale: 1.18, label: 'Legendary Blob', glow: true }
-  };
-
-  /**
    * Anchor points per expression per slot.
-   * { x, y, rotate? } — position for the <use> element.
-   * Values are in the SVG coordinate space (viewBox -15 -10 150 140).
+   * { x, y, rotate? } — position in the SVG coordinate space (viewBox -15 -10 150 140).
    */
   const ANCHORS = {
     hat: {
@@ -92,41 +80,28 @@ const JestyAccessories = (() => {
   // Currently equipped accessories
   let equipped = { hat: null, glasses: null };
 
-  // Current evolution stage
-  let currentStage = 'baby';
+  // Default accessories for new users (auto-onboarding)
+  const DEFAULT_HATS = ['party-hat', 'beanie'];
+  const DEFAULTS_GLASSES = 'aviators';
 
   /**
-   * Initialize: load equipped accessories and evolution stage from storage
+   * Initialize: load equipped accessories from storage.
+   * New users get default accessories so the character looks dressed from the start.
    */
   async function init() {
     try {
       const data = await chrome.storage.local.get(['jesty_data']);
-      if (data.jesty_data) {
-        if (data.jesty_data.settings && data.jesty_data.settings.equipped_accessories) {
-          equipped = { ...equipped, ...data.jesty_data.settings.equipped_accessories };
-        }
-        // Determine evolution stage from level
-        const level = (data.jesty_data.progression && data.jesty_data.progression.level) || 1;
-        currentStage = getStageForLevel(level);
+      const seeded = await chrome.storage.local.get(['jestyAccessoriesSeeded']);
+      if (data.jesty_data && data.jesty_data.settings && data.jesty_data.settings.equipped_accessories) {
+        equipped = { ...equipped, ...data.jesty_data.settings.equipped_accessories };
+      } else if (!seeded.jestyAccessoriesSeeded) {
+        // First launch: random hat + aviators, persist
+        const hat = DEFAULT_HATS[Math.floor(Math.random() * DEFAULT_HATS.length)];
+        equipped = { hat, glasses: DEFAULTS_GLASSES };
+        await saveEquipped();
+        await chrome.storage.local.set({ jestyAccessoriesSeeded: true });
       }
     } catch (e) { /* use defaults */ }
-  }
-
-  /**
-   * Determine evolution stage from level
-   */
-  function getStageForLevel(level) {
-    if (level >= 20) return 'legend';
-    if (level >= 14) return 'adult';
-    if (level >= 7) return 'teen';
-    return 'baby';
-  }
-
-  /**
-   * Get current evolution stage info
-   */
-  function getEvolutionStage() {
-    return { stage: currentStage, ...EVOLUTION_STAGES[currentStage] };
   }
 
   /**
@@ -148,16 +123,16 @@ const JestyAccessories = (() => {
     const acc = CATALOG.find(a => a.id === accessoryId);
     if (!acc) return false;
 
-    // Check tier access (pro/premium gate)
-    if (typeof JestyPremium !== 'undefined') {
-      if (acc.tier === 'pro' && !(await JestyPremium.isPro())) return false;
-      if (acc.tier === 'premium' && !(await JestyPremium.isPremium())) return false;
+    // Pro-exclusive accessories require pro tier
+    if (acc.tier === 'pro') {
+      if (typeof JestyPremium !== 'undefined' && !(await JestyPremium.isPro())) return false;
+      return true;
     }
 
-    // Free accessories are always unlocked (level is just for roadmap ordering)
+    // Free accessories are always unlocked
     if (acc.tier === 'free') return true;
 
-    // Check level requirement
+    // Premium accessories unlock by level (available to all tiers)
     if (acc.unlockLevel) {
       try {
         const data = await chrome.storage.local.get(['jesty_data']);
@@ -197,8 +172,37 @@ const JestyAccessories = (() => {
   }
 
   /**
+   * Inline face content: add raw symbol paths alongside <use> and hide <use>.
+   * This ensures face and accessories share the same coordinate system
+   * (fixes positioning mismatch caused by <use>/<symbol> viewport indirection).
+   * The <use> element is kept hidden so the animator can still update its href.
+   */
+  function inlineFaceContent(expressionId, svgContainer) {
+    const useEl = svgContainer.querySelector('use[href^="#face-"]');
+    if (!useEl) return null;
+
+    const faceSymbol = document.getElementById(`face-${expressionId}`);
+    if (!faceSymbol) return null;
+
+    // Hide <use> but keep it in DOM for the animator to update
+    useEl.setAttribute('display', 'none');
+
+    const suffix = Math.random().toString(36).slice(2, 6);
+    let content = faceSymbol.innerHTML;
+    // Make clipPath IDs unique to avoid collision with the shared symbol defs
+    content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-${suffix}"`);
+    content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-${suffix})`);
+
+    const faceGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    faceGroup.classList.add('jesty-face-inline');
+    faceGroup.innerHTML = content;
+    // Insert after <use> so it renders in the same position
+    useEl.after(faceGroup);
+    return suffix;
+  }
+
+  /**
    * Render accessories onto a target SVG container.
-   * Also applies evolution stage visual effects.
    * Call this whenever the expression changes.
    * @param {string} expressionId - current expression (e.g. 'smug')
    * @param {SVGElement} svgContainer - the SVG element to render into
@@ -206,26 +210,18 @@ const JestyAccessories = (() => {
   function renderAccessories(expressionId, svgContainer) {
     if (!svgContainer) return;
 
-    // Remove existing accessory overlays, stage effects, and groups
-    svgContainer.querySelectorAll('.jesty-accessory, .jesty-stage-effect, .jesty-acc-group').forEach(el => el.remove());
+    // Remove existing accessory overlays, groups, and inlined faces
+    svgContainer.querySelectorAll('.jesty-accessory, .jesty-acc-group, .jesty-face-inline').forEach(el => el.remove());
 
-    // Apply evolution stage visual effects
-    applyStageEffects(svgContainer);
+    // Inline the face: replace <use> with raw paths so face + accessories
+    // share the same coordinate system (fixes positioning mismatch)
+    inlineFaceContent(expressionId, svgContainer);
 
     const hasAccs = Object.values(equipped).some(v => v);
     if (!hasAccs) return;
 
-    // Wrap accessories in a group with evolution scaling so they match the character
-    const stageInfo = EVOLUTION_STAGES[currentStage];
     const accGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     accGroup.classList.add('jesty-acc-group');
-
-    if (stageInfo && currentStage !== 'baby') {
-      const scale = stageInfo.scale;
-      const offsetX = (1 - scale) * 60;
-      const offsetY = (1 - scale) * 65;
-      accGroup.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`);
-    }
 
     for (const slot of ['hat', 'glasses']) {
       const accId = equipped[slot];
@@ -258,73 +254,6 @@ const JestyAccessories = (() => {
   }
 
   /**
-   * Apply evolution stage visual effects to the SVG
-   */
-  function applyStageEffects(svgContainer) {
-    const stageInfo = EVOLUTION_STAGES[currentStage];
-    if (!stageInfo || currentStage === 'baby') return;
-
-    // Scale the character use element slightly
-    const useEl = svgContainer.querySelector('use[href^="#face-"]');
-    if (useEl) {
-      const scale = stageInfo.scale;
-      const offsetX = (1 - scale) * 60; // Center offset (character center ~60)
-      const offsetY = (1 - scale) * 65;
-      useEl.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`);
-    }
-
-    // Legend glow effect
-    if (stageInfo.glow) {
-      // Add glow filter if not present
-      let defs = svgContainer.querySelector('defs');
-      if (!defs) {
-        defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        svgContainer.prepend(defs);
-      }
-      if (!defs.querySelector('#legend-glow')) {
-        const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
-        filter.setAttribute('id', 'legend-glow');
-        filter.setAttribute('x', '-20%');
-        filter.setAttribute('y', '-20%');
-        filter.setAttribute('width', '140%');
-        filter.setAttribute('height', '140%');
-        filter.innerHTML = `
-          <feGaussianBlur stdDeviation="3" result="glow"/>
-          <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
-        `;
-        defs.appendChild(filter);
-      }
-
-      // Apply glow to character
-      if (useEl) {
-        useEl.setAttribute('filter', 'url(#legend-glow)');
-      }
-    }
-
-    // Add stage indicator ring
-    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ring.setAttribute('cx', '60');
-    ring.setAttribute('cy', '60');
-    ring.setAttribute('r', '68');
-    ring.setAttribute('fill', 'none');
-    ring.setAttribute('stroke-width', '1.5');
-    ring.setAttribute('opacity', '0.3');
-    ring.classList.add('jesty-stage-effect');
-
-    if (currentStage === 'teen') {
-      ring.setAttribute('stroke', '#60A5FA'); // Blue
-    } else if (currentStage === 'adult') {
-      ring.setAttribute('stroke', '#A78BFA'); // Purple
-    } else if (currentStage === 'legend') {
-      ring.setAttribute('stroke', '#FBBF24'); // Gold
-      ring.setAttribute('opacity', '0.5');
-      ring.setAttribute('stroke-width', '2');
-    }
-
-    svgContainer.insertBefore(ring, svgContainer.firstChild);
-  }
-
-  /**
    * Get raw SVG markup for equipped accessories at a given expression.
    * Used for share image generation (canvas rendering).
    * @param {string} expressionId
@@ -352,16 +281,6 @@ const JestyAccessories = (() => {
         transform += ` rotate(${anchor.rotate}, ${symW / 2}, ${symH / 2})`;
       }
       inner += `<g transform="${transform}">${symbol.innerHTML}</g>`;
-    }
-    if (!inner) return '';
-
-    // Wrap in evolution scale group if needed
-    const stageInfo = EVOLUTION_STAGES[currentStage];
-    if (stageInfo && currentStage !== 'baby') {
-      const scale = stageInfo.scale;
-      const offsetX = (1 - scale) * 60;
-      const offsetY = (1 - scale) * 65;
-      return `<g transform="translate(${offsetX}, ${offsetY}) scale(${scale})">${inner}</g>`;
     }
     return inner;
   }
@@ -393,7 +312,7 @@ const JestyAccessories = (() => {
 
   return {
     init, getCatalog, equipAccessory, unequipAccessory, unequipAll, getEquipped,
-    renderAccessories, getAccessorySvgContent, getEvolutionStage, isUnlocked, getStageForLevel
+    renderAccessories, getAccessorySvgContent, isUnlocked
   };
 })();
 

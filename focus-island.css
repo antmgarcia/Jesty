@@ -16,7 +16,7 @@ body {
 /* Full column wrapper — anchored bottom-left */
 .island {
   position: absolute;
-  bottom: 16px;
+  bottom: 24px;
   left: 24px;
   cursor: default;
   user-select: none;
@@ -148,15 +148,10 @@ body {
   gap: 6px;
   width: 52px;
   margin-bottom: 6px;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
 .island.hovered .island-actions {
-  opacity: 1;
-  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -173,14 +168,43 @@ body {
   justify-content: center;
   box-shadow: 0 4px 16px var(--jesty-shadow, rgba(0,0,0,0.10));
   position: relative;
-  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+  opacity: 0;
+  transform: translateY(8px) scale(0.85);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s, border-color 0.15s, background 0.15s;
 }
+
+/* Staggered reveal — bottom button first (closest to face), top last */
+.island-action-btn:nth-child(3) { transition-delay: 0s; }
+.island-action-btn:nth-child(2) { transition-delay: 0.06s; }
+.island-action-btn:nth-child(1) { transition-delay: 0.12s; }
+
+.island.hovered .island-action-btn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Reset delay on hover so interactive transitions aren't laggy */
+.island.hovered .island-action-btn:nth-child(1) { transition-delay: 0.12s; }
+.island.hovered .island-action-btn:nth-child(2) { transition-delay: 0.06s; }
+.island.hovered .island-action-btn:nth-child(3) { transition-delay: 0s; }
 .island-action-btn svg { flex-shrink: 0; }
 
-.island-action-btn:hover {
+.island.hovered .island-action-btn:hover {
   color: var(--jesty-text, #1C1917);
   border-color: var(--jesty-border-hover, #CCC7C2);
-  transform: scale(1.08);
+  transform: translateY(0) scale(1.08);
+}
+
+.island-action-btn.active {
+  background: #18181B;
+  border-color: #18181B;
+  color: #FFFFFF;
+}
+
+.island-action-btn.active:hover {
+  background: #27272A;
+  border-color: #27272A;
+  color: #FFFFFF;
 }
 
 /* ── Label tooltip ── */

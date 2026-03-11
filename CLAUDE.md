@@ -96,13 +96,13 @@ Open side panel
     ├── Promo card → Tier overlay (slot machine + plans)
     ├── Stat pills → Tier overlay (all clickable)
     └── Accessories grid → Equip/unequip cosmetics
+  → Focus Time (all tiers) → Distraction blocker with floating island iframe
+    ├── Island: face circle + timer badge, hover reveals eye/pencil/end-focus
+    ├── Eye button: toggle sidepanel open/close (via windowId)
+    ├── Pencil button: open sidepanel in focus-note mode, highlight input
+    ├── End focus: smooth "End focus" → fade → "Done!" → wait → end session
+    └── Same iframe (`focus-island.html`) on all tabs including new tab
   → Premium features (if Guilty/Sentenced):
-    ├── Focus Time → Distraction blocker with floating island iframe
-    │   ├── Island: face circle + timer badge, hover reveals eye/pencil/end-focus
-    │   ├── Eye button: toggle sidepanel open/close (via windowId)
-    │   ├── Pencil button: open sidepanel in focus-note mode, highlight input
-    │   ├── End focus: smooth "End focus" → fade → "Done!" → wait → end session
-    │   └── Same iframe (`focus-island.html`) on all tabs including new tab
     ├── Task Card → User tasks with structured notes (checklist)
     │   ├── Empty state with add button when no tasks
     │   ├── Task detail drawer: title, checklist notes, Done/Delete
@@ -146,7 +146,7 @@ Always running:
 | `premium.js` | Tier gating (Suspect/Guilty/Sentenced), feature checks | storage |
 | `characters.js` | SVG symbol definitions (15 faces, 11 accessories) | — |
 | `character-animator.js` | Walk/blink/expression animation loop (sidepanel only) | characters, accessories |
-| `accessories.js` | Cosmetic system: equip, unlock, evolution stages | storage, characters |
+| `accessories.js` | Cosmetic system: equip, unlock, render overlays | storage, characters |
 | `calendar.js` | Google Calendar OAuth, event fetching (Pro) | chrome.identity |
 | `theme.js` | Light/dark theme system | chrome.storage (jestyThemePreference) |
 | `focus-time.js` | Focus timer management, session tracking | storage |
@@ -166,9 +166,9 @@ Always running:
 
 | Tier | Name | Price | Limits | Features |
 |------|------|-------|--------|----------|
-| Free | Suspect | $0 | 12 interactions/day (roasts + chat shared) | Basic roasts, 7 moods, 3 accessories |
-| Premium | Guilty | $5 once | Unlimited | +3 moods (impressed, manic, petty), Focus Time, Tasks, Fun Zone, XP, Records, Daily Report, +5 accessories |
-| Pro | Sentenced | $5/mo | Unlimited | +3 moods (chaotic, dramatic, tender), Google Calendar, schedule-aware roasts, evolution, +3 accessories |
+| Free | Suspect | $0 | 12 interactions/day (roasts + chat shared) | Basic roasts, 7 moods, 3 accessories, Focus Time |
+| Premium | Guilty | $5 once | Unlimited | +3 moods (impressed, manic, petty), Tasks, Fun Zone, XP, Records, Daily Report, +5 accessories |
+| Pro | Sentenced | $5/mo | Unlimited | +3 moods (chaotic, dramatic, tender), Google Calendar, schedule-aware roasts, +3 accessories |
 
 ## Prompt System
 
@@ -221,7 +221,7 @@ All data in `chrome.storage.local` under `jesty_data`:
 - **conversations[]**: Last 50 — messages, sentiment, trigger_roast_id
 - **milestones**: Roast counts, streaks, achievements, action tracking
 - **settings**: Caps, tier, subscription status
-- **progression**: Level, XP, xp_to_next, total_xp, evolution_stage
+- **progression**: Level, XP, xp_to_next, total_xp
 - **records**: wall_of_shame, hall_of_fame
 - **daily_reports[]**: Last 7 AI-generated summaries
 - **focus_sessions[]**: Focus Time session history (startedAt, endedAt, distractionCount, longestStreakSeconds)

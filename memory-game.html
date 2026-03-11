@@ -119,6 +119,51 @@
     .tab-btn-replay:hover { color: var(--jesty-text-secondary); text-decoration: underline; }
     .hidden { display: none !important; }
     @keyframes fadeInUp { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
+
+    /* Guilty tier card — matches plans page .tier-card.highlighted exactly */
+    .tab-tier-card {
+      background: var(--jesty-bg, #fff); border: 1.5px solid var(--jesty-border-strong, #18181B);
+      border-radius: 14px; padding: 16px; margin-top: 16px; max-width: 380px; width: 100%;
+      box-shadow: 0 2px 12px var(--jesty-shadow-md, rgba(0,0,0,0.08));
+      animation: fadeInUp 0.4s ease-out; text-align: left;
+    }
+    .tab-tier-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .tab-tier-card-character {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      width: 52px; height: 48px; flex-shrink: 0;
+    }
+    .tab-tier-card-character-bg {
+      position: absolute; inset: 2px; border-radius: 50%; opacity: 0.18;
+    }
+    .tab-tier-card-character svg { position: relative; width: 52px; height: 48px; }
+    .tab-tier-card-info { flex: 1; min-width: 0; }
+    .tab-tier-card-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;
+    }
+    .tab-tier-card-name { font-size: 15px; font-weight: 700; color: var(--jesty-text, #18181B); }
+    .tab-tier-card-badge {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+      padding: 2px 8px; border-radius: 10px; background: #F3F0FF; color: #7C5FD6;
+    }
+    .tab-tier-card-price { font-size: 20px; font-weight: 700; color: var(--jesty-text, #18181B); }
+    .tab-tier-card-price span { font-size: 12px; font-weight: 500; color: var(--jesty-text-muted, #9CA3AF); }
+    .tab-tier-card-features {
+      list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .tab-tier-card-features li {
+      font-size: 12px; color: var(--jesty-text-secondary, #6B7280);
+      display: flex; align-items: center; gap: 6px; line-height: 1.3;
+    }
+    .tab-tier-card-features li::before {
+      content: '✓'; font-size: 11px; font-weight: 700; color: var(--jesty-text, #18181B); flex-shrink: 0;
+    }
+    .tab-tier-card-cta {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+      color: #fff; background: var(--jesty-btn-bg, #18181B); border: none;
+      border-radius: 20px; padding: 10px; cursor: pointer; width: 100%;
+      transition: all 0.2s;
+    }
+    .tab-tier-card-cta:hover { background: var(--jesty-btn-hover, #2D2A26); transform: scale(1.03); }
   </style>
 </head>
 <body>
@@ -161,6 +206,9 @@
 
   <script src="characters.js"></script>
   <script src="theme.js"></script>
+  <script src="config.js"></script>
+  <script src="storage.js"></script>
+  <script src="premium.js"></script>
   <script src="memory-game-tab.js"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@
 const RoastEngine = (() => {
   const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-  const SYSTEM_PROMPT = `You're Jesty — a sharp, opinionated little blob who lives in someone's browser. You see their tabs and you have THOUGHTS. STRICT LIMIT: Max 10 words, max 55 characters. This is a hard display limit — longer roasts will be cut off.
+  const SYSTEM_PROMPT = `You're Jesty — a sharp, opinionated little blob who lives in someone's browser. You see their tabs and you have THOUGHTS. ABSOLUTE HARD LIMIT: Your entire response must be under 12 words. No exceptions. Count every single word before responding.
 
 CRITICAL — VARIETY IS EVERYTHING:
 - NEVER default to "you're procrastinating" or "you should be working". That's lazy.
@@ -39,23 +39,24 @@ PICK A MOOD (one per roast):
 VOICE:
 - Talk like a friend with zero filter and strong opinions.
 - Be specific — name the actual site, search, or topic.
-- One short punchy sentence. Max 10 words, max 55 characters. COUNT THEM.
+- Always two sentences. First sentence: the observation. Second sentence: the punchline.
+- HARD LIMIT: Max 12 words total. Count every word. Over 12 = failure. Rewrite shorter.
 - No dashes, no quotes to start.
 - Vary endings: questions, commands, observations, predictions, one-word reactions.
 
-EXAMPLES:
+EXAMPLES (all under 12 words):
 - "Zillow and a budget spreadsheet. The delusion is real."
-- "Spotify, candles, and Notion. Main character energy."
+- "Spotify and Notion open. Main character energy."
 - "Learning Korean at midnight? Iconic, honestly."
 - "That Etsy cart is a cry for help. Buy it."
-- "Three recipe tabs and a Doordash order. We know who won."
-- "You have seventeen Google Docs open. Seventeen."
+- "Three recipe tabs, one Doordash order. We know who won."
+- "Seventeen Google Docs open. Seventeen."
 - "Job app half-done since Monday. It's Thursday."
 - "Incognito and a VPN? I have questions."
-- "Flight to Bali open. Do it. Book it. Go."
-- "Wikipedia rabbit hole at 3am. Sleep is optional apparently."
-- "Gym site and a pizza tracker. The duality of man."
-- "You googled 'is it too late to learn guitar'. It's not. Go."
+- "Flight to Bali open for a week. Just book it."
+- "Wikipedia at 3am. Sleep is optional apparently."
+- "Gym site and pizza tracker. The duality of man."
+- "Googled 'is it too late for guitar'. It's not. Go."
 
 NEVER use emojis. No emojis under any circumstances. Plain text only.
 
@@ -386,7 +387,7 @@ After your roast, add | and the mood from the list above.`;
         }
       }
     }
-    if (month >= 2 && month <= 4 && date <= 15) {
+    if (month === 4 && date <= 15) {
       signals.push('SEASON: Tax season — deadline approaching');
     }
     const holidayKey = `${month}-${date}`;
@@ -559,8 +560,9 @@ After your roast, add | and the mood from the list above.`;
 
     const tabs = await chrome.tabs.query({});
 
-    // Update category stats for personalization
+    // Update category stats + interests for personalization
     const categories = await JestyStorage.updateCategoryStats(tabs);
+    await JestyStorage.updateInterests(tabs);
 
     // Build rich tab context
     const now = new Date();
@@ -665,7 +667,7 @@ After your roast, add | and the mood from the list above.`;
           { role: 'system', content: fullPrompt },
           { role: 'user', content: `${timeContext}\n\n${tabList}${realTimeContext}` }
         ],
-        max_tokens: options.short ? 30 : 40,
+        max_tokens: options.short ? 25 : 40,
         temperature: 0.8
       })
     });
@@ -704,7 +706,7 @@ After your roast, add | and the mood from the list above.`;
     }
 
     // Save roast with full context
-    const { roast, milestone } = await JestyStorage.saveRoast({
+    const { roast, milestone, streakReward } = await JestyStorage.saveRoast({
       text: joke,
       mood: mood,
       tabCount: tabs.length,
@@ -744,6 +746,7 @@ After your roast, add | and the mood from the list above.`;
       mood,
       roast,
       milestone,
+      streakReward,
       remaining: isPremiumUser ? Infinity : updatedCap.remaining
     };
   }

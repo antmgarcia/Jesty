@@ -63,9 +63,11 @@ async function init() {
   const talkbackBtn = document.getElementById('talkback-btn');
   const tabCountEl = document.getElementById('tab-count');
 
-  // Show tab count
+  // Show tab count (clickable → opens tab manager)
   const tabs = await chrome.tabs.query({});
   tabCountEl.textContent = `${tabs.length} tabs open`;
+  tabCountEl.style.cursor = 'pointer';
+  tabCountEl.addEventListener('click', () => openTabManager());
 
   // Load roasts remaining
   try {
@@ -233,7 +235,12 @@ function showWelcomePrompt() {
 
   loadingText.classList.add('hidden');
   welcomePrompt.classList.remove('hidden');
-  setExpression('smug');
+
+  // Render character naked (no accessories) during onboarding
+  const character = document.getElementById('character');
+  if (character) {
+    character.innerHTML = `<svg viewBox="-5 -10 130 140" width="120" height="112"><use href="#face-smug"/></svg>`;
+  }
 
   // Pick a random default color for this user
   const randomIdx = Math.floor(Math.random() * WELCOME_COLORS.length);
@@ -244,16 +251,24 @@ function showWelcomePrompt() {
   // Render face-based color picker with random color pre-selected
   renderWelcomeColorFaces(randomColor.body);
 
-  // Hide search and tab info during onboarding
+  // Hide everything except the welcome prompt — clean onboarding screen
   const searchSection = document.querySelector('.search-section');
   const tabInfo = document.querySelector('.tab-info');
+  const topBarLeft = document.getElementById('top-bar-left');
+  const topLinks = document.querySelector('.top-links');
+  const tasksWidget = document.getElementById('newtab-tasks');
   if (searchSection) searchSection.classList.add('hidden');
   if (tabInfo) tabInfo.classList.add('hidden');
+  if (topBarLeft) topBarLeft.classList.add('hidden');
+  if (topLinks) topLinks.classList.add('hidden');
+  if (tasksWidget) tasksWidget.classList.add('hidden');
 
   function dismissWelcome() {
     welcomePrompt.classList.add('hidden');
     if (searchSection) searchSection.classList.remove('hidden');
     if (tabInfo) tabInfo.classList.remove('hidden');
+    if (topBarLeft) topBarLeft.classList.remove('hidden');
+    if (topLinks) topLinks.classList.remove('hidden');
     generateRoast();
   }
 
@@ -410,13 +425,6 @@ function restoreHidden(element) {
 
 
 async function generateRoast() {
-  // Premium check for UI label
-  const isPremiumUser = await JestyPremium.isPremium();
-  if (isPremiumUser) {
-    const el = document.getElementById('roasts-remaining');
-    if (el) el.textContent = 'unlimited roasts';
-  }
-
   // Morning briefing check (newtab-specific, runs before roast)
   const isProUser = await JestyPremium.isPro();
   if (isProUser) {
@@ -456,6 +464,22 @@ async function generateRoast() {
 
     showJoke(result.joke, result.mood);
     updateRoastsRemaining(result.remaining);
+
+    // Award milestone XP
+    if (result.milestone && result.milestone.xp) {
+      await chrome.storage.local.set({ pendingXPGain: { xp: result.milestone.xp, source: 'milestone', timestamp: Date.now() } });
+      showXPToast(result.milestone.xp);
+    }
+
+    // Award streak XP
+    if (result.streakReward && result.streakReward.xp) {
+      // Slight delay so it doesn't overlap milestone toast
+      const delay = (result.milestone && result.milestone.xp) ? 1500 : 0;
+      setTimeout(() => {
+        chrome.storage.local.set({ pendingXPGain: { xp: result.streakReward.xp, source: 'streak', timestamp: Date.now() } });
+        showXPToast(result.streakReward.xp);
+      }, delay);
+    }
 
     // Set lastRoastSource for newtab
     await chrome.storage.local.set({ lastRoastSource: 'newtab' });
@@ -612,11 +636,17 @@ function downloadImage(blob) {
    ROASTS REMAINING INDICATOR
    ────────────────────────────────────────────── */
 
-function updateRoastsRemaining(remaining) {
+async function updateRoastsRemaining(remaining) {
   const el = document.getElementById('roasts-remaining');
   if (!el) return;
-  el.textContent = `${remaining} roasts left today`;
-  el.classList.toggle('low', remaining <= 3);
+  const isPremium = await JestyPremium.isPremium();
+  if (isPremium) {
+    el.textContent = 'unlimited roasts';
+    el.classList.remove('low');
+  } else {
+    el.textContent = `${remaining} roasts left today`;
+    el.classList.toggle('low', remaining <= 3);
+  }
 }
 
 /* ──────────────────────────────────────────────
@@ -646,10 +676,22 @@ async function loadJestyColor() {
 
 // Listen for color and accessory changes from sidepanel
 chrome.storage.onChanged.addListener((changes) => {
+  const welcomeVisible = !document.getElementById('welcome-prompt')?.classList.contains('hidden');
   if (changes.jestyColor && changes.jestyColor.newValue) {
     recolorNewtabSVGs(changes.jestyColor.newValue);
+    // Re-render inlined face + accessories so they pick up the new color
+    // Skip accessories during onboarding — character should be naked
+    if (!welcomeVisible) {
+      const character = document.getElementById('character');
+      const svg = character ? character.querySelector('svg') : null;
+      if (svg) {
+        const useEl = svg.querySelector('use');
+        const mood = useEl ? useEl.getAttribute('href').replace('#face-', '') : 'smug';
+        JestyAccessories.renderAccessories(mood, svg);
+      }
+    }
   }
-  if (changes.jestyAccessoriesChanged) {
+  if (changes.jestyAccessoriesChanged && !welcomeVisible) {
     JestyAccessories.init().then(() => {
       const character = document.getElementById('character');
       const svg = character ? character.querySelector('svg') : null;
@@ -733,9 +775,10 @@ const NT_ACC_VIEWBOXES = {
 const NT_RING_CIRCUMFERENCE = 94.25;
 
 const NT_LEVEL_UNLOCKS = {
-  2: 'Party Hat', 3: 'Sunglasses', 4: 'Bandana', 5: 'Heart Shades',
-  6: 'Beanie', 7: 'Aviators', 8: 'Chef Hat', 9: '3D Glasses',
-  10: 'Monocle', 11: 'Propeller Hat', 12: 'Star Glasses', 13: 'Crown'
+  2: 'Bandana', 3: 'Aviators', 4: 'Chef Hat', 5: '3D Glasses',
+  6: 'Monocle', 7: 'Propeller Hat', 8: 'Star Glasses', 9: 'Crown',
+  10: 'Bow Tie', 11: 'Detective Hat', 12: 'Headband', 13: 'Viking Helmet',
+  14: 'Top Hat', 15: 'Pirate Hat', 16: 'Halo'
 };
 
 async function initTopBar() {
@@ -925,27 +968,29 @@ async function renderNewtabTasks() {
   const list = document.getElementById('newtab-tasks-list');
   if (!widget || !list) return;
 
+  // Only show for premium+ users
+  const isPremium = await JestyPremium.isPremium();
+  if (!isPremium) {
+    widget.classList.add('hidden');
+    return;
+  }
+
   // Seed onboarding task on first ever load
   await seedOnboardingTask();
 
   const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
   const tasks = (jesty_data && jesty_data.user_tasks) || [];
 
-  // Migrate notes, filter incomplete, sort newest first, take 3
+  // Migrate notes, exclude drafts, sort newest first, take 3
   tasks.forEach(newtabMigrateTaskNotes);
   const visible = tasks
-    .filter(t => !t.completed)
+    .filter(t => !t.draft)
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 3);
 
-  if (visible.length === 0) {
-    widget.classList.remove('hidden');
-    list.innerHTML = '';
-    list.innerHTML = `
-      <div class="newtab-tasks-empty">
-        <p class="newtab-tasks-empty-text">No tasks yet</p>
-      </div>
-    `;
+  // Hide if no tasks or all completed
+  if (visible.length === 0 || visible.every(t => t.completed)) {
+    widget.classList.add('hidden');
     return;
   }
 
@@ -954,14 +999,29 @@ async function renderNewtabTasks() {
 
   visible.forEach(task => {
     const row = document.createElement('div');
-    row.className = 'newtab-task';
+    row.className = `newtab-task${task.completed ? ' checked' : ''}`;
 
     const check = document.createElement('div');
     check.className = 'newtab-task-check';
     check.addEventListener('click', async (e) => {
       e.stopPropagation();
-      task.completed = true;
-      task.completedAt = Date.now();
+      task.completed = !task.completed;
+      task.completedAt = task.completed ? Date.now() : null;
+      row.classList.toggle('checked', task.completed);
+
+      // Update badge text
+      const badge = row.querySelector('.newtab-task-notes');
+      if (badge) {
+        if (task.completed) {
+          badge.textContent = 'Done';
+          badge.classList.add('done');
+        } else {
+          const pending = task.notes.filter(n => !n.done).length;
+          badge.textContent = pending > 0 ? `${pending} note${pending > 1 ? 's' : ''}` : '';
+          badge.classList.remove('done');
+        }
+      }
+
       // Save back
       const { jesty_data: data } = await chrome.storage.local.get(['jesty_data']);
       if (data && data.user_tasks) {
@@ -971,13 +1031,13 @@ async function renderNewtabTasks() {
           await chrome.storage.local.set({ jesty_data: data });
         }
       }
-      renderNewtabTasks();
     });
 
     const title = document.createElement('span');
     title.className = 'newtab-task-title';
     title.textContent = task.title || 'Untitled';
-    title.addEventListener('click', async () => {
+
+    row.addEventListener('click', async () => {
       await chrome.storage.local.set({ sidePanelTaskId: task.id });
       openSidePanelTo('task-detail');
     });
@@ -985,17 +1045,319 @@ async function renderNewtabTasks() {
     row.appendChild(check);
     row.appendChild(title);
 
-    // Notes badge — count pending (non-done) notes
-    const pendingNotes = task.notes.filter(n => !n.done).length;
-    if (pendingNotes > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'newtab-task-notes';
-      badge.textContent = `${pendingNotes} note${pendingNotes > 1 ? 's' : ''}`;
-      row.appendChild(badge);
+    // Badge: "Done" if completed, "XX notes" if pending, or empty
+    const badge = document.createElement('span');
+    badge.className = 'newtab-task-notes';
+    if (task.completed) {
+      badge.textContent = 'Done';
+      badge.classList.add('done');
+    } else {
+      const pendingNotes = task.notes.filter(n => !n.done).length;
+      if (pendingNotes > 0) {
+        badge.textContent = `${pendingNotes} note${pendingNotes > 1 ? 's' : ''}`;
+      }
     }
+    row.appendChild(badge);
 
     list.appendChild(row);
   });
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ──────────────────────────────────────────────
+   TAB MANAGER GRID
+   ────────────────────────────────────────────── */
+
+const TAB_QUIPS = {
+  low: [  // < 10 tabs
+    "Look at you, all organized and boring.",
+    "Only a few tabs? I'm almost impressed.",
+    "This is suspiciously clean.",
+    "Tab minimalist. How zen of you.",
+    "Are you even using the internet?",
+    "Fewer tabs than fingers. Respect.",
+    "Did you just do a spring cleaning?",
+    "This is giving main character energy.",
+    "So disciplined it's almost scary.",
+    "Your browser is basically on vacation."
+  ],
+  mid: [  // 10-29 tabs
+    "Getting cozy in here.",
+    "A respectable collection. For now.",
+    "You know you can bookmark things, right?",
+    "Starting to look like a hobby.",
+    "Each one a tiny commitment issue.",
+    "The slippery slope has begun.",
+    "Not bad, not great. Like a C+ in life.",
+    "You're one bored afternoon from chaos.",
+    "Half of these are from yesterday, admit it.",
+    "Still manageable. Enjoy it while it lasts.",
+    "The early signs of a problem.",
+    "You call this browsing? I call it nesting."
+  ],
+  high: [  // 30-49 tabs
+    "This is becoming a personality trait.",
+    "You need help. I am not that help.",
+    "Somewhere in here is a tab from last Tuesday.",
+    "Your browser called. It's tired.",
+    "A museum of good intentions.",
+    "You don't have tabs. You have a backlog.",
+    "Closing one won't kill you. Probably.",
+    "At this point, just marry your browser.",
+    "There's a tab in here you forgot existed.",
+    "This is what denial looks like in Chrome.",
+    "Organized chaos is still chaos.",
+    "Your browser has trust issues now."
+  ],
+  extreme: [  // 50+
+    "This is a cry for help.",
+    "Your RAM just filed for divorce.",
+    "I can hear your laptop fan from here.",
+    "Congrats, you broke tab hoarding.",
+    "Each tab is a promise you'll never keep.",
+    "This is modern art at this point.",
+    "You don't close tabs. Tabs close you.",
+    "At what point does this become a lifestyle?",
+    "Your browser needs therapy. And a raise.",
+    "Legend says one of these tabs has the answer.",
+    "This is not browsing. This is collecting.",
+    "Somewhere in here is a tab old enough to vote.",
+    "Even I'm overwhelmed, and I'm not real.",
+    "Your computer is one tab away from quitting.",
+    "The audacity of keeping all of these open."
+  ]
+};
+
+const DOMAIN_ROASTS = {
+  'youtube.com': [
+    "One more video won't hurt, right?",
+    "The rabbit hole has a rabbit hole.",
+    "Autoplay is not a lifestyle."
+  ],
+  'reddit.com': [
+    "Doom scrolling HQ.",
+    "You'll never reach the bottom.",
+    "One does not simply close Reddit."
+  ],
+  'twitter.com': [
+    "Main character energy.",
+    "Arguing with strangers, as one does.",
+  ],
+  'x.com': [
+    "Main character energy.",
+    "Arguing with strangers, as one does.",
+  ],
+  'netflix.com': [
+    "Still deciding what to watch?",
+    "The hardest part is pressing play.",
+  ],
+  'amazon.com': [
+    "Your cart misses you.",
+    "Window shopping with commitment issues.",
+  ],
+  'github.com': [
+    "Pretending to be productive.",
+    "That PR isn't going to review itself.",
+  ],
+  'stackoverflow.com': [
+    "Copy, paste, hope for the best.",
+    "The real developer workflow.",
+  ],
+  'linkedin.com': [
+    "Networking or procrastinating?",
+    "Your professional self is watching.",
+  ],
+  'instagram.com': [
+    "Living vicariously through others.",
+    "Stories won't watch themselves.",
+  ],
+  'tiktok.com': [
+    "Just one more. Famous last words.",
+    "Time doesn't exist on TikTok.",
+  ],
+  'twitch.tv': [
+    "Watching someone else have fun.",
+    "Chat is moving too fast.",
+  ],
+  'spotify.com': [
+    "Curating the perfect vibe.",
+    "Another playlist you'll forget about.",
+  ]
+};
+
+function getTabQuip(count) {
+  let pool;
+  if (count < 10) pool = TAB_QUIPS.low;
+  else if (count < 30) pool = TAB_QUIPS.mid;
+  else if (count < 50) pool = TAB_QUIPS.high;
+  else pool = TAB_QUIPS.extreme;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getDomainRoast(domain) {
+  const key = Object.keys(DOMAIN_ROASTS).find(d => domain.includes(d));
+  if (!key) return null;
+  const pool = DOMAIN_ROASTS[key];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function extractDomainFromUrl(url) {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
+}
+
+let _tabManagerOpen = false;
+
+async function openTabManager() {
+  if (_tabManagerOpen) return;
+  _tabManagerOpen = true;
+
+  const manager = document.getElementById('tab-manager');
+  const grid = document.getElementById('tab-manager-grid');
+  const countEl = document.getElementById('tab-manager-count');
+  const quipEl = document.getElementById('tab-manager-quip');
+  const container = document.querySelector('.container');
+  const topBarLeft = document.getElementById('top-bar-left');
+  const topLinks = document.querySelector('.top-links');
+  const footer = document.querySelector('.privacy-footer');
+  const tasksWidget = document.getElementById('newtab-tasks');
+
+  if (!manager || !grid) return;
+
+  // Hide main content
+  if (container) container.style.display = 'none';
+  if (topBarLeft) topBarLeft.style.display = 'none';
+  if (topLinks) topLinks.style.display = 'none';
+  if (footer) footer.style.display = 'none';
+  if (tasksWidget) tasksWidget.style.display = 'none';
+
+  // Query all tabs
+  const tabs = await chrome.tabs.query({});
+  const currentTab = tabs.find(t => t.active && t.url && t.url.includes('newtab'));
+
+  countEl.textContent = `${tabs.length} tab${tabs.length !== 1 ? 's' : ''} open`;
+  quipEl.textContent = getTabQuip(tabs.length);
+
+  // Render grid
+  grid.innerHTML = '';
+  const filteredTabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
+
+  filteredTabs.forEach((tab, i) => {
+    const domain = extractDomainFromUrl(tab.url);
+    const card = document.createElement('div');
+    card.className = 'tab-card' + (tab.id === (currentTab && currentTab.id) ? ' tab-card-current' : '');
+    card.style.animationDelay = `${Math.min(i * 0.03, 0.6)}s`;
+
+    const domainRoast = getDomainRoast(domain);
+    if (domainRoast) card.title = domainRoast;
+
+    // Favicon
+    const faviconUrl = tab.favIconUrl;
+    let faviconHtml;
+    if (faviconUrl && !faviconUrl.startsWith('chrome://')) {
+      faviconHtml = `<img class="tab-card-favicon" src="${faviconUrl}" alt="" onerror="this.outerHTML='<div class=\\'tab-card-favicon-fallback\\'>${domain.charAt(0).toUpperCase()}</div>'">`;
+    } else {
+      faviconHtml = `<div class="tab-card-favicon-fallback">${domain.charAt(0).toUpperCase() || '?'}</div>`;
+    }
+
+    card.innerHTML = `
+      ${faviconHtml}
+      <div class="tab-card-info">
+        <div class="tab-card-title">${escapeHtml(tab.title || 'Untitled')}</div>
+        <div class="tab-card-domain">${escapeHtml(domain)}</div>
+      </div>
+      <button class="tab-card-close" title="Close tab">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    `;
+
+    // Click card → switch to that tab
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.tab-card-close')) return;
+      chrome.tabs.update(tab.id, { active: true });
+      chrome.windows.update(tab.windowId, { focused: true });
+    });
+
+    // Close button
+    card.querySelector('.tab-card-close').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      card.classList.add('closing');
+      await chrome.tabs.remove(tab.id);
+
+      // Update count
+      const remaining = grid.querySelectorAll('.tab-card:not(.closing)').length - 1;
+      countEl.textContent = `${remaining} tab${remaining !== 1 ? 's' : ''} open`;
+
+      // Update new tab page tab count too
+      const tabCountEl = document.getElementById('tab-count');
+      if (tabCountEl) tabCountEl.textContent = `${remaining} tabs open`;
+
+      // Remove card after animation
+      setTimeout(() => {
+        card.remove();
+        // New quip if we crossed a threshold
+        if (remaining === 49 || remaining === 29 || remaining === 9) {
+          quipEl.textContent = getTabQuip(remaining);
+        }
+      }, 250);
+    });
+
+    grid.appendChild(card);
+  });
+
+  // Show manager
+  manager.classList.remove('hidden');
+  manager.classList.remove('closing');
+
+  // Back button
+  const backBtn = document.getElementById('tab-manager-back');
+  backBtn.onclick = () => closeTabManager();
+
+  // Escape key
+  document.addEventListener('keydown', _tabManagerEscHandler);
+}
+
+function _tabManagerEscHandler(e) {
+  if (e.key === 'Escape') closeTabManager();
+}
+
+async function closeTabManager() {
+  if (!_tabManagerOpen) return;
+  _tabManagerOpen = false;
+
+  document.removeEventListener('keydown', _tabManagerEscHandler);
+
+  const manager = document.getElementById('tab-manager');
+  const container = document.querySelector('.container');
+  const topBarLeft = document.getElementById('top-bar-left');
+  const topLinks = document.querySelector('.top-links');
+  const footer = document.querySelector('.privacy-footer');
+  const tasksWidget = document.getElementById('newtab-tasks');
+
+  manager.classList.add('closing');
+
+  // Refresh tab count
+  const tabs = await chrome.tabs.query({});
+  const tabCountEl = document.getElementById('tab-count');
+  if (tabCountEl) tabCountEl.textContent = `${tabs.length} tabs open`;
+
+  setTimeout(() => {
+    manager.classList.add('hidden');
+    manager.classList.remove('closing');
+    if (container) container.style.display = '';
+    if (topBarLeft) topBarLeft.style.display = '';
+    if (topLinks) topLinks.style.display = '';
+    if (footer) footer.style.display = '';
+    if (tasksWidget) tasksWidget.style.display = '';
+  }, 300);
 }
 
 /* ──────────────────────────────────────────────
@@ -1004,20 +1366,36 @@ async function renderNewtabTasks() {
 
 async function initNewtabFocusIsland() {
   const iframe = document.getElementById('focus-island-iframe');
+  const blurOverlay = document.getElementById('newtab-focus-blur');
   if (!iframe) return;
 
-  const { focusSession } = await chrome.storage.local.get(['focusSession']);
-  if (focusSession && focusSession.active) {
+  const { focusSession, focusBlurEnabled } = await chrome.storage.local.get(['focusSession', 'focusBlurEnabled']);
+  const isActive = focusSession && focusSession.active;
+
+  if (isActive) {
     iframe.classList.remove('hidden');
+    if (blurOverlay && focusBlurEnabled) blurOverlay.classList.remove('hidden');
   }
 
   chrome.storage.onChanged.addListener((changes) => {
-    if (!changes.focusSession) return;
-    const session = changes.focusSession.newValue;
-    if (session && session.active) {
-      iframe.classList.remove('hidden');
-    } else {
-      iframe.classList.add('hidden');
+    if (changes.focusSession) {
+      const session = changes.focusSession.newValue;
+      if (session && session.active) {
+        iframe.classList.remove('hidden');
+      } else {
+        iframe.classList.add('hidden');
+        if (blurOverlay) blurOverlay.classList.add('hidden');
+      }
+    }
+    if (changes.focusBlurEnabled && blurOverlay) {
+      chrome.storage.local.get(['focusSession'], ({ focusSession: fs }) => {
+        if (!fs || !fs.active) return;
+        if (changes.focusBlurEnabled.newValue) {
+          blurOverlay.classList.remove('hidden');
+        } else {
+          blurOverlay.classList.add('hidden');
+        }
+      });
     }
   });
 }

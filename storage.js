@@ -37,7 +37,7 @@ const MIGRATIONS = {
   "1.1_to_1.2": (data) => {
     // P2.8: Progression / Tamagotchi
     if (!data.progression) {
-      data.progression = { level: 1, xp: 0, xp_to_next: 100, total_xp: 0, evolution_stage: 'baby' };
+      data.progression = { level: 1, xp: 0, xp_to_next: 100, total_xp: 0 };
     }
 
     // P2.9: Records
@@ -259,6 +259,7 @@ function getDefaultData() {
         peak_tabs: 0
       },
       top_categories: [],
+      interests: [],
       traits: {
         procrastinator_score: 0,
         night_owl_score: 0,
@@ -324,8 +325,7 @@ function getDefaultData() {
       level: 1,
       xp: 0,
       xp_to_next: 100,
-      total_xp: 0,
-      evolution_stage: 'baby'
+      total_xp: 0
     },
     records: {
       wall_of_shame: [],
@@ -359,6 +359,12 @@ async function initializeStorage() {
   // Ensure user_name field exists (for existing users before this feature)
   if (data.profile.user_name === undefined) {
     data.profile.user_name = null;
+    dirty = true;
+  }
+
+  // Ensure interests array exists (for existing users before this feature)
+  if (!data.profile.interests) {
+    data.profile.interests = [];
     dirty = true;
   }
 
@@ -471,7 +477,7 @@ async function saveRoast(roastData) {
   }
 
   // Update streak
-  await updateStreak(data, now);
+  const streakReward = await updateStreak(data, now);
 
   // Update patterns
   await updatePatterns(data, roastData.tabCount || 0);
@@ -481,7 +487,7 @@ async function saveRoast(roastData) {
   // Check milestones after save
   const milestone = await checkMilestones();
 
-  return { roast, milestone };
+  return { roast, milestone, streakReward };
 }
 
 /**
@@ -521,9 +527,19 @@ async function markRoastRefreshed() {
 /**
  * Update daily streak
  */
+const STREAK_XP_REWARDS = [
+  { streak: 3, xp: 30 },
+  { streak: 7, xp: 75 },
+  { streak: 14, xp: 150 },
+  { streak: 30, xp: 350 },
+  { streak: 60, xp: 750 },
+  { streak: 100, xp: 1500 }
+];
+
 async function updateStreak(data, now) {
   const today = now.toISOString().split('T')[0];
   const lastActive = data.milestones.streaks.last_active_date;
+  let streakReward = null;
 
   if (!lastActive) {
     // First day
@@ -541,6 +557,18 @@ async function updateStreak(data, now) {
       if (data.milestones.streaks.current_daily_streak > data.milestones.streaks.longest_daily_streak) {
         data.milestones.streaks.longest_daily_streak = data.milestones.streaks.current_daily_streak;
       }
+
+      // Check streak XP reward
+      const current = data.milestones.streaks.current_daily_streak;
+      const claimed = data.milestones.streaks.claimed_streak_rewards || [];
+      for (const { streak, xp } of STREAK_XP_REWARDS) {
+        if (current >= streak && !claimed.includes(streak)) {
+          claimed.push(streak);
+          data.milestones.streaks.claimed_streak_rewards = claimed;
+          streakReward = { streak, xp };
+          break;
+        }
+      }
     } else {
       // Streak broken
       data.milestones.streaks.current_daily_streak = 1;
@@ -548,6 +576,7 @@ async function updateStreak(data, now) {
   }
 
   data.milestones.streaks.last_active_date = today;
+  return streakReward;
 }
 
 /**
@@ -667,6 +696,140 @@ function updateTraitScores(data) {
 }
 
 /**
+ * Extract topics from tab titles/URLs and update user interests.
+ * Called on every roast — lightweight keyword extraction, no API calls.
+ */
+const INTEREST_KEYWORDS = {
+  // Sports — teams & leagues
+  football: {
+    keywords: ['arsenal', 'chelsea', 'liverpool', 'man united', 'manchester united', 'man city', 'manchester city', 'tottenham', 'spurs', 'barcelona', 'real madrid', 'bayern', 'juventus', 'psg', 'inter milan', 'ac milan', 'dortmund', 'atletico'],
+    category: 'football'
+  },
+  nfl: {
+    keywords: ['chiefs', 'eagles', 'cowboys', '49ers', 'ravens', 'bills', 'dolphins', 'packers', 'lions', 'bengals', 'jets', 'patriots', 'steelers', 'raiders', 'broncos', 'chargers', 'seahawks', 'rams', 'bears', 'vikings', 'saints', 'falcons', 'buccaneers', 'panthers', 'texans', 'colts', 'titans', 'jaguars', 'browns', 'commanders', 'giants', 'cardinals'],
+    category: 'nfl'
+  },
+  nba: {
+    keywords: ['lakers', 'celtics', 'warriors', 'bucks', 'nuggets', 'heat', 'sixers', '76ers', 'knicks', 'nets', 'suns', 'mavericks', 'clippers', 'thunder', 'timberwolves', 'cavaliers', 'grizzlies', 'pelicans', 'raptors', 'spurs nba', 'rockets', 'bulls', 'hawks', 'blazers', 'jazz', 'kings', 'pistons', 'pacers', 'hornets', 'magic', 'wizards'],
+    category: 'nba'
+  },
+  // Tech
+  programming: {
+    keywords: ['react', 'angular', 'vue', 'svelte', 'nextjs', 'next.js', 'typescript', 'javascript', 'python', 'rust lang', 'golang', 'swift ui', 'flutter', 'tailwind', 'nodejs', 'node.js', 'django', 'laravel', 'ruby on rails'],
+    category: 'programming'
+  },
+  ai_ml: {
+    keywords: ['chatgpt', 'openai', 'claude', 'anthropic', 'midjourney', 'stable diffusion', 'hugging face', 'llama', 'gemini ai', 'copilot'],
+    category: 'ai'
+  },
+  // Finance
+  crypto: {
+    keywords: ['bitcoin', 'ethereum', 'solana', 'dogecoin', 'binance', 'coinbase', 'defi', 'nft', 'blockchain', 'crypto'],
+    category: 'crypto'
+  },
+  stocks: {
+    keywords: ['nasdaq', 'dow jones', 's&p 500', 'wall street', 'stock market', 'robinhood', 'webull', 'etrade', 'fidelity investments', 'vanguard'],
+    category: 'stocks'
+  },
+  // Entertainment
+  gaming: {
+    keywords: ['playstation', 'xbox', 'nintendo', 'steam', 'fortnite', 'minecraft', 'valorant', 'league of legends', 'apex legends', 'call of duty', 'gta', 'elden ring', 'zelda', 'baldurs gate', 'cyberpunk', 'diablo', 'overwatch', 'destiny', 'roblox'],
+    category: 'gaming'
+  },
+  anime: {
+    keywords: ['crunchyroll', 'myanimelist', 'one piece', 'naruto', 'demon slayer', 'jujutsu kaisen', 'attack on titan', 'dragon ball', 'hunter x hunter', 'my hero academia', 'anime'],
+    category: 'anime'
+  },
+  music: {
+    keywords: ['spotify', 'soundcloud', 'bandcamp', 'genius lyrics', 'pitchfork', 'billboard', 'rolling stone music'],
+    category: 'music'
+  },
+  // Lifestyle
+  fitness: {
+    keywords: ['workout', 'gym', 'crossfit', 'peloton', 'strava', 'myfitnesspal', 'bodybuilding', 'running', 'marathon', 'yoga'],
+    category: 'fitness'
+  },
+  fashion: {
+    keywords: ['zara', 'h&m', 'uniqlo', 'asos', 'nike', 'adidas', 'new balance', 'jordan', 'sneakers', 'grailed', 'depop', 'poshmark', 'farfetch', 'ssense'],
+    category: 'fashion'
+  },
+  food: {
+    keywords: ['recipe', 'cooking', 'michelin', 'yelp', 'opentable', 'allrecipes', 'bon appetit', 'food network', 'serious eats'],
+    category: 'food'
+  },
+  travel: {
+    keywords: ['airbnb', 'booking.com', 'expedia', 'kayak', 'tripadvisor', 'skyscanner', 'google flights', 'lonely planet', 'nomadlist'],
+    category: 'travel'
+  },
+  // Learning
+  learning: {
+    keywords: ['coursera', 'udemy', 'khan academy', 'edx', 'skillshare', 'leetcode', 'hackerrank', 'codecademy', 'duolingo', 'brilliant'],
+    category: 'learning'
+  }
+};
+
+function extractInterestsFromTabs(tabs) {
+  const found = {};
+
+  for (const tab of tabs) {
+    const text = `${tab.title || ''} ${tab.url || ''}`.toLowerCase();
+
+    for (const [group, { keywords, category }] of Object.entries(INTEREST_KEYWORDS)) {
+      for (const kw of keywords) {
+        if (text.includes(kw)) {
+          const topic = kw;
+          if (!found[topic]) {
+            found[topic] = { topic, category, count: 0 };
+          }
+          found[topic].count++;
+          break; // One match per group per tab is enough
+        }
+      }
+    }
+  }
+
+  return Object.values(found);
+}
+
+async function updateInterests(tabs) {
+  const data = await getJestyData();
+  if (!data.profile.interests) data.profile.interests = [];
+
+  const detected = extractInterestsFromTabs(tabs);
+  if (detected.length === 0) return;
+
+  const now = Date.now();
+  const existing = {};
+  for (const i of data.profile.interests) {
+    existing[i.topic] = i;
+  }
+
+  for (const d of detected) {
+    if (existing[d.topic]) {
+      existing[d.topic].count += d.count;
+      existing[d.topic].lastSeen = now;
+      existing[d.topic].sessions++;
+    } else {
+      existing[d.topic] = {
+        topic: d.topic,
+        category: d.category,
+        count: d.count,
+        sessions: 1,
+        firstSeen: now,
+        lastSeen: now
+      };
+    }
+  }
+
+  // Keep top 30 by count, decay old ones
+  data.profile.interests = Object.values(existing)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 30);
+
+  await saveJestyData(data);
+}
+
+/**
  * Check for new milestones
  */
 async function checkMilestones() {
@@ -674,21 +837,22 @@ async function checkMilestones() {
   const count = data.profile.total_roasts;
 
   const thresholds = [
-    { count: 25, key: 'roast_25' },
-    { count: 60, key: 'roast_60' },
-    { count: 100, key: 'roast_100' },
-    { count: 500, key: 'roast_500' },
-    { count: 1000, key: 'roast_1000' }
+    { count: 25, key: 'roast_25', xp: 50 },
+    { count: 60, key: 'roast_60', xp: 100 },
+    { count: 100, key: 'roast_100', xp: 200 },
+    { count: 500, key: 'roast_500', xp: 500 },
+    { count: 1000, key: 'roast_1000', xp: 1000 }
   ];
 
-  for (const { count: threshold, key } of thresholds) {
+  for (const { count: threshold, key, xp } of thresholds) {
     if (count >= threshold && !data.milestones.roasts[key]) {
       data.milestones.roasts[key] = new Date().toISOString();
       await saveJestyData(data);
       return {
         milestone: threshold,
         isNew: true,
-        message: getMilestoneMessage(threshold)
+        message: getMilestoneMessage(threshold),
+        xp: xp
       };
     }
   }
@@ -847,6 +1011,13 @@ async function buildPersonalizedContext() {
   const topCat = data.profile.top_categories[0];
   if (topCat && topCat.count > 10) {
     context.push(`User's most common browsing: ${topCat.category}`);
+  }
+
+  // Confirmed interests (seen across 3+ sessions)
+  const interests = (data.profile.interests || []).filter(i => i.sessions >= 3);
+  if (interests.length > 0) {
+    const top5 = interests.slice(0, 5).map(i => `${i.topic} (${i.category})`);
+    context.push(`User's known interests/obsessions: ${top5.join(', ')}. Use these to make roasts personal — reference specific teams, tools, or topics they keep coming back to.`);
   }
 
   // Milestones
@@ -1056,6 +1227,7 @@ if (typeof window !== 'undefined') {
     markRoastShared,
     markRoastRefreshed,
     updateCategoryStats,
+    updateInterests,
     startConversation,
     addMessage,
     getCurrentConversation,
