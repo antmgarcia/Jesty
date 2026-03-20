@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Jesty Card</title>
+  <link href="fonts/dm-sans.css" rel="stylesheet">
+  <link rel="stylesheet" href="card.css">
+</head>
+<body>
+  <svg style="display: none;"></svg>
+  <script src="characters.js"></script>
+
+  <div class="card-page">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="card-header-icon" id="card-header-icon"></div>
+        <span class="card-header-title">Jesty Card</span>
+      </div>
+      <div class="card-header-right">
+        <button class="card-header-btn" id="card-flip-btn" title="Flip card">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="card-main">
+      <!-- Left: 3D Card -->
+      <div class="card-scene" id="card-scene">
+        <div class="card-body" id="card-body">
+
+          <!-- Front -->
+          <div class="card-front" id="card-front">
+            <div class="card-glow" id="card-glow"></div>
+
+            <!-- Roast verdict (main element — dominates the card) -->
+            <div class="card-verdict" id="card-verdict">
+              <div class="card-verdict-face" id="card-verdict-face"></div>
+              <span class="card-verdict-text" id="card-verdict-text"></span>
+            </div>
+
+            <!-- Bottom row: face badge + name + stats -->
+            <div class="card-bottom-row">
+              <div class="card-face-badge" id="card-face-area"></div>
+              <span class="card-name" id="card-name"></span>
+              <span class="card-stat-pill" id="card-roasts"></span>
+              <span class="card-stat-pill" id="card-tabs"></span>
+            </div>
+          </div>
+
+          <!-- Back -->
+          <div class="card-back" id="card-back">
+            <div class="card-back-pattern" id="card-back-pattern"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Conclusion roast -->
+      <div class="card-conclusion" id="card-conclusion"></div>
+
+    </div>
+
+    <div class="card-actions" id="card-actions">
+      <div class="card-share-wrapper">
+        <button class="card-action-btn primary" id="card-share-btn">Share Card</button>
+        <div class="card-share-menu hidden" id="card-share-menu">
+          <button class="card-share-option" data-action="copy">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy image
+          </button>
+          <button class="card-share-option" data-action="twitter">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            Share to X
+          </button>
+          <button class="card-share-option" data-action="download">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+        </div>
+      </div>
+      <button class="card-action-btn" id="card-inscribe-btn">Inscribe on Bitcoin</button>
+    </div>
+  </div>
+
+  <!-- Inscription modal -->
+  <div class="inscribe-overlay" id="inscribe-overlay">
+    <div class="inscribe-modal" id="inscribe-modal">
+      <button class="inscribe-close" id="inscribe-close-btn">&times;</button>
+      <!-- Step 1: Address input -->
+      <div class="inscribe-step" id="inscribe-step-address">
+        <div class="inscribe-title">Make it permanent</div>
+        <div class="inscribe-desc">Your Jesty Card will be permanently inscribed on the Bitcoin blockchain. Once inscribed, it's yours forever. Each card is verified as one-of-a-kind.</div>
+        <div class="inscribe-label">Enter the Bitcoin address where you'd like to receive it:</div>
+        <input type="text" class="inscribe-input" id="inscribe-address" placeholder="bc1q... or 3... or 1..." spellcheck="false" autocomplete="off">
+        <div class="inscribe-size" id="inscribe-size"></div>
+        <div class="inscribe-error" id="inscribe-error"></div>
+        <div class="inscribe-btns">
+          <button class="card-action-btn primary" id="inscribe-submit-btn">Continue to Payment</button>
+          <a href="https://www.xverse.app/download" target="_blank" rel="noopener" class="inscribe-wallet-link">Don't have a btc wallet? Get Xverse</a>
+        </div>
+      </div>
+      <!-- Step 2: Loading -->
+      <div class="inscribe-step" id="inscribe-step-loading" style="display:none">
+        <div class="inscribe-title">Creating Inscription Order…</div>
+        <div class="inscribe-desc">Preparing your card for the blockchain. This may take a moment.</div>
+        <div class="inscribe-spinner"></div>
+      </div>
+      <!-- Step 3: Payment -->
+      <div class="inscribe-step" id="inscribe-step-payment" style="display:none">
+        <div class="inscribe-title">Send Payment</div>
+        <div class="inscribe-desc">Send the exact amount below to inscribe your card on Bitcoin. The inscription will be delivered to your address once confirmed.</div>
+        <div class="inscribe-payment">
+          <div class="inscribe-pay-row">
+            <span class="inscribe-pay-label">Amount</span>
+            <span class="inscribe-pay-value" id="inscribe-pay-amount"></span>
+          </div>
+          <div class="inscribe-pay-row">
+            <span class="inscribe-pay-label">Chain fee</span>
+            <span class="inscribe-pay-value inscribe-pay-sub" id="inscribe-pay-chain"></span>
+          </div>
+          <div class="inscribe-pay-row">
+            <span class="inscribe-pay-label">Service fee</span>
+            <span class="inscribe-pay-value inscribe-pay-sub" id="inscribe-pay-service"></span>
+          </div>
+          <div class="inscribe-pay-row">
+            <span class="inscribe-pay-label">Jesty fee</span>
+            <span class="inscribe-pay-value inscribe-pay-sub" id="inscribe-pay-jesty"></span>
+          </div>
+          <div class="inscribe-pay-divider"></div>
+          <div class="inscribe-pay-label" style="margin-bottom:6px">Send BTC to this address:</div>
+          <div class="inscribe-pay-address-wrap">
+            <code class="inscribe-pay-address" id="inscribe-pay-address">Fetching address…</code>
+            <button class="inscribe-copy-btn" id="inscribe-copy-btn" title="Copy address">Copy</button>
+          </div>
+          <div class="inscribe-pay-qr" id="inscribe-pay-qr"></div>
+          <div class="inscribe-pay-status" id="inscribe-pay-status">
+            <div class="inscribe-spinner inscribe-spinner-sm"></div>
+            <span>Waiting for payment…</span>
+          </div>
+        </div>
+        <div class="inscribe-pay-order">
+          Order ID: <code id="inscribe-order-id"></code>
+        </div>
+        <div class="inscribe-btns">
+          <button class="card-action-btn" id="inscribe-pay-close">Close</button>
+        </div>
+      </div>
+      <!-- Step 4: Error / fallback -->
+      <div class="inscribe-step" id="inscribe-step-error" style="display:none">
+        <div class="inscribe-title">Couldn't Create Order</div>
+        <div class="inscribe-desc" id="inscribe-error-msg">Something went wrong. You can download the HTML file and inscribe it manually on any ordinals service.</div>
+        <div class="inscribe-btns">
+          <button class="card-action-btn" id="inscribe-error-cancel">Close</button>
+          <button class="card-action-btn primary" id="inscribe-error-download">Download HTML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="storage.js"></script>
+  <script src="premium.js"></script>
+  <script src="accessories.js"></script>
+  <script src="theme.js"></script>
+  <script src="card.js"></script>
+</body>
+</html>

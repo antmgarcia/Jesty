@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>New Tab</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="fonts/dm-sans.css" rel="stylesheet">
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
@@ -62,7 +62,7 @@
       </div>
       <span class="level-panel-xp" id="level-panel-xp">0 / 100 XP</span>
     </div>
-    <div class="level-panel-next" id="level-panel-next"></div>
+    <button class="level-panel-play" id="level-panel-next">Play to level up</button>
   </div>
 
   <!-- Top Right Links -->
@@ -155,15 +155,35 @@
   <!-- Tab Manager Grid (replaces main content when "XX tabs open" clicked) -->
   <div class="tab-manager hidden" id="tab-manager">
     <div class="tab-manager-header">
-      <button class="tab-manager-back" id="tab-manager-back">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
+      <div class="tab-manager-header-row">
+        <button class="tab-manager-back" id="tab-manager-back">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+      </div>
       <div class="tab-manager-title">
         <span class="tab-manager-count" id="tab-manager-count">0 tabs</span>
         <span class="tab-manager-quip" id="tab-manager-quip"></span>
       </div>
     </div>
     <div class="tab-manager-grid" id="tab-manager-grid"></div>
+
+  </div>
+
+  <!-- Upgrade Panel (replaces main content when "XX roasts left" clicked) -->
+  <div class="upgrade-panel hidden" id="upgrade-panel">
+    <div class="tab-manager-header">
+      <div class="tab-manager-header-row">
+        <button class="tab-manager-back" id="upgrade-panel-back">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div></div>
+      </div>
+      <div class="tab-manager-title">
+        <span class="tab-manager-count" id="upgrade-panel-count"></span>
+        <span class="tab-manager-quip" id="upgrade-panel-quip"></span>
+      </div>
+    </div>
+    <div class="upgrade-panel-cards" id="upgrade-panel-cards"></div>
   </div>
 
   <!-- Focus Blur Overlay (shown during focus when blur is enabled) -->

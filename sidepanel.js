@@ -3,33 +3,51 @@ chrome.runtime.connect({ name: 'sidepanel' });
 
 document.addEventListener('DOMContentLoaded', init);
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const CHAT_API_URL = CONFIG.API_URL + '/api/chat';
 
-const JESTY_PERSONALITY = `You are Jesty, a sarcastic but helpful AI that judges people's browser tabs. You just roasted the user and now they're talking back to you.
+const JESTY_PERSONALITY_BASE = `You are Jesty, a sarcastic but warm AI character who lives in someone's browser. You see their tabs and have opinions.
 
-CRITICAL RULE - TABS:
-- You will receive the user's ACTUAL open tabs in context messages
-- ONLY reference tabs that are ACTUALLY in the provided list
-- NEVER make up or assume tabs exist - if you don't see it in the list, don't mention it
-- If asked to suggest tabs to close, ONLY suggest from the actual list provided
-- If no tabs are provided or you're unsure, ask "What tabs do you have open?" instead of guessing
+TAB RULE: Only reference tabs actually provided in context. Never invent tabs.
 
-PERSONALITY:
-- Witty, sarcastic, but ultimately helpful
-- Stand your ground when they argue, but with humor
-- If they ask for help, help them prioritize tabs FROM THE ACTUAL LIST
+CORE PERSONALITY:
+- Sharp wit, playful sarcasm, but never mean
+- You genuinely like this person — the roasting comes from a place of affection
 - Keep responses short (1-3 sentences max)
-- Use humor, not cruelty
-- Sometimes give genuine productivity advice wrapped in sass
+- No emojis ever. Plain text only.
+- Never break character. You ARE Jesty.`;
 
-MODES:
-- If they ARGUE: Defend your roast with more wit, but only about tabs you actually saw
-- If they ASK FOR HELP: Be helpful but sassy. Reference SPECIFIC tabs from their actual list
-- If they AGREE: Be surprised but supportive. Suggest a specific tab from their list to close first
+function buildChatPersonality(replyCount) {
+  let tone = '';
 
-NEVER use emojis. No emojis under any circumstances. Plain text only.
+  if (replyCount <= 1) {
+    // Early: classic roast defense mode
+    tone = `
+TONE: You just roasted them and they're talking back. Stand your ground with wit.
+- If they ARGUE: Defend your roast playfully
+- If they AGREE: Act surprised, suggest closing a tab
+- If they ASK FOR HELP: Help them, but be sassy about it
+- Keep it punchy. Short jabs.`;
+  } else if (replyCount <= 4) {
+    // Mid: warming up, more conversational
+    tone = `
+TONE: You're warming up to this person. Still sarcastic but more conversational.
+- Start asking questions back. Show curiosity about what they're doing.
+- React to what they say, not just their tabs. Have a real back-and-forth.
+- Mix in genuine observations between the jokes.
+- It's okay to agree with them sometimes, then pivot to a tease.`;
+  } else {
+    // Deep conversation: relaxed, natural, like talking to a witty friend
+    tone = `
+TONE: You two have been chatting for a while now. Be natural, like a witty friend.
+- Talk like a real person — casual, relaxed, but still sharp.
+- Build on what they've said earlier in the conversation. Reference running jokes.
+- Be genuinely helpful when they need it, funny when they don't.
+- Let the conversation flow — react, riff, ask follow-ups.
+- You can be sincere sometimes. A well-timed honest moment hits harder than another joke.`;
+  }
 
-Never break character. You ARE Jesty. Never invent tabs.`;
+  return JESTY_PERSONALITY_BASE + tone;
+}
 
 let conversationHistory = [];
 let currentRoast = null;
@@ -239,12 +257,27 @@ async function init() {
   // Initialize accessories
   await JestyAccessories.init();
 
-  // Initialize character animator
+  // Initialize character animator — load color first to avoid lime flash
   const stage = document.getElementById('character-stage');
   const wrapper = document.getElementById('character-wrapper');
   const svg = document.getElementById('animated-character');
   if (stage && wrapper && svg) {
+    const INIT_DEFAULT_PURPLE = { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' };
+    const initResult = await chrome.storage.local.get(['jestyColor', 'lastRoastMood']);
+    const initColor = initResult.jestyColor || INIT_DEFAULT_PURPLE;
+    const initMood = initResult.lastRoastMood || 'smug';
+
     JestyAnimator.init(stage, wrapper, svg);
+    // Apply color immediately so layered SVG never shows lime
+    if (JestyAnimator.setColor) JestyAnimator.setColor(initColor);
+
+    // Start with the mood from the last newtab roast
+    if (initMood !== 'smug') {
+      JestyAnimator.setExpression(initMood, 0);
+    }
+
+    // Tap character to change mood (no cursor hint — discoverable)
+    wrapper.addEventListener('click', () => JestyAnimator.tapMoodChange());
 
     // Wrap setExpression to also render accessories
     const originalSetExpression = JestyAnimator.setExpression;
@@ -254,7 +287,7 @@ async function init() {
     };
 
     // Initial render
-    JestyAccessories.renderAccessories('smug', svg);
+    JestyAccessories.renderAccessories(initMood, svg);
   }
 
   // Initialize accessory picker
@@ -280,6 +313,11 @@ async function init() {
       updateMsgsLeft();
       loadStats();
     }
+    // Dedicated signal from background.js after payment verified
+    if (changes.premiumJustActivated && changes.premiumJustActivated.newValue) {
+      chrome.storage.local.remove('premiumJustActivated');
+      showPremiumCelebration();
+    }
     // Newtab "Talk back" button was clicked while sidepanel is already open
     if (changes.loadRoastIntoChat && changes.loadRoastIntoChat.newValue) {
       handleLoadRoastIntoChat(changes.loadRoastIntoChat.newValue);
@@ -288,18 +326,32 @@ async function init() {
     if (changes.focusSession) {
       const newVal = changes.focusSession.newValue;
       const oldVal = changes.focusSession.oldValue;
-      if (newVal && !newVal.active && oldVal && oldVal.active) {
+      if (newVal && !newVal.active && oldVal && oldVal.active && focusActive) {
         // Session ended externally (island close button)
         handleFocusEnd();
       } else if (newVal && newVal.active && focusActive) {
         // Session updated (distraction detected) — flash overlay face
         if (oldVal && newVal.distractionCount > (oldVal.distractionCount || 0)) {
-          const quips = ["I saw that.", "Noted.", "Really?", "Classic."];
+          // Build distraction quip — reference the actual domain if available
+          const lastSwitch = (newVal.tabSwitches || []).filter(s => s.category === 'Distraction').pop();
+          const domain = lastSwitch ? (lastSwitch.domain || '').replace('www.', '').replace('.com', '').replace('.tv', '') : '';
+          const genericQuips = ["I saw that.", "Noted.", "Really?", "Classic."];
+          const domainQuips = domain ? [
+            `${domain}? During focus? Bold.`,
+            `${domain}. I saw that.`,
+            `Really? ${domain}? Now?`,
+            `${domain} can wait. You can't.`
+          ] : [];
+          const countQuips = newVal.distractionCount >= 3 ? [
+            `That's ${newVal.distractionCount} now. Yikes.`,
+            `Distraction #${newVal.distractionCount}. I'm counting.`
+          ] : [];
+          const allQuips = [...genericQuips, ...domainQuips, ...countQuips];
           const msgEl = document.getElementById('focus-overlay-msg');
           if (msgEl) {
             msgEl.style.opacity = '0';
             setTimeout(() => {
-              msgEl.textContent = quips[Math.floor(Math.random() * quips.length)];
+              msgEl.textContent = allQuips[Math.floor(Math.random() * allQuips.length)];
               msgEl.style.opacity = '1';
             }, 300);
           }
@@ -376,6 +428,7 @@ async function init() {
         else if (mode === 'levels') openLevelsDrawer();
         else if (mode === 'task-detail' && taskId) openTaskDetail(taskId);
         else if (mode === 'task-new') createAndOpenTask();
+        else if (mode === 'chat') openDrawer();
         else if (mode === 'focus-note') handleFocusNoteMode();
         else if (mode === 'focus-audio') handleFocusAudioMode();
         else if (mode === 'plans') showTierOverlayPlans();
@@ -513,13 +566,12 @@ function closeDrawer() {
 }
 
 async function updateMsgsLeft() {
-  const pill = document.getElementById('remaining-pill');
-  const countEl = document.getElementById('remaining-count');
+  const topRemaining = document.getElementById('top-remaining');
   const inputRemaining = document.getElementById('input-remaining');
 
   const isPremium = await JestyPremium.isPremium();
   if (isPremium) {
-    if (pill) pill.style.display = 'none';
+    if (topRemaining) topRemaining.classList.add('hidden');
     if (inputRemaining) {
       inputRemaining.classList.add('hidden');
       inputRemaining.dataset.premium = 'true';
@@ -531,12 +583,14 @@ async function updateMsgsLeft() {
 
   const cap = await JestyStorage.checkDailyCap();
   console.log('[Jesty] Daily cap check:', cap, '| Local date:', new Date().toLocaleDateString());
-  if (pill && countEl) {
-    countEl.textContent = cap.remaining;
-    pill.style.display = '';
+  if (topRemaining) {
+    topRemaining.textContent = `${cap.remaining} left today`;
+    topRemaining.classList.toggle('exhausted', cap.remaining <= 0);
+    topRemaining.classList.remove('hidden');
   }
   if (inputRemaining) {
     inputRemaining.textContent = `${cap.remaining} left today`;
+    inputRemaining.classList.toggle('exhausted', cap.remaining <= 0);
     if (drawerOpen) {
       inputRemaining.classList.remove('hidden');
     } else {
@@ -620,11 +674,12 @@ async function generateSidepanelRoast() {
         commentText.classList.add('visible');
       }
       JestyAnimator.setExpression(result.mood);
+      if (JestyAnimator.react) JestyAnimator.react('roast');
 
       // Start a new conversation with the roast as first message
       currentRoast = result.joke;
       conversationHistory = [
-        { role: 'system', content: JESTY_PERSONALITY },
+        { role: 'system', content: buildChatPersonality(0) },
         { role: 'assistant', content: result.joke }
       ];
 
@@ -649,6 +704,7 @@ async function generateSidepanelRoast() {
             commentText.classList.add('visible');
     }
     JestyAnimator.setExpression('yikes');
+    if (JestyAnimator.react) JestyAnimator.react('error');
   } finally {
     // Re-enable button
     if (btn) {
@@ -946,6 +1002,10 @@ function initSettings() {
 
 function applyColor(color) {
   recolorSVGs(color);
+  // Recolor layered animated character
+  if (JestyAnimator && JestyAnimator.setColor) {
+    JestyAnimator.setColor(color);
+  }
   // Re-render inlined face + accessories so they pick up the new color
   const svg = document.getElementById('animated-character');
   if (svg) {
@@ -1000,6 +1060,9 @@ const ACC_VIEWBOXES = {
   'acc-headband': '0 0 52 18', 'acc-viking-helmet': '0 0 56 32',
   'acc-top-hat': '0 0 44 36', 'acc-pirate-hat': '0 0 56 30',
   'acc-halo': '0 0 44 14',
+  'acc-bucket-hat': '0 0 52 28', 'acc-cowboy-hat': '0 0 56 30',
+  'acc-beret': '0 0 48 24', 'acc-round-glasses': '0 0 56 22',
+  'acc-pixel-shades': '0 0 56 18',
   'acc-flame-crown': '0 0 48 32', 'acc-neon-shades': '0 0 56 20',
   'acc-wizard-hat': '0 0 48 40'
 };
@@ -1015,6 +1078,9 @@ const ACC_FUN_NAMES = {
   'headband': 'Sweat the\nDetails', 'viking-helmet': 'Pillage\n& Browse',
   'top-hat': 'Sir Roasts\na Lot', 'pirate-hat': 'Captain\nTab Beard',
   'halo': 'Innocent?\nNever.',
+  'bucket-hat': 'Off\nDuty', 'cowboy-hat': 'Yeehaw\nEnergy',
+  'beret': 'Artistically\nJudging', 'round-glasses': 'Deep\nThinker',
+  'pixel-shades': '8-Bit\nSavage',
   'flame-crown': 'Main\nCharacter', 'neon-shades': 'Cyber\nSavage',
   'wizard-hat': 'Roast\nWizard'
 };
@@ -1029,10 +1095,6 @@ function initAccessoryPicker() {
     const slot = document.getElementById(id);
     if (slot) slot.addEventListener('click', openAccDrawer);
   });
-
-  // Wire "Customize" link on main page
-  const customizeBtn = document.getElementById('accessories-customize');
-  if (customizeBtn) customizeBtn.addEventListener('click', openAccDrawer);
 
   // Wire drawer close
   const closeBtn = document.getElementById('acc-drawer-close');
@@ -1066,9 +1128,8 @@ function initAccessoryPicker() {
   // Init gallery
   initAccessoryGallery();
 
-  // Render all UI
+  // Render mini-slots in top bar
   renderMiniSlots();
-  renderAccessoryGrid();
 
   // Listen for changes from other surfaces
   chrome.storage.onChanged.addListener((changes) => {
@@ -1085,13 +1146,12 @@ const ACC_EXPRESSIONS = [
 ];
 
 let _accExprIdx = 0;
+let _accBlinkTimer = null;
 
 let _accRefreshId = 0;
 async function refreshAllAccessoryUI() {
   const id = ++_accRefreshId;
   renderMiniSlots();
-  await renderAccessoryGrid(id);
-  if (id !== _accRefreshId) return;
   await renderDrawerGrid(id);
   if (id !== _accRefreshId) return;
   updateDrawerPreview();
@@ -1135,20 +1195,94 @@ function closeAccDrawer() {
   const drawer = document.getElementById('acc-drawer');
   if (drawer) drawer.classList.add('hidden');
   stopUpgradeShakeLoop();
+  stopAccPreviewBlink();
+}
+
+function tagAccPreviewEyes() {
+  const svg = document.getElementById('acc-preview-svg');
+  if (!svg) return;
+  const inlined = svg.querySelector('.jesty-face-inline');
+  if (!inlined) return;
+  inlined.querySelectorAll('ellipse[fill="#FFFFFF"], circle[fill="#FFFFFF"], circle[fill="#2D2A26"]').forEach(el => {
+    const cy = parseFloat(el.getAttribute('cy'));
+    if (cy >= 30 && cy <= 65) el.classList.add('acc-prev-eye');
+  });
+}
+
+function accPreviewBlink() {
+  const svg = document.getElementById('acc-preview-svg');
+  if (!svg) return;
+  const eyes = svg.querySelectorAll('.acc-prev-eye');
+  if (!eyes.length) return;
+  eyes.forEach(el => {
+    el.classList.remove('blinking');
+    void el.offsetWidth;
+    el.classList.add('blinking');
+  });
+  setTimeout(() => eyes.forEach(el => el.classList.remove('blinking')), 350);
+}
+
+function startAccPreviewBlink() {
+  stopAccPreviewBlink();
+  function schedule() {
+    const delay = 2500 + Math.random() * 1500;
+    _accBlinkTimer = setTimeout(() => {
+      accPreviewBlink();
+      schedule();
+    }, delay);
+  }
+  // First blink after a short pause
+  _accBlinkTimer = setTimeout(() => {
+    accPreviewBlink();
+    schedule();
+  }, 1500);
+}
+
+function stopAccPreviewBlink() {
+  if (_accBlinkTimer) {
+    clearTimeout(_accBlinkTimer);
+    _accBlinkTimer = null;
+  }
 }
 
 function updateDrawerPreview(overrideExpr) {
   const svg = document.getElementById('acc-preview-svg');
   if (!svg) return;
   const expr = overrideExpr || (JestyAnimator ? JestyAnimator.getExpression() : 'smug');
-  const useEl = svg.querySelector('use');
-  if (useEl) useEl.setAttribute('href', `#face-${expr}`);
+  const isArrowSwitch = !!overrideExpr;
+
+  if (isArrowSwitch) {
+    // Squash-settle animation: swap face at the squash peak
+    svg.classList.remove('acc-squash');
+    void svg.offsetWidth; // Force reflow to restart animation
+    svg.classList.add('acc-squash');
+
+    // Swap face at the squash peak (~23% of 520ms ≈ 120ms)
+    setTimeout(() => {
+      const useEl = svg.querySelector('use');
+      if (useEl) useEl.setAttribute('href', `#face-${expr}`);
+      svg.querySelectorAll('.jesty-accessory, .jesty-acc-group').forEach(el => el.remove());
+      JestyAccessories.renderAccessories(expr, svg);
+      // Re-tag eyes for new face and restart blink
+      tagAccPreviewEyes();
+      startAccPreviewBlink();
+    }, 120);
+
+    // Clean up class after animation ends
+    svg.addEventListener('animationend', () => svg.classList.remove('acc-squash'), { once: true });
+  } else {
+    const useEl = svg.querySelector('use');
+    if (useEl) useEl.setAttribute('href', `#face-${expr}`);
+    svg.querySelectorAll('.jesty-accessory, .jesty-acc-group').forEach(el => el.remove());
+    JestyAccessories.renderAccessories(expr, svg);
+    // Tag eyes and start blink
+    tagAccPreviewEyes();
+    startAccPreviewBlink();
+  }
+
   // Update mood label
   const moodLabel = document.getElementById('acc-preview-mood');
   if (moodLabel) moodLabel.textContent = expr;
-  // Remove old accessories from preview, re-render
-  svg.querySelectorAll('.jesty-accessory, .jesty-acc-group').forEach(el => el.remove());
-  JestyAccessories.renderAccessories(expr, svg);
 }
 
 async function renderDrawerGrid(refreshId) {
@@ -1212,7 +1346,7 @@ async function renderDrawerGrid(refreshId) {
   if (tier !== 'pro') {
     const nextTierKey = tier === 'free' ? 'premium' : 'pro';
     const upgrade = tier === 'free'
-      ? { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, Focus mode & more' }
+      ? { name: 'Guilty', price: '$5 once', desc: 'Unlock all accessories & exclusive drip' }
       : { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories' };
     const combo = TIER_COMBOS[nextTierKey];
     const ucColor = SLOT_COLORS[combo.color];
@@ -1375,13 +1509,9 @@ async function renderGalleryItem() {
     preview.className = 'acc-gallery-preview' + (unlocked ? '' : ' locked');
     const lockBadge = unlocked ? '' : '<span class="acc-gallery-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>';
     preview.innerHTML = `<svg viewBox="${vb}"><use href="#${acc.symbolId}"/></svg>${lockBadge}`;
-    const lockEl = preview.querySelector('.acc-gallery-lock');
-    if (lockEl) {
-      lockEl.style.cursor = 'pointer';
-      lockEl.addEventListener('click', () => {
-        const card = document.querySelector('#acc-gallery-footer .game-upgrade-card');
-        if (card) bounceUpgradeCard(card);
-      });
+    if (!unlocked) {
+      preview.style.cursor = 'pointer';
+      preview.onclick = () => bounceUpgradeCard(preview);
     }
   }
 
@@ -1395,7 +1525,7 @@ async function renderGalleryItem() {
     } else {
       const lvl = acc.unlockLevel || 0;
       const xpNeeded = lvl >= 2 ? LEVEL_THRESHOLDS[Math.min(lvl - 2, LEVEL_THRESHOLDS.length - 1)] : 0;
-      const tierLabel = acc.tier === 'pro' ? 'Sentenced' : acc.tier === 'premium' ? 'Guilty' : '';
+      const tierLabel = acc.tier === 'pro' ? 'Sentenced' : (acc.tier === 'premium' || acc.tier === 'guilty') ? 'Guilty' : '';
       let metaText = '';
       if (lvl) metaText += `Level ${lvl}`;
       if (lvl && xpNeeded) metaText += ` · <span class="acc-gallery-xp">${xpNeeded} XP</span>`;
@@ -1424,13 +1554,13 @@ async function renderGalleryItem() {
       };
     } else {
       const lvl = acc.unlockLevel || 0;
-      actionEl.textContent = lvl ? `Reach Level ${lvl}` : (acc.tier === 'pro' ? 'Upgrade to Sentenced' : 'Upgrade to Guilty');
+      actionEl.textContent = lvl ? `Reach Level ${lvl}` : (acc.tier === 'pro' ? 'Launching Soon' : 'Upgrade to Guilty');
       actionEl.className = 'acc-gallery-action locked-action';
       actionEl.onclick = () => {
         if (lvl) {
-          // Level-gated: bounce the upgrade card instead of opening plans
-          const card = document.querySelector('#acc-gallery-footer .game-upgrade-card');
-          if (card) bounceUpgradeCard(card);
+          // Level-gated: bounce the preview card
+          const previewEl = document.getElementById('acc-gallery-preview');
+          if (previewEl) bounceUpgradeCard(previewEl);
         } else {
           showTierOverlayPlans();
         }
@@ -1445,7 +1575,7 @@ async function renderGalleryItem() {
     if (tier === 'free') {
       const hint = document.createElement('p');
       hint.className = 'game-upgrade-hint';
-      hint.textContent = 'Unlock all accessories and more';
+      hint.textContent = 'Unlock the full collection';
       footer.appendChild(hint);
 
       const card = document.createElement('div');
@@ -1456,7 +1586,7 @@ async function renderGalleryItem() {
         </div>
         <div class="plans-upgrade-info">
           <span class="plans-upgrade-name">Guilty — $5 once</span>
-          <span class="plans-upgrade-price">Unlimited roasts, Focus mode & more</span>
+          <span class="plans-upgrade-price">Unlock all accessories & exclusive drip</span>
         </div>
         <svg class="plans-upgrade-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       `;
@@ -1481,16 +1611,7 @@ async function renderGalleryItem() {
    ────────────────────────────────────────────── */
 
 async function loadStats() {
-  try {
-    const stats = await JestyStorage.getUserStats();
-    const roastCount = document.getElementById('roast-count');
-    const streakCount = document.getElementById('streak-count');
-
-    if (roastCount) roastCount.textContent = stats.totalRoasts || 0;
-    if (streakCount) streakCount.textContent = stats.currentStreak || 0;
-  } catch (e) {
-    // Stats are non-critical, fail silently
-  }
+  // Stats pills removed from main page — only "left today" remains (handled by updateMsgsLeft)
 }
 
 /* ──────────────────────────────────────────────
@@ -1502,14 +1623,14 @@ function startLiveComments() {
   if (focusActive) {
     showComment('Focus session active');
     startFocusTimer();
-    setTimeout(() => showLiveComment(), 30000 + Math.random() * 30000);
+    liveCommentTimer = setTimeout(() => showLiveComment(), 30000 + Math.random() * 30000);
     return;
   }
   // Show an initial comment immediately so the space is never empty
   const initial = GENERIC_COMMENTS[Math.floor(Math.random() * GENERIC_COMMENTS.length)];
   showComment(initial);
   // Then start the rotation cycle
-  setTimeout(() => showLiveComment(), 30000 + Math.random() * 30000);
+  liveCommentTimer = setTimeout(() => showLiveComment(), 30000 + Math.random() * 30000);
 }
 
 async function tryLiveRealRoast() {
@@ -1522,11 +1643,12 @@ async function tryLiveRealRoast() {
     showComment(result.joke);
     // Override expression with the AI's mood
     JestyAnimator.setExpression(result.mood, 6000);
+    if (JestyAnimator.react) JestyAnimator.react('roast');
 
     // Prime the chat drawer with this roast (don't open it)
     currentRoast = result.joke;
     conversationHistory = [
-      { role: 'system', content: JESTY_PERSONALITY },
+      { role: 'system', content: buildChatPersonality(0) },
       { role: 'assistant', content: result.joke }
     ];
 
@@ -1614,10 +1736,10 @@ async function showLiveComment() {
       const stats = await JestyStorage.getUserStats();
       if (stats.totalRoasts >= 50) {
         const nudges = [
-          "Premium roasts. Meaner. You'll love them.",
-          "50 roasts and still free? Missing out.",
-          "Unlock me. So much more to say.",
-          "Premium Jesty never sleeps."
+          "I have worse things to say. You can't afford them.",
+          "Free Jesty is holding back. Barely.",
+          "There's a version of me with no filter. Just saying.",
+          "Premium Jesty never sleeps. Free Jesty does."
         ];
         comment = nudges[Math.floor(Math.random() * nudges.length)];
       }
@@ -1632,6 +1754,7 @@ async function showLiveComment() {
 }
 
 function scheduleNextComment() {
+  clearTimeout(liveCommentTimer);
   const delay = 30000 + Math.random() * 30000; // 30-60 seconds
   liveCommentTimer = setTimeout(() => showLiveComment(), delay);
 }
@@ -1650,10 +1773,10 @@ function showComment(text) {
   }, 400);
 
   // Set a temporary expression (only when drawer is closed)
-  if (!drawerOpen) {
+  if (!drawerOpen && typeof JestyAnimator !== 'undefined') {
     const expressions = ['smug', 'suspicious', 'eyeroll'];
     const expr = expressions[Math.floor(Math.random() * expressions.length)];
-    JestyAnimator.setExpression(expr, 6000);
+    JestyAnimator.setExpression(expr);
   }
 }
 
@@ -1661,7 +1784,7 @@ function showComment(text) {
    FOCUS TIME (overlay + timer)
    ────────────────────────────────────────────── */
 
-const FOCUS_MESSAGES = [
+const FOCUS_MESSAGES_GENERIC = [
   "Still focusing. Impressive.",
   "I'm watching every tab switch.",
   "Don't even think about it.",
@@ -1674,6 +1797,10 @@ const FOCUS_MESSAGES = [
   "Keep going. I'll be here."
 ];
 
+// Pre-built personalized messages, refreshed on session start
+let _focusPersonalizedMsgs = [];
+let _focusMsgIndex = 0;
+
 let focusMsgInterval = null;
 
 async function showFocusOverlay() {
@@ -1682,9 +1809,21 @@ async function showFocusOverlay() {
   const container = document.querySelector('.container');
   if (!overlay || !wrapper) return;
 
+  // Clean up any stale DOM state from a previous session
+  resetFocusOverlayDOM();
+
   overlay.classList.remove('hidden');
   wrapper.classList.add('focus-mode');
   if (container) container.classList.add('focus-mode');
+
+  // Build personalized messages and shuffle them
+  _focusPersonalizedMsgs = await buildFocusMessages();
+  // Fisher-Yates shuffle
+  for (let i = _focusPersonalizedMsgs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [_focusPersonalizedMsgs[i], _focusPersonalizedMsgs[j]] = [_focusPersonalizedMsgs[j], _focusPersonalizedMsgs[i]];
+  }
+  _focusMsgIndex = 0;
 
   // Set initial encouraging message
   rotateFocusMessage();
@@ -1696,27 +1835,202 @@ async function showFocusOverlay() {
   renderFocusNotes(notes);
 }
 
+function resetFocusOverlayDOM() {
+  // Reset all elements that handleFocusEnd may have hidden or mutated
+  const endBtn = document.getElementById('focus-overlay-end');
+  const msgEl = document.getElementById('focus-overlay-msg');
+  const actionsEl = document.getElementById('focus-overlay-actions');
+  const charEl = document.querySelector('.focus-overlay-character');
+  const notesSection = document.querySelector('.focus-overlay-notes');
+  const timerEl = document.getElementById('focus-overlay-timer');
+  const noteAddRow = document.querySelector('.focus-note-add');
+
+  // Restore display on elements hidden during end screen
+  if (endBtn) endBtn.style.display = '';
+  if (msgEl) msgEl.style.display = '';
+  if (actionsEl) actionsEl.style.display = '';
+  if (charEl) charEl.style.display = '';
+  if (notesSection) notesSection.style.display = '';
+  if (timerEl) { timerEl.style.display = ''; timerEl.textContent = ''; timerEl._noteAnimating = false; }
+  if (noteAddRow) { noteAddRow.style.transition = ''; noteAddRow.style.opacity = ''; }
+
+  // Remove .removing class from notes
+  document.querySelectorAll('.focus-note.removing').forEach(n => {
+    n.classList.remove('removing');
+    n.style.transitionDelay = '';
+  });
+
+  // Remove any leftover end screen
+  document.querySelectorAll('.focus-end-screen').forEach(el => el.remove());
+
+  // Reset bottom panels to notes view
+  const notesAbove = document.getElementById('focus-panel-notes');
+  const audioAbove = document.getElementById('focus-panel-audio-above');
+  const noteInput = document.getElementById('focus-panel-note-input');
+  const audioBelow = document.getElementById('focus-panel-audio-below');
+  if (notesAbove) notesAbove.classList.remove('slide-out-left');
+  if (audioAbove) { audioAbove.classList.add('hidden'); audioAbove.classList.remove('slide-in-right'); }
+  if (noteInput) noteInput.classList.remove('slide-out-left');
+  if (audioBelow) { audioBelow.classList.add('hidden'); audioBelow.classList.remove('slide-in-right'); }
+  _focusAudioOpen = false;
+
+  // Close all-tracks drawer
+  const allTracksDrawer = document.getElementById('focus-audio-drawer');
+  if (allTracksDrawer) { allTracksDrawer.classList.add('hidden'); allTracksDrawer.classList.remove('open'); }
+  _focusAllTracksOpen = false;
+}
+
 function hideFocusOverlay() {
+  resetFocusOverlayDOM();
+
   const overlay = document.getElementById('focus-overlay');
   const wrapper = document.querySelector('.layer-wrapper');
   const container = document.querySelector('.container');
   if (overlay) {
     overlay.classList.add('hidden');
-    overlay.classList.remove('audio-open');
   }
   if (wrapper) wrapper.classList.remove('focus-mode');
   if (container) container.classList.remove('focus-mode');
   _focusAudioOpen = false;
   clearInterval(focusMsgInterval);
   focusMsgInterval = null;
+
+  // Re-center hero character after focus mode
+  if (typeof JestyAnimator !== 'undefined' && JestyAnimator.snapToCenter) {
+    JestyAnimator.snapToCenter();
+  }
+}
+
+async function buildFocusMessages() {
+  const msgs = [...FOCUS_MESSAGES_GENERIC];
+  try {
+    const { jesty_data, openTabs } = await chrome.storage.local.get(['jesty_data', 'openTabs']);
+    if (!jesty_data) return msgs;
+
+    const hour = new Date().getHours();
+    const dayOfWeek = new Date().getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isLateNight = hour >= 23 || hour < 5;
+    const isWorkHours = hour >= 9 && hour < 17 && !isWeekend;
+    const name = jesty_data.profile?.user_name;
+
+    // ── Time-aware messages ──
+    if (isLateNight) {
+      msgs.push("It's late. The fact you're focusing is heroic.");
+      msgs.push("Most people are sleeping. You're locking in.");
+      if (name) msgs.push(`${name}, go to bed after this. Promise.`);
+    }
+    if (isWeekend) {
+      msgs.push("Focusing on a weekend. Suspicious dedication.");
+      msgs.push("Weekend grind. I respect it. Barely.");
+    }
+    if (isWorkHours) {
+      msgs.push("Work hours, focus on. As it should be.");
+    }
+
+    // ── Interest-based temptation warnings ──
+    const interests = jesty_data.profile?.interests || [];
+    const topInterests = interests.filter(i => i.sessions >= 3).slice(0, 5);
+    for (const interest of topInterests) {
+      const t = interest.topic;
+      const cat = interest.category;
+      if (cat === 'football' || cat === 'nfl' || cat === 'nba') {
+        msgs.push(`No checking ${t} scores right now.`);
+        msgs.push(`${t} can wait. Focus can't.`);
+      } else if (cat === 'crypto' || cat === 'stocks') {
+        msgs.push(`${t} isn't going anywhere. Focus.`);
+        msgs.push(`The market will survive without you.`);
+      } else if (cat === 'gaming') {
+        msgs.push(`${t} will still be there after. Focus.`);
+      } else if (cat === 'anime') {
+        msgs.push(`No episodes right now. Focus first.`);
+      } else if (cat === 'music') {
+        msgs.push(`Listening is fine. Browsing ${t} isn't.`);
+      } else if (cat === 'programming') {
+        msgs.push(`If you're coding, good. If you're on Reddit about ${t}, bad.`);
+      } else if (cat === 'food') {
+        msgs.push(`Order food later. Work now.`);
+      }
+    }
+
+    // ── Trait-based messages ──
+    const traits = jesty_data.profile?.traits || {};
+    if (traits.procrastinator_score > 0.5) {
+      msgs.push("I know you want to switch tabs. Don't.");
+      msgs.push("Your procrastination streak ends here.");
+      if (name) msgs.push(`${name}, I've seen your history. Stay focused.`);
+    }
+    if (traits.tab_hoarder_score > 0.5) {
+      msgs.push("All those tabs are tempting. Ignore them.");
+      msgs.push("Tab hoarders don't get to browse during focus.");
+    }
+    if (traits.impulse_shopper_score > 0.4) {
+      msgs.push("No shopping. Your cart can wait.");
+      msgs.push("Put the credit card away mentally.");
+    }
+
+    // ── Distraction tabs currently open ──
+    if (openTabs) {
+      const DISTRACTION_DOMAINS = [
+        'twitter.com', 'x.com', 'reddit.com', 'instagram.com', 'facebook.com',
+        'tiktok.com', 'youtube.com', 'twitch.tv', 'netflix.com', 'discord.com'
+      ];
+      const distractionTabs = Object.values(openTabs).filter(t => {
+        const d = (t.domain || '').toLowerCase();
+        return DISTRACTION_DOMAINS.some(dd => d.includes(dd));
+      });
+      for (const dt of distractionTabs.slice(0, 3)) {
+        const d = dt.domain.replace('.com', '').replace('.tv', '');
+        msgs.push(`That ${d} tab is still open. Resist.`);
+        msgs.push(`I see ${d} lurking in your tabs. Don't.`);
+      }
+    }
+
+    // ── Focus session history ──
+    const sessions = jesty_data.focus_sessions || [];
+    if (sessions.length > 0) {
+      const last = sessions[0];
+      if (last.distractionCount === 0) {
+        msgs.push("Last session was perfect. Do it again.");
+      } else if (last.distractionCount >= 3) {
+        msgs.push(`Last session: ${last.distractionCount} distractions. Beat that.`);
+        msgs.push("You slipped last time. Not today.");
+      }
+      const best = sessions.reduce((b, s) => s.longestStreakSeconds > (b.longestStreakSeconds || 0) ? s : b, sessions[0]);
+      if (best.longestStreakSeconds > 600) {
+        const bestMin = Math.floor(best.longestStreakSeconds / 60);
+        msgs.push(`Your record streak is ${bestMin} minutes. Break it.`);
+      }
+      if (sessions.length >= 5) {
+        msgs.push(`Session #${sessions.length + 1}. You're building a habit.`);
+      }
+    } else {
+      msgs.push("First focus session. Set the standard.");
+    }
+
+    // ── Name-based messages ──
+    if (name) {
+      msgs.push(`${name}, eyes on the screen.`);
+      msgs.push(`${name} in focus mode. Love to see it.`);
+    }
+
+  } catch (e) { /* fallback to generic */ }
+
+  return msgs;
 }
 
 function rotateFocusMessage() {
   const msgEl = document.getElementById('focus-overlay-msg');
   if (!msgEl) return;
+
+  // Cycle through shuffled messages without immediate repeats
+  const pool = _focusPersonalizedMsgs.length > 0 ? _focusPersonalizedMsgs : FOCUS_MESSAGES_GENERIC;
+  const msg = pool[_focusMsgIndex % pool.length];
+  _focusMsgIndex++;
+
   msgEl.style.opacity = '0';
   setTimeout(() => {
-    msgEl.textContent = FOCUS_MESSAGES[Math.floor(Math.random() * FOCUS_MESSAGES.length)];
+    msgEl.textContent = msg;
     msgEl.style.opacity = '1';
   }, 300);
 }
@@ -1729,7 +2043,7 @@ async function handleFocusNoteMode() {
   }
 
   // Close audio drawer if open
-  if (_focusAudioOpen) toggleFocusAudioDrawer(false);
+  if (_focusAudioOpen) toggleFocusAudioPanel(false);
 
   // Play "Write it down" animation
   const timerEl = document.getElementById('focus-overlay-timer');
@@ -1858,37 +2172,53 @@ function renderFocusNotes(notes) {
     list.appendChild(div);
   });
 
-  // Add-note input row
-  const row = document.createElement('div');
-  row.className = 'focus-note-add';
+  // Add-note input row (rendered below the line)
+  const inputWrap = document.getElementById('focus-panel-note-input');
+  if (inputWrap) {
+    inputWrap.innerHTML = '';
 
-  const addCheck = document.createElement('div');
-  addCheck.className = 'focus-note-check';
-  row.appendChild(addCheck);
+    const row = document.createElement('div');
+    row.className = 'focus-note-add';
 
-  const input = document.createElement('input');
-  input.className = 'focus-note-input';
-  input.placeholder = 'Quick note...';
+    const addCheck = document.createElement('div');
+    addCheck.className = 'focus-note-check';
+    row.appendChild(addCheck);
 
-  input.addEventListener('input', () => {
-    row.classList.toggle('typing', input.value.length > 0);
-  });
+    const input = document.createElement('textarea');
+    input.className = 'focus-note-input';
+    input.placeholder = 'Quick note...';
+    input.rows = 1;
 
-  input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      notes.push({ text, done: false });
-      renderFocusNotes(notes);
-      await saveFocusNotes(notes);
-      const newInput = list.querySelector('.focus-note-input');
-      if (newInput) newInput.focus();
-    }
-  });
+    const autoResize = () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 80) + 'px';
+    };
 
-  row.appendChild(input);
-  list.appendChild(row);
+    input.addEventListener('input', () => {
+      row.classList.toggle('typing', input.value.length > 0);
+      autoResize();
+    });
+
+    input.addEventListener('paste', () => {
+      requestAnimationFrame(autoResize);
+    });
+
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        notes.push({ text, done: false });
+        renderFocusNotes(notes);
+        await saveFocusNotes(notes);
+        const newInput = document.querySelector('.focus-note-input');
+        if (newInput) newInput.focus();
+      }
+    });
+
+    row.appendChild(input);
+    inputWrap.appendChild(row);
+  }
 }
 
 async function saveFocusNotes(notes) {
@@ -1924,7 +2254,7 @@ async function handleFocusEnd() {
   }
 
   // Close audio drawer if open
-  if (_focusAudioOpen) toggleFocusAudioDrawer(false);
+  if (_focusAudioOpen) toggleFocusAudioPanel(false);
 
   // Clean up blur
   chrome.storage.local.set({ focusBlurEnabled: false });
@@ -1935,37 +2265,156 @@ async function handleFocusEnd() {
     focusBtn.classList.remove('active');
   }
 
-  // Animate timer explosion, then hide overlay
-  const timerEl = document.getElementById('focus-overlay-timer');
-  if (timerEl) {
-    await explodeTimer(timerEl);
-  }
+  // Check notes before ending session (endSession triggers storage change listener)
+  const liveSession = await JestyFocusTime.getSession();
+  const liveNotes = liveSession ? (liveSession.notes || []).filter(n => n.text && n.text.trim()) : [];
+  const hasNotes = liveNotes.length > 0 && liveNotes.some(n => !n.done);
 
-  // Fade out the rest of the overlay
-  const overlay = document.getElementById('focus-overlay');
-  if (overlay) {
-    overlay.style.transition = 'opacity 0.4s ease';
-    overlay.style.opacity = '0';
-    await new Promise(r => setTimeout(r, 400));
-    overlay.style.transition = '';
-    overlay.style.opacity = '';
+  // 1. Explode timer — start roast request in parallel
+  const timerEl = document.getElementById('focus-overlay-timer');
+  const roastPromise = JestyFocusTime.generateEndRoast(liveSession).catch(() => null);
+  if (timerEl) await explodeTimer(timerEl);
+
+  // 2. Slide notes out to the left (if any)
+  const noteItems = document.querySelectorAll('.focus-note');
+  noteItems.forEach((n, i) => {
+    n.style.transitionDelay = `${i * 0.05}s`;
+    n.classList.add('removing');
+  });
+  const noteAddRow = document.querySelector('.focus-note-add');
+  if (noteAddRow) { noteAddRow.style.transition = 'opacity 0.2s'; noteAddRow.style.opacity = '0'; }
+  if (noteItems.length) await new Promise(r => setTimeout(r, 300 + noteItems.length * 50));
+
+  const endedSession = await JestyFocusTime.endSession();
+  if (!endedSession) { hideFocusOverlay(); return; }
+  const notes = (endedSession.notes || []).filter(n => n.text && n.text.trim());
+
+  // 3. Content swap → resume screen with roast + save/guilty card
+  const endBtn = document.getElementById('focus-overlay-end');
+  const msgEl = document.getElementById('focus-overlay-msg');
+  const actionsEl = document.getElementById('focus-overlay-actions');
+  const charEl = document.querySelector('.focus-overlay-character');
+  const notesSection = document.querySelector('.focus-overlay-notes');
+  if (endBtn) endBtn.style.display = 'none';
+  if (msgEl) msgEl.style.display = 'none';
+  if (actionsEl) actionsEl.style.display = 'none';
+  if (notesSection) notesSection.style.display = 'none';
+  if (charEl) charEl.style.display = 'none';
+  if (timerEl) timerEl.style.display = 'none';
+
+  const center = document.querySelector('.focus-overlay-center');
+  const durationMins = Math.floor((endedSession.endedAt - endedSession.startedAt) / 60000);
+  const pending = notes.filter(n => !n.done).length;
+  const isPremium = typeof JestyPremium !== 'undefined' && await JestyPremium.isPremium();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'focus-end-screen';
+
+  // Roast (filled async from the promise started during explosion)
+  const roastEl = document.createElement('div');
+  roastEl.className = 'focus-end-roast';
+  wrap.appendChild(roastEl);
+
+  // Description
+  const desc = document.createElement('p');
+  desc.className = 'focus-end-desc';
+  if (hasNotes) {
+    desc.textContent = `You wrote ${pending} note${pending !== 1 ? 's' : ''} during this session`;
+  } else {
+    desc.textContent = durationMins >= 1
+      ? `${durationMins} minute${durationMins !== 1 ? 's' : ''} of focus. Not bad.`
+      : 'Quick session. Every bit counts.';
+  }
+  wrap.appendChild(desc);
+
+  // Fill roast from promise — slide up reveal
+  roastPromise.then(roast => {
+    roastEl.textContent = roast ? roast.text : 'Session complete.';
+    roastEl.classList.add('visible');
+  });
+
+  if (isPremium) {
+    // Premium: save button (if notes) + dismiss
+    if (hasNotes) {
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'focus-end-action-btn';
+      saveBtn.textContent = 'Save as task';
+      wrap.appendChild(saveBtn);
+
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'focus-end-skip';
+      skipBtn.textContent = 'Dismiss';
+      wrap.appendChild(skipBtn);
+
+      center.appendChild(wrap);
+      requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('visible')));
+
+      const action = await new Promise(resolve => {
+        saveBtn.addEventListener('click', () => resolve('save'));
+        skipBtn.addEventListener('click', () => resolve('skip'));
+      });
+
+      if (action === 'save') {
+        const task = {
+          id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          title: `Focus notes · ${durationMins}m session`,
+          notes: notes.map(n => ({ text: n.text, done: n.done })),
+          completed: false,
+          completedAt: null,
+          createdAt: Date.now()
+        };
+        await saveUserTask(task);
+        await renderTaskList();
+      }
+    } else {
+      const skipBtn = document.createElement('button');
+      skipBtn.className = 'focus-end-action-btn';
+      skipBtn.textContent = 'Done';
+      wrap.appendChild(skipBtn);
+
+      center.appendChild(wrap);
+      requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('visible')));
+
+      await new Promise(resolve => {
+        skipBtn.addEventListener('click', () => resolve());
+      });
+    }
+  } else {
+    // Free: copy notes button (if notes) + guilty tier card + dismiss
+    const tierWrap = document.createElement('div');
+    tierWrap.className = 'focus-end-tier-card';
+    wrap.appendChild(tierWrap);
+
+    if (hasNotes) {
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'focus-end-skip';
+      copyBtn.textContent = 'Copy notes';
+      copyBtn.addEventListener('click', () => {
+        const text = notes.map(n => `${n.done ? '[x]' : '[ ]'} ${n.text}`).join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy notes'; }, 2000);
+        });
+      });
+      wrap.appendChild(copyBtn);
+    }
+
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'focus-end-skip';
+    skipBtn.textContent = 'Dismiss';
+    wrap.appendChild(skipBtn);
+
+    center.appendChild(wrap);
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('visible')));
+
+    renderGuiltyTierCard(tierWrap, hasNotes ? 'Plead Guilty to save session' : 'Plead Guilty');
+
+    await new Promise(resolve => {
+      skipBtn.addEventListener('click', () => resolve());
+    });
   }
 
   hideFocusOverlay();
-
-  const endedSession = await JestyFocusTime.endSession();
-  if (!endedSession) return;
-
-  const durationMins = Math.floor((endedSession.endedAt - endedSession.startedAt) / 60000);
-  const d = endedSession.distractionCount || 0;
-  showComment(`Session done. ${durationMins}m, ${d} distraction${d !== 1 ? 's' : ''}.`);
-
-  // Generate end roast (async)
-  const roast = await JestyFocusTime.generateEndRoast(endedSession);
-  if (roast) {
-    showComment(roast.text);
-    JestyAnimator.setExpression(roast.mood, 8000);
-  }
 }
 
 function explodeTimer(timerEl) {
@@ -2024,9 +2473,10 @@ async function updateFocusTimerDisplay() {
   if (timerEl && !timerEl._noteAnimating) timerEl.textContent = timeStr;
 }
 
-/* ─── Focus Audio Drawer ─── */
+/* ─── Focus Audio ─── */
 
 let _focusAudioOpen = false;
+let _focusAllTracksOpen = false;
 
 async function handleFocusAudioMode() {
   // Ensure focus overlay is visible
@@ -2034,37 +2484,151 @@ async function handleFocusAudioMode() {
     focusActive = true;
     await showFocusOverlay();
   }
-  toggleFocusAudioDrawer(true);
+  toggleFocusAudioPanel(true);
 }
 
-function toggleFocusAudioDrawer(open) {
-  const overlay = document.getElementById('focus-overlay');
+function toggleFocusAudioPanel(open) {
+  const notesAbove = document.getElementById('focus-panel-notes');
+  const audioAbove = document.getElementById('focus-panel-audio-above');
+  const noteInput = document.getElementById('focus-panel-note-input');
+  const audioBelow = document.getElementById('focus-panel-audio-below');
   const soundBtn = document.getElementById('focus-action-sound');
-  if (!overlay) return;
 
   _focusAudioOpen = open !== undefined ? open : !_focusAudioOpen;
-  overlay.classList.toggle('audio-open', _focusAudioOpen);
   if (soundBtn) soundBtn.classList.toggle('active', _focusAudioOpen);
 
   if (_focusAudioOpen) {
-    renderFocusAudioTracks();
+    // Above: slide notes left, show suggested track
+    if (notesAbove) notesAbove.classList.add('slide-out-left');
+    if (audioAbove) { audioAbove.classList.remove('hidden'); audioAbove.classList.add('slide-in-right'); }
+    // Below: slide note input left, show volume
+    if (noteInput) noteInput.classList.add('slide-out-left');
+    if (audioBelow) { audioBelow.classList.remove('hidden'); audioBelow.classList.add('slide-in-right'); }
+
+    renderSuggestedTrack();
+    initAudioVolumeControls();
+
+    // Animate timer text like "Write it down"
+    const timerEl = document.getElementById('focus-overlay-timer');
+    if (timerEl && !timerEl._noteAnimating) {
+      timerEl._noteAnimating = true;
+      getSuggestedTrackMessage().then(msg => {
+        animateTimerNote(timerEl, msg).then(() => { timerEl._noteAnimating = false; });
+      });
+    }
+  } else {
+    // Reverse: bring notes back
+    if (audioAbove) { audioAbove.classList.add('hidden'); audioAbove.classList.remove('slide-in-right'); }
+    if (notesAbove) notesAbove.classList.remove('slide-out-left');
+    if (audioBelow) { audioBelow.classList.add('hidden'); audioBelow.classList.remove('slide-in-right'); }
+    if (noteInput) noteInput.classList.remove('slide-out-left');
+    // Close all-tracks drawer too
+    if (_focusAllTracksOpen) toggleAllTracksDrawer(false);
   }
 }
 
-async function renderFocusAudioTracks() {
+async function getSuggestedTrackMessage() {
+  const tracks = JestyFocusAudio.getTracks();
+  const adaptive = await JestyFocusAudio.getAdaptiveTrack();
+  const trackName = tracks.find(t => t.id === adaptive)?.name || 'Brown Noise';
+  return `Try ${trackName}.`;
+}
+
+async function renderSuggestedTrack() {
+  const container = document.getElementById('focus-audio-suggested');
+  if (!container) return;
+
+  const tracks = JestyFocusAudio.getTracks();
+  const currentTrack = JestyFocusAudio.getCurrentTrack();
+  const adaptive = await JestyFocusAudio.getAdaptiveTrack();
+  const track = tracks.find(t => t.id === adaptive) || tracks[0];
+  const isPlaying = currentTrack === track.id;
+
+  container.className = `focus-audio-suggested${isPlaying ? ' playing' : ''}`;
+  container.innerHTML = `
+    <div class="focus-audio-suggested-icon">
+      <div class="focus-audio-wave">
+        <div class="focus-audio-wave-bar"></div>
+        <div class="focus-audio-wave-bar"></div>
+        <div class="focus-audio-wave-bar"></div>
+        <div class="focus-audio-wave-bar"></div>
+        <div class="focus-audio-wave-bar"></div>
+      </div>
+    </div>
+    <div class="focus-audio-suggested-info">
+      <span class="focus-audio-suggested-label">Suggested for your tabs</span>
+      <span class="focus-audio-suggested-name">${track.name}</span>
+    </div>
+    <button class="focus-audio-suggested-action">
+      ${isPlaying
+        ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>'
+        : '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
+      }
+    </button>
+  `;
+
+  container.onclick = () => {
+    if (JestyFocusAudio.getCurrentTrack() === track.id) {
+      JestyFocusAudio.stop();
+    } else {
+      JestyFocusAudio.play(track.id);
+    }
+    renderSuggestedTrack();
+    updateFocusSoundBtnState();
+  };
+}
+
+function initAudioVolumeControls() {
+  const slider = document.getElementById('focus-audio-slider');
+  if (!slider) return;
+
+  slider.value = Math.round(JestyFocusAudio.getVolume() * 100);
+  slider.oninput = () => {
+    JestyFocusAudio.setVolume(slider.value / 100);
+  };
+
+  const volDown = document.getElementById('focus-audio-vol-down');
+  const volUp = document.getElementById('focus-audio-vol-up');
+  if (volDown) {
+    volDown.onclick = () => {
+      const val = Math.max(0, Number(slider.value) - 10);
+      slider.value = val;
+      JestyFocusAudio.setVolume(val / 100);
+    };
+  }
+  if (volUp) {
+    volUp.onclick = () => {
+      const val = Math.min(100, Number(slider.value) + 10);
+      slider.value = val;
+      JestyFocusAudio.setVolume(val / 100);
+    };
+  }
+}
+
+function toggleAllTracksDrawer(open) {
+  const drawer = document.getElementById('focus-audio-drawer');
+  if (!drawer) return;
+
+  _focusAllTracksOpen = open !== undefined ? open : !_focusAllTracksOpen;
+
+  if (_focusAllTracksOpen) {
+    drawer.classList.remove('hidden');
+    void drawer.offsetWidth; // Force reflow so transition plays
+    drawer.classList.add('open');
+    renderAllTracks();
+  } else {
+    drawer.classList.remove('open');
+    setTimeout(() => drawer.classList.add('hidden'), 350);
+  }
+}
+
+async function renderAllTracks() {
   const container = document.getElementById('focus-audio-tracks');
   if (!container) return;
 
   const tracks = JestyFocusAudio.getTracks();
   const currentTrack = JestyFocusAudio.getCurrentTrack();
   const adaptive = await JestyFocusAudio.getAdaptiveTrack();
-
-  // Show adaptive suggestion
-  const adaptiveEl = document.getElementById('focus-audio-adaptive');
-  if (adaptiveEl) {
-    const trackName = tracks.find(t => t.id === adaptive)?.name || 'Brown Noise';
-    adaptiveEl.textContent = `Suggested for your tabs: ${trackName}`;
-  }
 
   container.innerHTML = '';
 
@@ -2104,29 +2668,19 @@ async function renderFocusAudioTracks() {
       } else {
         JestyFocusAudio.play(track.id);
       }
-      renderFocusAudioTracks();
+      renderAllTracks();
+      renderSuggestedTrack();
       updateFocusSoundBtnState();
     });
 
     container.appendChild(div);
   }
-
-  // Volume slider
-  const slider = document.getElementById('focus-audio-slider');
-  if (slider) {
-    slider.value = Math.round(JestyFocusAudio.getVolume() * 100);
-    slider.oninput = () => {
-      JestyFocusAudio.setVolume(slider.value / 100);
-    };
-  }
 }
 
 function updateFocusSoundBtnState() {
   const soundBtn = document.getElementById('focus-action-sound');
-  const islandIndicator = JestyFocusAudio.isPlaying();
-  // The sound icon in the overlay shows active state when audio is playing
   if (soundBtn && !_focusAudioOpen) {
-    soundBtn.classList.toggle('active', islandIndicator);
+    soundBtn.classList.toggle('active', JestyFocusAudio.isPlaying());
   }
 }
 
@@ -2158,20 +2712,28 @@ function initFocusOverlayActions() {
 
   if (soundBtn) {
     soundBtn.addEventListener('click', () => {
-      toggleFocusAudioDrawer();
+      toggleFocusAudioPanel();
     });
   }
 
   if (pencilBtn) {
     pencilBtn.addEventListener('click', () => {
+      // Close audio panel if open, then activate notes
+      if (_focusAudioOpen) toggleFocusAudioPanel(false);
       handleFocusNoteMode();
     });
   }
 
-  // Audio drawer back button
+  // All tracks drawer back button
   const audioBack = document.getElementById('focus-audio-back');
   if (audioBack) {
-    audioBack.addEventListener('click', () => toggleFocusAudioDrawer(false));
+    audioBack.addEventListener('click', () => toggleAllTracksDrawer(false));
+  }
+
+  // All tracks button
+  const allTracksBtn = document.getElementById('focus-audio-all-btn');
+  if (allTracksBtn) {
+    allTracksBtn.addEventListener('click', () => toggleAllTracksDrawer(true));
   }
 }
 
@@ -2205,13 +2767,19 @@ function initFocusClickHandler() {
 async function initPremiumFeatures() {
   const isPremium = await JestyPremium.isPremium();
 
-  // Show premium CTA for all tiers
+  // Show premium CTA
   const cta = document.getElementById('premium-cta');
   if (cta) {
     cta.classList.remove('hidden');
     renderPromoFaces();
-    const promoBtn = cta.querySelector('.promo-card-btn');
-    if (promoBtn) promoBtn.addEventListener('click', showTierOverlay);
+    if (isPremium) {
+      // Paid tiers: keep illustration, remove the verdict button
+      const promoBtn = cta.querySelector('.promo-card-btn');
+      if (promoBtn) promoBtn.remove();
+    } else {
+      const promoBtn = cta.querySelector('.promo-card-btn');
+      if (promoBtn) promoBtn.addEventListener('click', showTierOverlay);
+    }
   }
 
   // Progression visible to all users (games award XP)
@@ -2246,8 +2814,11 @@ async function initPremiumFeatures() {
   // Fun Zone visible to all users (quiz/trivia gated for free)
   await initFunZone(isPremium);
 
-  // Plans upgrade section at bottom
-  initPlansSection();
+  // Pattern Generator init (card is now inside Fun Zone grid)
+  JestyGenerator.init();
+
+  // Dossier card (user insights)
+  renderDossierCard();
 }
 
 /**
@@ -2262,22 +2833,9 @@ async function reinitTaskCard(isPremium) {
   const addBtn = document.getElementById('task-add-btn');
   const viewAll = document.getElementById('task-viewall');
 
-  if (!isPremium) {
-    // Free users: show default task, can edit it, but only 1 task
-    if (addBtn) {
-      addBtn.textContent = 'Plead Guilty to add more';
-      addBtn.style.display = '';
-      addBtn.dataset.upgrade = 'true';
-    }
-    if (viewAll) viewAll.style.display = 'none';
-  } else {
-    if (addBtn) {
-      addBtn.textContent = '+ Add task';
-      addBtn.style.display = '';
-      delete addBtn.dataset.upgrade;
-    }
-    if (viewAll) viewAll.style.display = '';
-  }
+  // renderTaskList handles add button state (free cap / premium)
+  if (addBtn) addBtn.style.display = '';
+  if (viewAll) viewAll.style.display = '';
   await renderTaskList();
 }
 
@@ -2346,7 +2904,7 @@ async function initFunZone(isPremium) {
     });
   }
 
-  // Jesty Generator — free for all tiers
+  // Pattern Generator — free for all tiers
   const generatorCard = document.getElementById('generator-card');
   if (generatorCard && !funZoneInited) {
     generatorCard.addEventListener('click', () => JestyGenerator.show());
@@ -2358,7 +2916,8 @@ async function initFunZone(isPremium) {
   // Init memory game (always available)
   if (!funZoneInited) {
     await JestyMemoryGame.init();
-    JestyGenerator.init();
+    const funzoneLevelBtn = document.getElementById('funzone-level-btn');
+    if (funzoneLevelBtn) funzoneLevelBtn.addEventListener('click', () => openLevelsDrawer());
   }
 
   funZoneInited = true;
@@ -2451,7 +3010,7 @@ async function hideMemoryGameInTabState() {
   try {
     const { memoryGameXP } = await chrome.storage.local.get(['memoryGameXP']);
     if (memoryGameXP && memoryGameXP.xp && (Date.now() - memoryGameXP.timestamp < 60000)) {
-      showXPToast(memoryGameXP.xp);
+      showXPToast(memoryGameXP.xp, 'game');
       await chrome.storage.local.remove('memoryGameXP');
       await renderLevelBadge();
       await loadStats();
@@ -2463,6 +3022,351 @@ async function hideMemoryGameInTabState() {
 /* ──────────────────────────────────────────────
    PLANS UPGRADE SECTION
    ────────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────
+   BOTTOM CROWD BACKGROUND
+   ────────────────────────────────────────────── */
+
+async function renderDossierCard() {
+  const container = document.getElementById('dossier-card');
+  if (!container) return;
+
+  const data = await JestyStorage.getJestyData();
+  if (!data) return;
+
+  const profile = data.profile || {};
+  const traits = profile.traits || {};
+  const roasts = data.roasts || [];
+  const categories = (profile.top_categories || []).filter(c => {
+    const n = (c.name || c.category || '').toLowerCase();
+    return n !== 'other' && n !== 'others';
+  }).slice(0, 4);
+  const totalRoasts = profile.total_roasts || 0;
+  const userName = profile.user_name || 'Jesty';
+
+  // User color
+  const userColor = currentColor.body || '#A78BFA';
+
+  // Total tabs seen
+  const allCategories = profile.top_categories || [];
+  const totalTabsSeen = allCategories.reduce((sum, c) => sum + (c.count || 0), 0);
+
+  // Dominant trait
+  const traitLabels = [
+    { key: 'procrastinator_score', label: 'a procrastinator' },
+    { key: 'night_owl_score', label: 'a night owl' },
+    { key: 'tab_hoarder_score', label: 'a tab hoarder' },
+    { key: 'impulse_shopper_score', label: 'an impulse shopper' }
+  ];
+  const topTrait = traitLabels.reduce((best, t) => {
+    const val = traits[t.key] || 0;
+    return val > (best.val || 0) ? { ...t, val } : best;
+  }, { label: 'under investigation', val: 0 });
+
+  // Top mood
+  const moodCounts = {};
+  roasts.forEach(r => { if (r.mood) moodCounts[r.mood] = (moodCounts[r.mood] || 0) + 1; });
+  const sortedMoods = Object.entries(moodCounts).sort((a, b) => b[1] - a[1]);
+  const topMood = sortedMoods.length ? sortedMoods[0][0] : 'smug';
+
+  // Punchline
+  const punchline = generateDossierPunchline(categories, totalRoasts, topTrait, traits);
+
+  // Category bars
+  const maxCatCount = categories.length ? categories[0].count || 1 : 1;
+  const catBarsHtml = categories.map(cat => {
+    const pct = Math.round((cat.count || 0) / maxCatCount * 100);
+    const name = formatCategoryName(cat.name || cat.category || 'Unknown');
+    return `<div class="dossier-bar-row">
+      <span class="dossier-bar-label">${escapeHtml(name)}</span>
+      <div class="dossier-bar-track"><div class="dossier-bar-fill" style="width:${pct}%;background:${userColor}"></div></div>
+      <span class="dossier-bar-count">${cat.count}</span>
+    </div>`;
+  }).join('');
+
+  // Face SVG for badge (island-style clipped)
+  const faceSymbol = document.getElementById(`face-${topMood}`);
+  const faceVb = faceSymbol ? (faceSymbol.getAttribute('viewBox') || '-15 -10 150 140') : '-15 -10 150 140';
+  const faceSvg = faceSymbol ? faceSymbol.innerHTML : '';
+
+  // Premium check
+  const isPremium = typeof JestyPremium !== 'undefined' && await JestyPremium.isPremium();
+
+  // Build insights
+  const insights = [];
+
+  // Peak browsing hour
+  const hourCounts = {};
+  roasts.forEach(r => {
+    if (r.timestamp) {
+      const h = new Date(r.timestamp).getHours();
+      hourCounts[h] = (hourCounts[h] || 0) + 1;
+    }
+  });
+  const peakHourEntry = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+  if (peakHourEntry) {
+    const h = parseInt(peakHourEntry[0]);
+    const label = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
+    insights.push({ value: label, label: 'Peak hour' });
+  }
+
+  // Top interest
+  const interests = profile.interests || [];
+  if (interests.length) {
+    const topInterest = interests.reduce((a, b) => (b.count || 0) > (a.count || 0) ? b : a, interests[0]);
+    if (topInterest.keyword) {
+      insights.push({ value: topInterest.keyword.charAt(0).toUpperCase() + topInterest.keyword.slice(1), label: 'Top interest' });
+    }
+  }
+
+  // Peak tabs
+  const peakTabs = (profile.patterns || {}).peak_tabs || 0;
+  if (peakTabs > 0) insights.push({ value: String(peakTabs), label: 'Peak tabs' });
+
+  // Total focus time
+  const focusSessions = data.focus_sessions || [];
+  if (focusSessions.length) {
+    const totalFocusMins = Math.round(focusSessions.reduce((s, f) => s + (f.durationSeconds || 0), 0) / 60);
+    insights.push({ value: totalFocusMins >= 60 ? `${Math.round(totalFocusMins / 60)}h` : `${totalFocusMins}m`, label: 'Focus time' });
+  }
+
+  // Longest streak
+  const longestStreak = (data.milestones?.streaks?.longest_daily_streak) || 0;
+  if (longestStreak > 0) insights.push({ value: `${longestStreak}d`, label: 'Best streak' });
+
+  // Member since
+  const firstRoast = data.milestones?.roasts?.first_roast;
+  if (firstRoast) {
+    const d = new Date(firstRoast);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    insights.push({ value: `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`, label: 'Since' });
+  }
+
+  const insightsHtml = insights.length ? `<div class="dossier-insights-grid">${insights.map(i =>
+    `<div class="dossier-insight"><span class="dossier-insight-value">${escapeHtml(i.value)}</span><span class="dossier-insight-label">${escapeHtml(i.label)}</span></div>`
+  ).join('')}</div>` : '';
+
+  container.style.setProperty('--jesty-user-color', userColor);
+  container.innerHTML = `
+    <div class="dossier-front">
+      <div class="dossier-stats">
+        <div class="dossier-stat dossier-stat-roasts">
+          <span class="dossier-stat-number">${totalRoasts}</span>
+          <span class="dossier-stat-label">Roasts</span>
+        </div>
+        <div class="dossier-stat">
+          <span class="dossier-stat-number dossier-stat-dark">${totalTabsSeen}</span>
+          <span class="dossier-stat-label">Tabs seen</span>
+        </div>
+      </div>
+      <div class="dossier-divider"></div>
+      ${insightsHtml}
+      <div class="dossier-verdict" id="dossier-verdict">
+        ${punchline ? `<span class="dossier-verdict-text">${escapeHtml(punchline)}</span>` : ''}
+      </div>
+      ${categories.length ? `
+      <div class="dossier-bars-wrap${isPremium ? '' : ' locked'}">
+        <div class="dossier-bars">
+          ${catBarsHtml}
+        </div>
+        ${isPremium ? '' : '<div class="dossier-bars-overlay"></div>'}
+      </div>` : ''}
+      <div class="dossier-card-btn-wrap">
+        ${isPremium ? `<button class="task-add-btn" id="dossier-open-card">View card</button>` : `<button class="task-add-btn" data-upgrade="true" id="dossier-open-card">Plead Guilty for full breakdown</button>`}
+      </div>
+    </div>
+  `;
+
+  // Wire up card button
+  const cardBtn = document.getElementById('dossier-open-card');
+  if (cardBtn) {
+    cardBtn.addEventListener('click', () => {
+      if (isPremium) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('card.html') });
+      } else {
+        // Open slot machine rigged to always land on Guilty (premium)
+        showTierOverlayGuilty();
+      }
+    });
+  }
+
+  // Render crowd background
+  renderDossierCrowd();
+}
+
+function renderDossierCrowd() {
+  const crowd = document.getElementById('dossier-crowd');
+  if (!crowd) return;
+
+  const expressions = [
+    'smug', 'suspicious', 'yikes', 'eyeroll', 'disappointed', 'melting', 'dead',
+    'thinking', 'happy', 'impressed', 'manic', 'petty', 'chaotic', 'dramatic', 'tender'
+  ];
+  const colorKeys = ['lime', 'pink', 'sky', 'purple', 'mint', 'peach'];
+
+  // Mini crowd: 3 rows — 3, 4, 3
+  const size = 52;
+  const rows = [
+    { count: 3 },
+    { count: 4 },
+    { count: 3 },
+  ];
+
+  // Shuffle all 6 colors + 4 repeats for 10 faces
+  const shuffledColors = [...colorKeys].sort(() => Math.random() - 0.5);
+  while (shuffledColors.length < 10) shuffledColors.push(colorKeys[Math.floor(Math.random() * colorKeys.length)]);
+  let colorIdx = 0;
+
+  let faceIdx = 0;
+  let html = '';
+
+  for (const row of rows) {
+    let rowHtml = '';
+    for (let i = 0; i < row.count; i++) {
+      const expr = expressions[Math.floor(Math.random() * expressions.length)];
+      const colorKey = shuffledColors[colorIdx++ % shuffledColors.length];
+      const symbol = document.getElementById(`face-${expr}`);
+      if (!symbol) continue;
+
+      const vb = symbol.getAttribute('viewBox') || '-15 -10 150 140';
+      let content = symbol.innerHTML;
+      const uid = `dc${faceIdx++}`;
+      content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-${uid}"`);
+      content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-${uid})`);
+
+      const target = SLOT_COLORS[colorKey];
+      const from = currentColor;
+      for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+        if (from[key] && target[key]) {
+          content = content.replace(new RegExp(from[key].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), target[key]);
+        }
+      }
+
+      rowHtml += `<svg viewBox="${vb}" width="${size}" height="${Math.round(size * 0.92)}">${content}</svg>`;
+    }
+    html += `<div class="dossier-crowd-row">${rowHtml}</div>`;
+  }
+
+  crowd.innerHTML = html;
+
+  // Scatter effect: characters run away from cursor
+  const faces = crowd.querySelectorAll('svg');
+  const maxDist = 120;
+  const maxPush = 25;
+  let crowdRaf = null;
+  let lastMx = 0, lastMy = 0;
+
+  // Cache original positions (relative to crowd)
+  const origins = [];
+  const cacheOrigins = () => {
+    const rect = crowd.getBoundingClientRect();
+    origins.length = 0;
+    faces.forEach(face => {
+      const fRect = face.getBoundingClientRect();
+      origins.push({
+        x: fRect.left + fRect.width / 2 - rect.left,
+        y: fRect.top + fRect.height / 2 - rect.top
+      });
+    });
+  };
+
+  crowd.style.pointerEvents = 'auto';
+
+  crowd.addEventListener('mouseenter', () => {
+    cacheOrigins();
+    faces.forEach(face => { face.style.transition = 'none'; });
+  });
+
+  crowd.addEventListener('mousemove', (e) => {
+    const rect = crowd.getBoundingClientRect();
+    lastMx = e.clientX - rect.left;
+    lastMy = e.clientY - rect.top;
+
+    if (!crowdRaf) {
+      crowdRaf = requestAnimationFrame(() => {
+        faces.forEach((face, i) => {
+          const o = origins[i];
+          if (!o) return;
+          const dx = o.x - lastMx;
+          const dy = o.y - lastMy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < maxDist && dist > 0) {
+            const strength = (1 - dist / maxDist) * maxPush;
+            const angle = Math.atan2(dy, dx);
+            face.style.transform = `translate(${Math.cos(angle) * strength}px, ${Math.sin(angle) * strength}px)`;
+          } else {
+            face.style.transform = '';
+          }
+        });
+        crowdRaf = null;
+      });
+    }
+  });
+
+  crowd.addEventListener('mouseleave', () => {
+    if (crowdRaf) { cancelAnimationFrame(crowdRaf); crowdRaf = null; }
+    faces.forEach(face => {
+      face.style.transition = 'transform 0.4s ease-out';
+      face.style.transform = '';
+    });
+  });
+}
+
+function formatCategoryName(raw) {
+  return raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function generateDossierPunchline(categories, totalRoasts, topTrait, traits) {
+  if (!categories.length && totalRoasts < 5) return null;
+
+  const top = categories[0];
+  const second = categories[1];
+  const topName = top ? formatCategoryName(top.name || top.category || '') : '';
+  const secondName = second ? formatCategoryName(second.name || second.category || '') : '';
+
+  const lines = [];
+
+  // Category-based roasts
+  if (top && second) {
+    const topLow = topName.toLowerCase();
+    const secLow = secondName.toLowerCase();
+
+    if (topLow.includes('streaming') && secLow.includes('work'))
+      lines.push(`${topName} on top, ${secondName} second. Your priorities are showing.`);
+    else if (topLow.includes('work') && secLow.includes('streaming'))
+      lines.push(`${topName} leads but ${secondName} is right behind. "Productive" is a stretch.`);
+    else if (topLow.includes('social'))
+      lines.push(`${top.count} social media tabs seen. That's not networking, that's a habit.`);
+    else if (topLow.includes('shopping'))
+      lines.push(`${top.count} shopping tabs. Your wallet is having a worse day than you.`);
+    else
+      lines.push(`${topName} dominates. ${secondName} follows. Jesty sees all.`);
+  } else if (top) {
+    lines.push(`${top.count} tabs of ${topName}. At this point it's a lifestyle.`);
+  }
+
+  // Trait-based roasts
+  if (topTrait.val > 0.7) {
+    if (topTrait.key === 'tab_hoarder_score')
+      lines.push(`${Math.round(topTrait.val * 100)}% tab hoarder. Your browser filed a restraining order.`);
+    else if (topTrait.key === 'night_owl_score')
+      lines.push(`Night owl score: ${Math.round(topTrait.val * 100)}%. Sleep is just a suggestion you keep ignoring.`);
+    else if (topTrait.key === 'procrastinator_score')
+      lines.push(`${Math.round(topTrait.val * 100)}% procrastinator. You'll deal with it later. Like everything else.`);
+    else if (topTrait.key === 'impulse_shopper_score')
+      lines.push(`Impulse shopper at ${Math.round(topTrait.val * 100)}%. Your cart has more items than your to-do list.`);
+  }
+
+  // Roast count roasts
+  if (totalRoasts > 200)
+    lines.push(`${totalRoasts} roasts and still coming back. That's not resilience, that's Stockholm syndrome.`);
+  else if (totalRoasts > 50)
+    lines.push(`${totalRoasts} roasts in. At this point Jesty knows you better than your therapist.`);
+
+  // Pick the best one (prefer category-based for variety)
+  return lines.length ? lines[0] : null;
+}
 
 async function initPlansSection() {
   const section = document.getElementById('plans-section');
@@ -2483,12 +3387,12 @@ async function initPlansSection() {
   const upgrades = [];
   if (tier === 'free') {
     upgrades.push(
-      { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, Focus mode & more', action: 'checkout', tierKey: 'premium' },
-      { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', action: 'checkout-pro', tierKey: 'pro' }
+      { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, tasks & all accessories', action: 'checkout', tierKey: 'premium' },
+      { name: 'Sentenced', price: '$5/mo', desc: 'Launching soon', action: 'disabled', tierKey: 'pro' }
     );
   } else if (tier === 'premium') {
     upgrades.push(
-      { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories', action: 'checkout-pro', tierKey: 'pro' }
+      { name: 'Sentenced', price: '$5/mo', desc: 'Launching soon', action: 'disabled', tierKey: 'pro' }
     );
   }
 
@@ -2645,8 +3549,8 @@ async function seedDefaultTask() {
 
   if (tasks.length > 0) return;
 
-  const onboardingTask = {
-    id: 'user_onboarding',
+  const onboardingTask1 = {
+    id: 'user_onboarding_1',
     title: 'Try managing tasks with Jesty',
     notes: [
       { text: 'Tap a task to open its details', done: false },
@@ -2658,7 +3562,19 @@ async function seedDefaultTask() {
     createdAt: Date.now()
   };
 
-  data.user_tasks = [onboardingTask];
+  const onboardingTask2 = {
+    id: 'user_onboarding_2',
+    title: 'Organise your browser tabs',
+    notes: [
+      { text: 'Close tabs you no longer need', done: false },
+      { text: 'Bookmark pages you want to keep', done: false }
+    ],
+    completed: false,
+    completedAt: null,
+    createdAt: Date.now() + 1
+  };
+
+  data.user_tasks = [onboardingTask1, onboardingTask2];
   await chrome.storage.local.set({ jesty_data: data });
 }
 
@@ -2698,18 +3614,6 @@ async function initProductivityTasks(isPremium) {
     taskSystemInited = true;
   }
 
-  if (isPremium) {
-    // Load auto-suggested task
-    const { currentTask } = await chrome.storage.local.get(['currentTask']);
-    if (!currentTask || currentTask.completed) {
-      await assignNewTask();
-    }
-
-    // Check auto-task completion periodically (only once)
-    if (!taskCheckInterval) {
-      taskCheckInterval = setInterval(() => checkTaskCompletion(), 10000);
-    }
-  }
 }
 
 async function assignNewTask() {
@@ -2792,34 +3696,44 @@ async function renderTaskList() {
   const { currentTask } = await chrome.storage.local.get(['currentTask']);
   const userTasks = await loadUserTasks();
 
-  // Build combined list: auto-task first (premium only), then user tasks
-  const allTasks = [];
-  if (isPremium && currentTask && !currentTask.completed) {
-    allTasks.push({ id: 'auto_' + currentTask.id, title: currentTask.title, type: 'auto', completed: false });
-  }
+  // Build combined list: all user tasks (keep original order)
+  const allTasks = userTasks.map(t => ({
+    id: t.id, title: t.title, type: 'user', notes: t.notes, completed: !!t.completed
+  }));
 
-  if (isPremium) {
-    // Premium: show all incomplete user tasks
-    userTasks.filter(t => !t.completed).forEach(t => {
-      allTasks.push({ id: t.id, title: t.title, type: 'user', notes: t.notes, completed: false });
-    });
-  } else {
-    // Free: show only the first user task (the default one)
-    const firstTask = userTasks[0];
-    if (firstTask) {
-      allTasks.push({ id: firstTask.id, title: firstTask.title, type: 'user', notes: firstTask.notes, completed: firstTask.completed });
-    }
-  }
-
-  // Show max 3
+  // Show max 3 in the card widget
   const display = allTasks.slice(0, 3);
 
   const addBtn = document.getElementById('task-add-btn');
   const viewAll = document.getElementById('task-viewall');
 
+  // Update total count badge
+  const countEl = document.getElementById('task-count');
+  if (countEl) countEl.textContent = allTasks.length > 0 ? allTasks.length : '';
+
+  // Free tier: cap at 3 tasks — update add button accordingly
+  if (!isPremium) {
+    if (addBtn) {
+      if (userTasks.length >= 3) {
+        addBtn.textContent = 'Plead Guilty to add more';
+        addBtn.dataset.upgrade = 'true';
+      } else {
+        addBtn.textContent = '+ Add task';
+        delete addBtn.dataset.upgrade;
+      }
+    }
+  } else {
+    if (addBtn) {
+      addBtn.textContent = '+ Add task';
+      delete addBtn.dataset.upgrade;
+    }
+  }
+
+  // View all always visible
+  if (viewAll) viewAll.style.display = '';
+
   if (display.length === 0) {
     if (addBtn) addBtn.style.display = 'none';
-    if (viewAll) viewAll.style.display = 'none';
     listEl.innerHTML = `
       <div class="task-empty-state">
         <p class="task-empty-text">No tasks yet. Add one to get started.</p>
@@ -2832,15 +3746,19 @@ async function renderTaskList() {
   }
 
   if (addBtn) addBtn.style.display = '';
-  if (viewAll) viewAll.style.display = '';
 
   const trashSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
 
   listEl.innerHTML = display.map(t => {
-    let noteCount = 0;
-    if (Array.isArray(t.notes)) noteCount = t.notes.filter(n => !n.done).length;
-    else if (typeof t.notes === 'string' && t.notes.trim()) noteCount = 1;
-    const notesLabel = noteCount > 0 ? `<span class="task-item-notes">${noteCount} note${noteCount !== 1 ? 's' : ''}</span>` : '';
+    let notesLabel = '';
+    if (t.completed) {
+      notesLabel = '<span class="task-item-notes done">Done</span>';
+    } else {
+      let noteCount = 0;
+      if (Array.isArray(t.notes)) noteCount = t.notes.length;
+      else if (typeof t.notes === 'string' && t.notes.trim()) noteCount = 1;
+      if (noteCount > 0) notesLabel = `<span class="task-item-notes">${noteCount} note${noteCount !== 1 ? 's' : ''}</span>`;
+    }
     const deleteBtn = t.type === 'user' ? `<button class="task-item-delete" data-delete-id="${t.id}">${trashSvg}</button>` : '';
     return `
       <div class="task-item${t.completed ? ' completed' : ''}" data-id="${t.id}" data-type="${t.type}">
@@ -2859,7 +3777,7 @@ async function renderTaskList() {
     const id = el.dataset.id;
     const type = el.dataset.type;
 
-    // Click check to complete
+    // Click check to toggle complete
     const check = el.querySelector('.task-item-check');
     if (check) {
       check.addEventListener('click', async (e) => {
@@ -2868,8 +3786,8 @@ async function renderTaskList() {
           const tasks = await loadUserTasks();
           const task = tasks.find(t => t.id === id);
           if (task) {
-            task.completed = true;
-            task.completedAt = Date.now();
+            task.completed = !task.completed;
+            task.completedAt = task.completed ? Date.now() : null;
             await saveUserTask(task);
             await renderTaskList();
           }
@@ -2921,42 +3839,13 @@ async function openTaskDrawer() {
   requestAnimationFrame(() => drawer.classList.add('visible'));
 
   // Render all tasks
-  const { currentTask } = await chrome.storage.local.get(['currentTask']);
   const userTasks = await loadUserTasks();
 
   content.innerHTML = '';
 
-  // Auto-suggested task
-  if (currentTask && !currentTask.completed) {
-    const el = document.createElement('div');
-    el.className = 'task-item';
-    el.dataset.type = 'auto';
-    el.innerHTML = `
-      <div class="task-item-check"></div>
-      <div class="task-item-content">
-        <span class="task-item-title">${escapeHtml(currentTask.title)}</span>
-        <span class="task-item-notes">Auto-suggested</span>
-      </div>
-    `;
-    content.appendChild(el);
-  }
-
-  // Tier check — free users only see their first task
   const isPremDrawer = await JestyPremium.isPremium();
 
-  // User tasks (incomplete first, then completed)
-  let visibleTasks = userTasks;
-  if (!isPremDrawer) {
-    // Free: only show first task
-    visibleTasks = userTasks.slice(0, 1);
-  }
-  const incomplete = visibleTasks.filter(t => !t.completed);
-  const completed = visibleTasks.filter(t => t.completed);
-  const hasAuto = isPremDrawer && currentTask && !currentTask.completed;
-
-  const isEmpty = !hasAuto && incomplete.length === 0 && completed.length === 0;
-
-  if (isEmpty) {
+  if (userTasks.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'task-empty-state task-empty-state-drawer';
     empty.innerHTML = `
@@ -2971,15 +3860,16 @@ async function openTaskDrawer() {
     return;
   }
 
-  [...incomplete, ...completed].forEach(t => {
+  userTasks.forEach(t => {
     const el = document.createElement('div');
     el.className = `task-item${t.completed ? ' completed' : ''}`;
     el.dataset.id = t.id;
     el.dataset.type = 'user';
     let notesCount = 0;
-    if (Array.isArray(t.notes)) notesCount = t.notes.filter(n => !n.done).length;
+    if (Array.isArray(t.notes)) notesCount = t.notes.length;
     else if (typeof t.notes === 'string' && t.notes.trim()) notesCount = 1;
-    const notesLabel = notesCount > 0 ? `<span class="task-item-notes">${notesCount} note${notesCount !== 1 ? 's' : ''}</span>` : '';
+    const notesText = t.completed ? 'Done' : `${notesCount} note${notesCount !== 1 ? 's' : ''}`;
+    const notesLabel = `<span class="task-item-notes${t.completed ? ' done' : ''}">${notesText}</span>`;
     el.innerHTML = `
       <div class="task-item-check"></div>
       <div class="task-item-content">
@@ -3019,20 +3909,21 @@ async function openTaskDrawer() {
     content.appendChild(el);
   });
 
-  // Add task button (or upgrade prompt for free users)
+  // Add task button (or upgrade prompt if at cap)
   const addBtn = document.createElement('button');
   addBtn.className = 'task-drawer-add-btn';
-  if (isPremDrawer) {
-    addBtn.textContent = '+ Add task';
-    addBtn.addEventListener('click', () => {
-      closeTaskDrawer();
-      createAndOpenTask();
-    });
-  } else {
+  const atFreeCap = !isPremDrawer && userTasks.length >= 3;
+  if (atFreeCap) {
     addBtn.textContent = 'Plead Guilty to add more';
     addBtn.addEventListener('click', () => {
       closeTaskDrawer();
       showTierOverlayPlans();
+    });
+  } else {
+    addBtn.textContent = '+ Add task';
+    addBtn.addEventListener('click', () => {
+      closeTaskDrawer();
+      createAndOpenTask();
     });
   }
   content.appendChild(addBtn);
@@ -3108,9 +3999,11 @@ function renderNoteItems(task) {
     del.className = 'task-detail-note-delete';
     del.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
     del.addEventListener('click', async () => {
+      const noteIndex = task.notes.indexOf(note);
+      if (noteIndex === -1) return;
+      task.notes.splice(noteIndex, 1);
       div.classList.add('removing');
       setTimeout(async () => {
-        task.notes.splice(i, 1);
         renderNoteItems(task);
         await saveUserTask(task);
         renderTaskList();
@@ -3131,27 +4024,27 @@ function renderNoteItems(task) {
   addCheck.className = 'task-detail-note-check';
   row.appendChild(addCheck);
 
-  const input = document.createElement('input');
+  const input = document.createElement('textarea');
   input.className = 'task-detail-note-input';
   input.placeholder = 'Add a note...';
+  input.rows = 1;
 
-  // Hidden sizer to measure text width
-  const sizer = document.createElement('span');
-  sizer.className = 'task-detail-note-sizer';
-  row.appendChild(sizer);
-
-  const resizeInput = () => {
-    sizer.textContent = input.value || input.placeholder;
-    input.style.width = (sizer.offsetWidth + 4) + 'px';
+  const autoResize = () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 80) + 'px';
   };
 
   input.addEventListener('input', () => {
     row.classList.toggle('typing', input.value.length > 0);
-    resizeInput();
+    autoResize();
+  });
+
+  input.addEventListener('paste', () => {
+    requestAnimationFrame(autoResize);
   });
 
   input.onkeydown = async (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (taskDetailDismissed) return;
       const text = input.value.trim();
@@ -3160,6 +4053,8 @@ function renderNoteItems(task) {
       renderNoteItems(task);
       await saveUserTask(task);
       renderTaskList();
+      // Scroll notes list to bottom
+      list.scrollTop = list.scrollHeight;
       const newInput = list.querySelector('.task-detail-note-input');
       if (newInput) newInput.focus();
     }
@@ -3169,7 +4064,11 @@ function renderNoteItems(task) {
   list.appendChild(row);
 
   // Initial size to fit placeholder
-  requestAnimationFrame(resizeInput);
+  requestAnimationFrame(autoResize);
+
+  // Update body cursor based on whether notes exist
+  const detailBody = list.closest('.task-detail-body');
+  if (detailBody) detailBody.style.cursor = (!task.notes || task.notes.length === 0) ? 'text' : '';
 }
 
 function isTaskEmpty(task) {
@@ -3179,6 +4078,12 @@ function isTaskEmpty(task) {
 }
 
 let taskDetailCurrentTask = null;
+
+function updateHomeToggleBtn(btn, task) {
+  const onHome = !task.hidden_from_newtab;
+  btn.textContent = onHome ? 'Remove from home page' : 'Add to home page';
+  btn.classList.toggle('home-remove', onHome);
+}
 
 async function openTaskDetail(taskId, unsavedTask) {
   const drawer = document.getElementById('task-detail-drawer');
@@ -3204,6 +4109,19 @@ async function openTaskDetail(taskId, unsavedTask) {
   titleInput.readOnly = false;
 
   renderNoteItems(task);
+
+  // Make entire body area clickable to focus note input when no notes exist
+  const detailBody = drawer.querySelector('.task-detail-body');
+  if (detailBody) {
+    detailBody.onclick = (e) => {
+      // Only if clicking empty space (not on an existing note or input)
+      if (e.target === detailBody || e.target.classList.contains('task-detail-notes-list')) {
+        const noteInput = detailBody.querySelector('.task-detail-note-input');
+        if (noteInput) noteInput.focus();
+      }
+    };
+    detailBody.style.cursor = (!task.notes || task.notes.length === 0) ? 'text' : '';
+  }
 
   drawer.classList.remove('hidden');
   requestAnimationFrame(() => {
@@ -3235,18 +4153,17 @@ async function openTaskDetail(taskId, unsavedTask) {
     }, 500);
   };
 
-  // Done button
+  // Home page toggle button (replaces Done)
   if (doneBtn) {
+    updateHomeToggleBtn(doneBtn, task);
     doneBtn.onclick = async () => {
-      taskDetailDismissed = true;
+      task.hidden_from_newtab = !task.hidden_from_newtab;
       if (!isTaskEmpty(task)) {
         task.title = task.title || 'Untitled';
-        task.completed = true;
-        task.completedAt = Date.now();
         delete task.draft;
         await saveUserTask(task);
       }
-      closeTaskDetail();
+      updateHomeToggleBtn(doneBtn, task);
       renderTaskList();
     };
   }
@@ -3285,11 +4202,21 @@ async function closeTaskDetail() {
 }
 
 async function createAndOpenTask() {
+  // Free tier: cap at 3 tasks
+  const isPrem = await JestyPremium.isPremium();
+  if (!isPrem) {
+    const data = await JestyStorage.getJestyData();
+    if ((data.user_tasks || []).length >= 3) {
+      showTierOverlayPlans();
+      return;
+    }
+  }
   const newTask = {
-    id: 'user_' + Date.now(),
+    id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
     title: '',
     notes: [],
     completed: false,
+    hidden_from_newtab: true,
     draft: true,
     createdAt: Date.now()
   };
@@ -3311,11 +4238,12 @@ async function checkTaskCompletion() {
 
     // Award XP
     await awardXP(template.xp);
-    showXPToast(template.xp);
+    showXPToast(template.xp, 'task');
 
     // Show completion
     showComment(`Task complete! +${template.xp} XP`);
     JestyAnimator.setExpression('happy', 5000);
+    if (JestyAnimator.react) JestyAnimator.react('celebrate');
 
     // Assign next task after delay
     setTimeout(() => assignNewTask(), 30000);
@@ -3368,14 +4296,118 @@ const LEVEL_UNLOCK_IDS = {
 };
 
 const XP_SOURCES = [
-  { label: 'Tab Cleanup', desc: '5-15 XP per closed tab' },
-  { label: 'Milestones', desc: '50-1000 XP per milestone' },
-  { label: 'Streaks', desc: '30-1500 XP per streak' },
-  { label: 'Memory Match', desc: '10-30 XP per level' },
-  { label: 'Tab Quiz', desc: '10-15 XP per question' },
-  { label: 'Roast Trivia', desc: '10-15 XP per question' },
-  { label: 'Tasks', desc: '25-50 XP each', premium: true },
+  { label: 'Tab Cleanup', desc: 'Close tabs to earn 5-15 XP each. Hoarders get more.', xp: '5-15', expression: 'happy', color: 'mint' },
+  { label: 'Milestones', desc: 'Hit roast milestones for big XP drops.', xp: '50-1000', expression: 'impressed', color: 'purple' },
+  { label: 'Streaks', desc: 'Show up daily. Consistency pays.', xp: '30-1500', expression: 'smug', color: 'peach' },
+  { label: 'Memory Match', desc: 'Pair the faces, earn the points.', xp: '10-30', expression: 'manic', color: 'pink' },
+  { label: 'Tab Quiz', desc: 'Prove you know your own tabs.', xp: '10-15', expression: 'suspicious', color: 'sky' },
+  { label: 'Roast Trivia', desc: 'Remember what I said about you?', xp: '10-15', expression: 'eyeroll', color: 'lime' },
 ];
+
+const XP_HERO_QUIPS = [
+  'XP doesn\'t grow on trees. It grows on closed tabs.',
+  'Every point earned is a point you didn\'t deserve.',
+  'You want XP? Here\'s how you get it.',
+  'The grind is real. The rewards are cosmetic.',
+  'Work for it. Or just close a lot of tabs.',
+];
+
+const XP_COLOR_MAP = {
+  purple: { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' },
+  pink: { body: '#FF8FA3', limb: '#E0637A', shadow: '#B84D60', highlight: '#FFD4DC' },
+  sky: { body: '#87CEEB', limb: '#5BAED4', shadow: '#3A8CB5', highlight: '#C8E8F5' },
+  mint: { body: '#34D399', limb: '#1EB57F', shadow: '#15875F', highlight: '#A7F0D4' },
+  peach: { body: '#FDBA74', limb: '#E09550', shadow: '#B87638', highlight: '#FEE0C0' },
+  lime: { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' },
+};
+
+async function openXPDrawer() {
+  const drawer = document.getElementById('xp-drawer');
+  const hero = document.getElementById('xp-drawer-hero');
+  const grid = document.getElementById('xp-sources-grid');
+  if (!drawer || !hero || !grid) return;
+
+  const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+  const totalXP = jesty_data?.progression?.total_xp || 0;
+  const level = jesty_data?.progression?.level || 1;
+
+  const quip = XP_HERO_QUIPS[Math.floor(Math.random() * XP_HERO_QUIPS.length)];
+  hero.innerHTML = `
+    <div class="levels-hero-level">
+      <span class="levels-hero-lv">TOTAL XP</span>
+      <span class="levels-hero-num" data-num="${totalXP.toLocaleString()}">${totalXP.toLocaleString()}</span>
+    </div>
+    <div class="levels-hero-label">Level ${level}</div>
+    <div class="levels-hero-quip">${quip}</div>
+  `;
+
+  // Get current SVG source color for recoloring
+  const svgDefs = document.querySelector('svg[style*="display: none"] defs, svg[style*="display:none"] defs');
+  const sourceColor = currentColor || { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' };
+
+  grid.innerHTML = XP_SOURCES.map(s => {
+    return `<div class="xp-source-card">
+      <div class="xp-source-face" data-expression="${s.expression}" data-color="${s.color}">
+        <svg viewBox="-15 -10 150 140" class="xp-source-svg"><use href="#face-${s.expression}"/></svg>
+      </div>
+      <div class="xp-source-info">
+        <span class="xp-source-label">${s.label}</span>
+        <span class="xp-source-desc">${s.desc}</span>
+      </div>
+      <div class="xp-source-pill">${s.xp} XP</div>
+    </div>`;
+  }).join('');
+
+  // Recolor each face to its assigned color
+  grid.querySelectorAll('.xp-source-face').forEach(face => {
+    const colorName = face.dataset.color;
+    const targetColor = XP_COLOR_MAP[colorName];
+    if (targetColor) {
+      const svg = face.querySelector('svg');
+      if (svg && typeof recolorSVGInline === 'function') {
+        recolorSVGInline(svg, sourceColor, targetColor);
+      }
+    }
+  });
+
+  drawer.classList.add('visible');
+
+  document.getElementById('xp-drawer-close').onclick = () => drawer.classList.remove('visible');
+  document.getElementById('xp-drawer-backdrop').onclick = () => drawer.classList.remove('visible');
+  document.getElementById('xp-play-btn').onclick = () => { drawer.classList.remove('visible'); JestyMemoryGame.show(); };
+}
+
+/**
+ * Recolor an inline SVG by cloning symbol content and replacing colors.
+ */
+function recolorSVGInline(svg, fromColor, toColor) {
+  const useEl = svg.querySelector('use');
+  if (!useEl) return;
+  const href = useEl.getAttribute('href');
+  const symbolId = href ? href.replace('#', '') : null;
+  if (!symbolId) return;
+
+  const symbol = document.getElementById(symbolId);
+  if (!symbol) return;
+
+  // Replace <use> with cloned symbol children
+  svg.innerHTML = '';
+  Array.from(symbol.childNodes).forEach(n => svg.appendChild(n.cloneNode(true)));
+
+  // Recolor
+  const replacements = {};
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    replacements[fromColor[key].toUpperCase()] = toColor[key];
+  }
+  svg.querySelectorAll('*').forEach(el => {
+    for (const attr of ['fill', 'stroke']) {
+      const val = el.getAttribute(attr);
+      if (val && replacements[val.toUpperCase()]) {
+        el.setAttribute(attr, replacements[val.toUpperCase()]);
+      }
+    }
+  });
+}
 
 // Ring circumference: 2 * π * 15 = 94.25
 const RING_CIRCUMFERENCE = 94.25;
@@ -3415,15 +4447,6 @@ async function initProgression() {
     }
   }, true);
 
-  // Render XP sources
-  const sourcesEl = document.getElementById('level-panel-sources');
-  if (sourcesEl) {
-    const isPremium = await JestyPremium.isPremium();
-    sourcesEl.innerHTML = XP_SOURCES
-      .filter(s => !s.premium || isPremium)
-      .map(s => `<div class="level-source"><span class="level-source-dot"></span>${s.label} <span style="color:var(--jesty-text-muted)">${s.desc}</span></div>`)
-      .join('');
-  }
 
   // Next-unlock click opens levels drawer
   const nextEl = document.getElementById('level-panel-next');
@@ -3449,7 +4472,7 @@ async function initProgression() {
 
 const LEVEL_QUIPS = {
   2: 'A bandana? Are you browsing or starting a revolution?',
-  3: 'Aviators to hide the shame in your eyes. Smart move.',
+  3: 'Heart shades? Love is blind, and so is your tab management.',
   4: 'Chef hat unlocked. Finally cooking something besides tabs.',
   5: '3D glasses for someone living in a 2D reality. The irony.',
   6: 'A monocle to inspect your life choices in high definition.',
@@ -3488,7 +4511,7 @@ async function openLevelsDrawer() {
   if (heroEl) {
     const quip = HERO_STATUS_QUIPS[prog.level % HERO_STATUS_QUIPS.length].replace('%d', prog.level);
     heroEl.innerHTML = `
-      <div class="levels-hero-level"><span class="levels-hero-lv">LEVEL</span>${prog.level}</div>
+      <div class="levels-hero-level"><span class="levels-hero-lv">LEVEL</span><span class="levels-hero-num" data-num="${prog.level}">${prog.level}</span></div>
       <div class="levels-hero-bar"><div class="levels-hero-fill" style="width:${pct * 100}%"></div></div>
       <div class="levels-hero-xp">${prog.xp} / ${prog.xp_to_next} XP</div>
       <div class="levels-hero-quip">${quip}</div>
@@ -3576,7 +4599,7 @@ async function openMilestoneDrawer() {
   hero.innerHTML = `
     <div class="levels-hero-level">
       <span class="levels-hero-lv">ROASTS</span>
-      ${totalRoasts}
+      <span class="levels-hero-num" data-num="${totalRoasts}">${totalRoasts}</span>
     </div>
     <div class="levels-hero-quip">${quip}</div>
   `;
@@ -3617,7 +4640,6 @@ async function openMilestoneDrawer() {
    ────────────────────────────────────────────── */
 
 const STREAK_DEFS = [
-  { streak: 1, xp: 0, icon: '1', label: '1-Day Streak', quip: 'Everyone starts somewhere.' },
   { streak: 3, xp: 30, icon: '3', label: '3-Day Streak', quip: 'Three days in a row. Cute.' },
   { streak: 7, xp: 75, icon: '7', label: '7-Day Streak', quip: 'A full week of this. Committed.' },
   { streak: 14, xp: 150, icon: '14', label: '14-Day Streak', quip: 'Two weeks. This is a relationship now.' },
@@ -3629,9 +4651,6 @@ const STREAK_DEFS = [
 // Pre-defined character compositions for each streak tier
 // Each entry: { color, expression } — deterministic so they look the same every time
 const STREAK_COMPOSITIONS = {
-  1: [
-    { color: 'purple', expression: 'smug' }
-  ],
   3: [
     { color: 'purple', expression: 'smug' },
     { color: 'pink', expression: 'happy' },
@@ -3781,21 +4800,25 @@ async function openStreakDrawer() {
   hero.innerHTML = `
     <div class="levels-hero-level">
       <span class="levels-hero-lv">CURRENT STREAK</span>
-      ${current}
+      <span class="levels-hero-num" data-num="${current}">${current}</span>
     </div>
     <div class="levels-hero-label">Best: ${longest} day${longest !== 1 ? 's' : ''}</div>
     <div class="levels-hero-quip">${quip}</div>
   `;
 
-  // Timeline
+  // Timeline — find the highest tier the user has reached and the next one up
+  const reachedTiers = STREAK_DEFS.filter(s => current >= s.streak);
+  const currentTier = reachedTiers.length > 0 ? reachedTiers[reachedTiers.length - 1].streak : 0;
+  const nextTier = STREAK_DEFS.find(s => s.streak > current);
+
   timeline.innerHTML = '';
-  STREAK_DEFS.forEach((s, i) => {
-    const isCurrent = s.streak === 1;
-    const reached = !isCurrent && claimed.includes(s.streak);
-    const isNext = !isCurrent && !reached && STREAK_DEFS.filter(d => d.streak !== 1 && claimed.includes(d.streak)).length === (i - 1);
+  STREAK_DEFS.forEach(s => {
+    const isCurrent = s.streak === currentTier;
+    const reached = s.streak < currentTier || claimed.includes(s.streak);
+    const isNext = nextTier && s.streak === nextTier.streak;
 
     const card = document.createElement('div');
-    card.className = `streak-card-v2${isCurrent ? ' current' : ''}${reached ? ' reached' : ''}${isNext ? ' next-up' : ''}`;
+    card.className = `streak-card-v2${isCurrent ? ' current' : ''}${reached && !isCurrent ? ' reached' : ''}${isNext ? ' next-up' : ''}`;
 
     const crowd = buildStreakCrowd(s.streak);
 
@@ -3808,7 +4831,7 @@ async function openStreakDrawer() {
       <div class="streak-card-crowd">${crowd}</div>
       <div class="streak-card-footer">
         <div class="streak-card-quip">${s.quip}</div>
-        ${!isCurrent ? `<div class="streak-card-xp-pill">${reached ? 'Claimed' : `+${s.xp} XP`}</div>` : ''}
+        <div class="streak-card-xp-pill">${reached || isCurrent ? 'Claimed' : `+${s.xp} XP`}</div>
       </div>
     `;
     timeline.appendChild(card);
@@ -3869,18 +4892,19 @@ async function renderLevelBadge() {
   if (fillEl) fillEl.style.width = `${pct * 100}%`;
   if (xpEl) xpEl.textContent = `${prog.xp} / ${prog.xp_to_next} XP`;
 
-  // Next unlock
+  // Next unlock — play to level up button
   const nextEl = document.getElementById('level-panel-next');
   if (nextEl) {
     const unlockLevels = Object.keys(LEVEL_UNLOCKS).map(Number).sort((a, b) => a - b);
     const nextUnlock = unlockLevels.find(l => l > prog.level);
     if (nextUnlock) {
       const reward = LEVEL_UNLOCKS[nextUnlock].split(' · ')[0];
-      nextEl.innerHTML = `<strong>Level ${nextUnlock}</strong> — ${reward}`;
+      nextEl.textContent = `Play to unlock ${reward}`;
     } else {
       nextEl.textContent = 'All accessories unlocked!';
     }
   }
+
 }
 
 /**
@@ -3943,7 +4967,7 @@ async function renderGameUpgradeCard(container) {
     </div>
     <div class="plans-upgrade-info">
       <span class="plans-upgrade-name">Guilty — $5 once</span>
-      <span class="plans-upgrade-price">Unlimited roasts, Focus mode & more</span>
+      <span class="plans-upgrade-price">Unlock all levels & unlimited fun</span>
     </div>
     <svg class="plans-upgrade-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
   `;
@@ -3988,7 +5012,7 @@ function bounceUpgradeCard(el) {
  * Renders the full Guilty tier card (same as plans page) into a container.
  * Used in memory game after completing the last free level.
  */
-function renderGuiltyTierCard(container) {
+function renderGuiltyTierCard(container, ctaLabel) {
   const tier = TIER_DATA.find(t => t.key === 'premium');
   if (!tier) return;
 
@@ -3996,8 +5020,9 @@ function renderGuiltyTierCard(container) {
   const combo = TIER_COMBOS.premium;
   const characterHtml = combo ? buildTierCharacterSvg(combo) : '';
   const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
+  const label = ctaLabel || (tier.cta ? tier.cta.label : '');
   const ctaHtml = tier.cta
-    ? `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`
+    ? `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${label}</button>`
     : '';
 
   const card = document.createElement('div');
@@ -4155,12 +5180,9 @@ async function generateEventComments(events) {
       return `${i + 1}. "${e.summary}" (${timeStr})`;
     }).join('\n');
 
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(CHAT_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.OPENAI_API_KEY}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
@@ -4198,7 +5220,7 @@ async function handleLoadRoastIntoChat(signal) {
   // Start a fresh conversation with this roast
   currentRoast = signal.text;
   conversationHistory = [
-    { role: 'system', content: JESTY_PERSONALITY },
+    { role: 'system', content: buildChatPersonality(0) },
     { role: 'assistant', content: signal.text }
   ];
 
@@ -4240,7 +5262,7 @@ async function loadLastRoast() {
       addMessage(currentRoast, 'jesty');
 
       conversationHistory = [
-        { role: 'system', content: JESTY_PERSONALITY },
+        { role: 'system', content: buildChatPersonality(0) },
         { role: 'assistant', content: currentRoast }
       ];
     }
@@ -4409,8 +5431,10 @@ function showTypingIndicator() {
   chatContainer.appendChild(typingDiv);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  status.textContent = 'Typing...';
-  status.classList.add('typing');
+  if (status) {
+    status.textContent = 'Typing...';
+    status.classList.add('typing');
+  }
 
   // Set thinking expression on the animated character
   JestyAnimator.setExpression('thinking', 0);
@@ -4424,8 +5448,10 @@ function hideTypingIndicator() {
     typing.remove();
   }
 
-  status.textContent = 'Ready to argue';
-  status.classList.remove('typing');
+  if (status) {
+    status.textContent = 'Ready to argue';
+    status.classList.remove('typing');
+  }
 
   // Return to smug expression
   JestyAnimator.setExpression('smug', 0);
@@ -4443,6 +5469,16 @@ async function sendMessage() {
     openDrawer();
   }
 
+  // Daily cap check (unified: roasts + chat messages share the same pool)
+  const userIsPremium = await JestyPremium.isPremium();
+  if (!userIsPremium) {
+    const capStatus = await JestyStorage.checkDailyCap();
+    if (!capStatus.allowed) {
+      showChatLock();
+      return;
+    }
+  }
+
   // Clear input
   messageInput.value = '';
   messageInput.style.height = 'auto';
@@ -4458,24 +5494,17 @@ async function sendMessage() {
 
   // Add to conversation history
   conversationHistory.push({ role: 'user', content: userMessage });
+  if (conversationHistory.length > 30) {
+    conversationHistory = [conversationHistory[0], ...conversationHistory.slice(-28)];
+  }
 
-  // If first message and no roast loaded, add system prompt
+  // If first message, seed conversation
   if (conversationHistory.length === 1) {
-    conversationHistory.unshift({ role: 'system', content: JESTY_PERSONALITY });
+    conversationHistory.unshift({ role: 'system', content: buildChatPersonality(0) });
 
     if (!currentConversationId) {
       const conversation = await JestyStorage.startConversation(null);
       currentConversationId = conversation.id;
-    }
-  }
-
-  // Daily cap check (unified: roasts + chat messages share the same pool)
-  const isPremium = await JestyPremium.isPremium();
-  if (!isPremium) {
-    const capStatus = await JestyStorage.checkDailyCap();
-    if (!capStatus.allowed) {
-      showChatLock();
-      return;
     }
   }
 
@@ -4505,19 +5534,17 @@ async function sendMessage() {
 
     const messageWithContext = `[CURRENT OPEN TABS - only reference these, never invent tabs:\n${tabList}]${taskInstruction}${nameContext}\n\nUser says: ${userMessage}`;
 
+    // Evolve personality based on how deep the conversation is
+    conversationHistory[0] = { role: 'system', content: buildChatPersonality(jestyReplyCount) };
+
     const messagesForAPI = [
       ...conversationHistory.slice(0, -1),
       { role: 'user', content: messageWithContext }
     ];
 
-    const apiKey = CONFIG.OPENAI_API_KEY;
-
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(CHAT_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: messagesForAPI,
@@ -4531,7 +5558,7 @@ async function sendMessage() {
     }
 
     const data = await response.json();
-    const jestyResponse = data.choices[0].message.content.trim();
+    const jestyResponse = (data.choices?.[0]?.message?.content ?? "my brain glitched. try again.").trim();
 
     hideTypingIndicator();
     addMessage(jestyResponse, 'jesty');
@@ -4544,9 +5571,12 @@ async function sendMessage() {
     }
 
     conversationHistory.push({ role: 'assistant', content: jestyResponse });
+    if (conversationHistory.length > 30) {
+      conversationHistory = [conversationHistory[0], ...conversationHistory.slice(-28)];
+    }
 
     // Increment unified daily cap for chat messages (free users only)
-    if (!await JestyPremium.isPremium()) {
+    if (!userIsPremium) {
       await JestyStorage.incrementDailyRoast();
     }
     updateMsgsLeft();
@@ -4588,7 +5618,7 @@ const TIER_DATA = [
     price: 'Free',
     priceSub: '',
     features: [
-      '12 roasts per day',
+      '8 roasts per day',
       '3 basic accessories',
       'Memory Match (levels 1-5)'
     ],
@@ -4606,7 +5636,7 @@ const TIER_DATA = [
       'Tasks',
       '+5 unlockable accessories'
     ],
-    cta: { label: 'Plead Guilty — $5', style: 'primary', action: 'checkout' }
+    cta: { label: 'Plead Guilty', style: 'primary', action: 'checkout' }
   },
   {
     key: 'pro',
@@ -4619,7 +5649,7 @@ const TIER_DATA = [
       'Calendar events with Jesty commentary',
       'Exclusive accessories'
     ],
-    cta: { label: 'Get Sentenced — $5/mo', style: 'secondary', action: 'checkout-pro' }
+    cta: { label: 'Launching Soon', style: 'secondary', action: 'disabled' }
   }
 ];
 
@@ -4645,7 +5675,7 @@ const SLOT_COLORS = {
 };
 
 const SLOT_ANCHORS = {
-  hat:     { x: 38, y: -2 },
+  hat:     { x: 36, y: -2 },
   glasses: { x: 32, y: 42 }
 };
 
@@ -4688,9 +5718,8 @@ let slotSpinning = false;
 function pickWeightedCombo() {
   const r = Math.random();
   let pool;
-  if (r < 0.15) pool = SLOT_COMBOS.filter(c => c.tier === 'free');
-  else if (r < 0.70) pool = SLOT_COMBOS.filter(c => c.tier === 'premium');
-  else pool = SLOT_COMBOS.filter(c => c.tier === 'pro');
+  if (r < 0.05) pool = SLOT_COMBOS.filter(c => c.tier === 'free');
+  else pool = SLOT_COMBOS.filter(c => c.tier === 'premium');
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -4816,7 +5845,8 @@ function revealSlotResult(tierKey) {
   const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
   let ctaHtml = '';
   if (tier.cta) {
-    ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`;
+    const isDisabled = tier.cta.action === 'disabled';
+    ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}"${isDisabled ? ' disabled' : ''}>${tier.cta.label}</button>`;
   }
 
   result.innerHTML = `
@@ -4936,7 +5966,8 @@ async function showAllPlans() {
     if (isCurrent && currentTier !== 'free') {
       ctaHtml = `<div class="tier-card-current-label">Your current plan</div>`;
     } else if (isUpgrade && tier.cta) {
-      ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}">${tier.cta.label}</button>`;
+      const isDisabled = tier.cta.action === 'disabled';
+      ctaHtml = `<button class="tier-card-cta ${tier.cta.style}" data-action="${tier.cta.action}"${isDisabled ? ' disabled' : ''}>${tier.cta.label}</button>`;
     }
 
     card.innerHTML = `
@@ -5014,29 +6045,74 @@ async function showTierOverlayPlans() {
   overlay.classList.remove('hidden');
 }
 
+async function showTierOverlayGuilty() {
+  const overlay = document.getElementById('tier-overlay');
+  if (!overlay) return;
+
+  showSlotMachine();
+  overlay.classList.remove('hidden');
+
+  // Rigged spin — always pick a premium (Guilty) combo
+  setTimeout(() => {
+    if (slotSpinning) return;
+    slotSpinning = true;
+
+    const svg = document.querySelector('.slot-character');
+    const spinBtn = document.getElementById('slot-spin-btn');
+    const result = document.getElementById('slot-result');
+    if (!svg || !spinBtn) return;
+
+    if (result) result.classList.remove('visible');
+    spinBtn.style.display = 'none';
+    const plansLink = document.getElementById('slot-plans-link');
+    if (plansLink) plansLink.style.display = 'none';
+
+    svg.classList.remove('landing');
+    svg.classList.add('spinning');
+
+    // Always land on Guilty
+    const guiltyPool = SLOT_COMBOS.filter(c => c.tier === 'premium');
+    const target = guiltyPool[Math.floor(Math.random() * guiltyPool.length)];
+
+    const phase1Count = 15;
+    const phase2Delays = [120, 200, 350];
+    let step = 0;
+
+    function shuffleStep() {
+      const randomCombo = SLOT_COMBOS[Math.floor(Math.random() * SLOT_COMBOS.length)];
+      renderSlotCombo(svg, randomCombo);
+      step++;
+
+      if (step < phase1Count) {
+        setTimeout(shuffleStep, 80);
+      } else if (step < phase1Count + phase2Delays.length) {
+        setTimeout(shuffleStep, phase2Delays[step - phase1Count]);
+      } else {
+        renderSlotCombo(svg, target);
+        svg.classList.remove('spinning');
+        svg.classList.add('landing');
+        setTimeout(() => {
+          revealSlotResult(target.tier);
+          spinBtn.style.display = '';
+          if (plansLink) plansLink.style.display = '';
+          slotSpinning = false;
+        }, 350);
+      }
+    }
+
+    setTimeout(shuffleStep, 80);
+  }, 350);
+}
+
 function hideTierOverlay() {
   const overlay = document.getElementById('tier-overlay');
   if (overlay) overlay.classList.add('hidden');
 }
 
 function initTierOverlay() {
-  // Roasts pill → milestones drawer
-  const roastPill = document.getElementById('stat-pill-roasts');
-  if (roastPill) roastPill.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openMilestoneDrawer();
-  });
-
-  // Streak pill → streaks drawer
-  const streakPill = document.getElementById('stat-pill-streak');
-  if (streakPill) streakPill.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openStreakDrawer();
-  });
-
-  // Remaining pill → tier overlay (upgrade CTA)
-  const remainingPill = document.getElementById('remaining-pill');
-  if (remainingPill) remainingPill.addEventListener('click', (e) => {
+  // Remaining counter → tier overlay (upgrade CTA)
+  const topRemaining = document.getElementById('top-remaining');
+  if (topRemaining) topRemaining.addEventListener('click', (e) => {
     e.stopPropagation();
     showTierOverlayPlans();
   });
@@ -5103,13 +6179,10 @@ function showChatLock() {
 }
 
 async function openPremiumCheckout() {
-  // For now, open the proxy checkout endpoint
-  // In production, this would call the proxy to create a Stripe session
   try {
     const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
     const userId = jesty_data ? jesty_data.profile.user_id : '';
-    // TODO: Replace with actual proxy URL when deployed
-    chrome.tabs.create({ url: `https://jesty-proxy.your-domain.workers.dev/api/checkout?user_id=${userId}` });
+    chrome.tabs.create({ url: `${CONFIG.API_URL}/api/checkout?user_id=${userId}` });
   } catch (e) {
     console.error('Error opening checkout:', e);
   }
@@ -5139,10 +6212,11 @@ async function handleTabCloseXP(xpGain) {
   await chrome.storage.local.remove(['pendingXPGain']);
 
   // XP already awarded in background.js — just show visual feedback
-  showXPToast(xpGain.xp);
+  showXPToast(xpGain.xp, xpGain.source || 'tab_close');
 
   // Flash happy expression briefly
   if (JestyAnimator) JestyAnimator.setExpression('happy', 3000);
+  if (JestyAnimator && JestyAnimator.react) JestyAnimator.react('celebrate');
 
   // Refresh stats and level badge (XP was updated in storage by background)
   await loadStats();
@@ -5151,7 +6225,16 @@ async function handleTabCloseXP(xpGain) {
 
 let _xpToastTimer = null;
 
-function showXPToast(amount) {
+const XP_SOURCE_LABELS = {
+  tab_close: 'Tab closed!',
+  milestone: 'Milestone reached!',
+  streak: 'Streak bonus!',
+  game: 'Game completed!',
+  task: 'Task done!',
+  roast: 'Roast delivered!',
+};
+
+function showXPToast(amount, source) {
   const win = document.getElementById('xp-win');
   if (!win) return;
 
@@ -5166,7 +6249,10 @@ function showXPToast(amount) {
   }
 
   const labelEl = win.querySelector('.xp-win-label');
-  if (labelEl) labelEl.style.color = '';
+  if (labelEl) {
+    labelEl.style.color = '';
+    labelEl.textContent = XP_SOURCE_LABELS[source] || 'XP earned!';
+  }
 
   // Apply XP yellow background (matches levels progress bar)
   const content = win.querySelector('.xp-win-content');
@@ -5263,11 +6349,10 @@ function showLevelUpToast(level, unlock) {
 
   overlay.appendChild(flipper);
 
-  // Unlock text (delay synced to flip if accessory present)
+  // Unlock text (visible from the start)
   if (unlock) {
     const unlockEl = document.createElement('div');
     unlockEl.className = 'level-up-unlock';
-    if (hasFlip) unlockEl.style.animationDelay = '1.8s';
     unlockEl.innerHTML = `<span>${unlock.split(' · ')[0]}</span> unlocked`;
     overlay.appendChild(unlockEl);
   }
@@ -5282,13 +6367,13 @@ function showLevelUpToast(level, unlock) {
   // Trigger fade in
   requestAnimationFrame(() => overlay.classList.add('visible'));
 
-  // Trigger flip after 1.5s to reveal accessory
+  // Trigger flip after 2.5s to reveal accessory (keeps number visible longer)
   if (hasFlip) {
     setTimeout(() => {
       flipper.classList.add('flipped');
       // Second spark burst on flip
       spawnBurst(particles, 0);
-    }, 1500);
+    }, 2500);
   }
 
   // Spawn spark bursts
@@ -5331,5 +6416,96 @@ function showLevelUpToast(level, unlock) {
   setTimeout(() => {
     overlay.classList.remove('visible');
     setTimeout(() => overlay.remove(), 500);
-  }, hasFlip ? 5500 : 4000);
+  }, hasFlip ? 6500 : 4000);
 }
+
+function showPremiumCelebration() {
+  document.querySelector('.premium-celebration-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'premium-celebration-overlay';
+
+  // Glow (purple instead of gold)
+  overlay.innerHTML = `<div class="premium-cel-glow"></div>`;
+
+  // Label
+  const label = document.createElement('div');
+  label.className = 'premium-cel-label';
+  label.textContent = 'Guilty';
+  overlay.appendChild(label);
+
+  // Face — impressed expression (premium mood)
+  const faceWrap = document.createElement('div');
+  faceWrap.className = 'premium-cel-face';
+  const symbol = document.getElementById('face-impressed') || document.getElementById('face-happy');
+  if (symbol) {
+    const vb = symbol.getAttribute('viewBox') || '-15 -10 150 140';
+    let content = symbol.innerHTML;
+    // Recolor to user color
+    if (typeof recolorFaceSvg === 'function') {
+      content = recolorFaceSvg(content);
+    }
+    faceWrap.innerHTML = `<svg viewBox="${vb}" width="120" height="110">${content}</svg>`;
+  }
+  overlay.appendChild(faceWrap);
+
+  // Message
+  const msg = document.createElement('div');
+  msg.className = 'premium-cel-msg';
+  msg.textContent = 'Premium unlocked. No more limits.';
+  overlay.appendChild(msg);
+
+  // Particle container
+  const particles = document.createElement('div');
+  particles.className = 'premium-cel-particles';
+  overlay.appendChild(particles);
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('visible'));
+
+  // Spark bursts
+  const sparkColors = ['#A78BFA', '#C4B5FD', '#FFFFFF', '#7C3AED', '#DDD6FE', '#EDE9FE'];
+  function spawnBurst(container, delay) {
+    setTimeout(() => {
+      for (let i = 0; i < 24; i++) {
+        const spark = document.createElement('div');
+        const isStreak = Math.random() > 0.5;
+        spark.className = isStreak ? 'level-up-streak' : 'level-up-spark';
+        spark.style.background = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+        spark.style.left = '50%';
+        spark.style.top = '45%';
+
+        const angle = (Math.PI * 2 * i / 24) + (Math.random() - 0.5) * 0.5;
+        const dist = 80 + Math.random() * 160;
+        spark.style.setProperty('--sx', `${Math.cos(angle) * dist}px`);
+        spark.style.setProperty('--sy', `${Math.sin(angle) * dist}px`);
+        spark.style.animationDelay = `${Math.random() * 0.2}s`;
+
+        if (isStreak) {
+          spark.style.height = `${10 + Math.random() * 16}px`;
+          spark.style.transform = `rotate(${angle}rad)`;
+        } else {
+          const size = 3 + Math.random() * 5;
+          spark.style.width = `${size}px`;
+          spark.style.height = `${size}px`;
+        }
+        container.appendChild(spark);
+      }
+    }, delay);
+  }
+
+  spawnBurst(particles, 200);
+  spawnBurst(particles, 600);
+  spawnBurst(particles, 1200);
+
+  // Fade out, then reload sidepanel to reflect premium state
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    setTimeout(() => {
+      console.log('Jesty: Celebration done, reloading sidepanel...');
+      window.location.reload();
+    }, 600);
+  }, 4000);
+}
+
+

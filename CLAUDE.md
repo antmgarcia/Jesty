@@ -2,6 +2,26 @@
 
 A Chrome extension that reads your open tabs and delivers short, witty roasts using AI. Features a hero character with expressive moods, a chat interface to argue back, and a personalized experience that learns your browsing habits.
 
+## UI Changes
+
+- Make minimal, targeted edits. Do NOT change layout, animations, or surrounding elements unless explicitly asked.
+- If reverting, revert completely — no partial rollbacks.
+- For visual/design tasks: describe what you plan to change BEFORE editing. Wait for user confirmation on layout direction, sizing, colors, and composition before writing code.
+- Do not add or remove elements beyond what was requested. A color change doesn't need a layout refactor.
+
+## High-Risk Files
+
+- `sidepanel.js` (~6200 lines), `newtab.js` (~2200 lines), and `storage.js` (~1250 lines) are shared across surfaces. Edits to these are high-risk — always verify the extension still loads after changes.
+- When modifying tier/feature-lock logic, ensure changes are functional (not just CSS visual). Storage values must actually gate features, not just styling.
+- Scope-lock: only edit files explicitly mentioned in the request unless a cross-file change is clearly necessary.
+
+## Common Pitfalls
+
+- Use hardcoded values when appropriate — don't default to storage-based approaches without asking.
+- Migrations must apply to existing users, not just fresh installs.
+- When touching animation code (GSAP timelines, character-animator.js), verify that timers and state flags (`_isTransitioning`, `pinnedMood`, `isStrolling`) are properly reset.
+- Test that new features work across both light and dark themes.
+
 ## Architecture
 
 ```
@@ -92,7 +112,7 @@ Open side panel
     ├── Chat drawer (drag/tap to open)
     │   ├── Type message → OpenAI chat with JESTY_PERSONALITY
     │   ├── 3rd reply: Jesty gives a specific tab task/dare
-    │   └── Unified daily cap: 12 interactions/day (free), unlimited (premium)
+    │   └── Unified daily cap: 8 interactions/day (free), unlimited (premium)
     ├── Promo card → Tier overlay (slot machine + plans)
     ├── Stat pills → Tier overlay (all clickable)
     └── Accessories grid → Equip/unequip cosmetics
@@ -166,7 +186,7 @@ Always running:
 
 | Tier | Name | Price | Limits | Features |
 |------|------|-------|--------|----------|
-| Free | Suspect | $0 | 12 interactions/day (roasts + chat shared) | Basic roasts, 7 moods, 3 accessories, Focus Time |
+| Free | Suspect | $0 | 8 interactions/day (roasts + chat shared) | Basic roasts, 7 moods, 3 accessories, Focus Time |
 | Premium | Guilty | $5 once | Unlimited | +3 moods (impressed, manic, petty), Tasks, Fun Zone, XP, Records, Daily Report, +5 accessories |
 | Pro | Sentenced | $5/mo | Unlimited | +3 moods (chaotic, dramatic, tender), Google Calendar, schedule-aware roasts, +3 accessories |
 

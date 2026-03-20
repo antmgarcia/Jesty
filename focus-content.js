@@ -74,7 +74,7 @@
       'z-index: 2147483646 !important',
       'backdrop-filter: blur(8px) !important',
       '-webkit-backdrop-filter: blur(8px) !important',
-      'background: rgba(255,255,255,0.15) !important',
+      'background: rgba(0,0,0,0.5) !important',
       'pointer-events: auto !important',
       'cursor: default !important',
       'opacity: 0',

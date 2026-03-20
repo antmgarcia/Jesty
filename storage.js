@@ -6,6 +6,9 @@
 const SCHEMA_VERSION = "1.3";
 const MAX_ROASTS = 100;
 const MAX_CONVERSATIONS = 50;
+const MAX_DAILY_REPORTS = 7;
+const MAX_FOCUS_SESSIONS = 50;
+const MAX_RECORDS = 50;
 
 /** Local date string (YYYY-MM-DD) for daily cap resets at user's midnight */
 function getLocalDate() {
@@ -20,7 +23,7 @@ function getLocalDate() {
 const MIGRATIONS = {
   "1.0_to_1.1": (data) => {
     // P1.4: Daily cap tracking
-    if (!data.settings.daily_cap) data.settings.daily_cap = 12;
+    if (!data.settings.daily_cap) data.settings.daily_cap = 8;
     if (data.settings.roasts_today === undefined) data.settings.roasts_today = 0;
     if (!data.settings.roast_cap_date) data.settings.roast_cap_date = null;
 
@@ -287,7 +290,8 @@ function getDefaultData() {
       streaks: {
         current_daily_streak: 0,
         longest_daily_streak: 0,
-        last_active_date: null
+        last_active_date: null,
+        claimed_streak_rewards: []
       },
       achievements: {
         night_owl: false,
@@ -311,7 +315,7 @@ function getDefaultData() {
       daily_roast_reminder: false,
       is_premium: false,
       premium_since: null,
-      daily_cap: 12,
+      daily_cap: 8,
       roasts_today: 0,
       roast_cap_date: null,
       chats_today: 0,
@@ -332,7 +336,8 @@ function getDefaultData() {
       hall_of_fame: []
     },
     daily_reports: [],
-    focus_sessions: []
+    focus_sessions: [],
+    user_tasks: []
   };
 }
 
@@ -390,6 +395,21 @@ async function getJestyData() {
  * Save all Jesty data
  */
 async function saveJestyData(data) {
+  // Cap unbounded arrays
+  if (data.daily_reports && data.daily_reports.length > MAX_DAILY_REPORTS) {
+    data.daily_reports = data.daily_reports.slice(-MAX_DAILY_REPORTS);
+  }
+  if (data.focus_sessions && data.focus_sessions.length > MAX_FOCUS_SESSIONS) {
+    data.focus_sessions = data.focus_sessions.slice(0, MAX_FOCUS_SESSIONS);
+  }
+  if (data.records) {
+    if (data.records.wall_of_shame && data.records.wall_of_shame.length > MAX_RECORDS) {
+      data.records.wall_of_shame = data.records.wall_of_shame.slice(-MAX_RECORDS);
+    }
+    if (data.records.hall_of_fame && data.records.hall_of_fame.length > MAX_RECORDS) {
+      data.records.hall_of_fame = data.records.hall_of_fame.slice(-MAX_RECORDS);
+    }
+  }
   await chrome.storage.local.set({ jesty_data: data });
 }
 
@@ -479,6 +499,12 @@ async function saveRoast(roastData) {
   // Update streak
   const streakReward = await updateStreak(data, now);
 
+  // Apply streak XP reward to progression
+  if (streakReward && streakReward.xp) {
+    data.progression.xp += streakReward.xp;
+    data.progression.total_xp += streakReward.xp;
+  }
+
   // Update patterns
   await updatePatterns(data, roastData.tabCount || 0);
 
@@ -537,7 +563,7 @@ const STREAK_XP_REWARDS = [
 ];
 
 async function updateStreak(data, now) {
-  const today = now.toISOString().split('T')[0];
+  const today = getLocalDate();
   const lastActive = data.milestones.streaks.last_active_date;
   let streakReward = null;
 
@@ -548,8 +574,12 @@ async function updateStreak(data, now) {
   } else if (lastActive === today) {
     // Same day, no change
   } else {
-    const lastDate = new Date(lastActive);
-    const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+    // Compare local date strings to get day difference
+    const lastParts = lastActive.split('-').map(Number);
+    const todayParts = today.split('-').map(Number);
+    const lastMs = new Date(lastParts[0], lastParts[1] - 1, lastParts[2]).getTime();
+    const todayMs = new Date(todayParts[0], todayParts[1] - 1, todayParts[2]).getTime();
+    const diffDays = Math.round((todayMs - lastMs) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 1) {
       // Consecutive day
@@ -978,7 +1008,7 @@ async function buildPersonalizedContext() {
 
   // User's name
   if (data.profile.user_name) {
-    context.push(`User's name is ${data.profile.user_name}. Almost NEVER use their name — only about 1 in 8 roasts. Most roasts should NOT include it. When you do drop it, it should land like a surprise punch (e.g. "${data.profile.user_name}, really?").`);
+    context.push(`User's name is ${data.profile.user_name}.`);
   }
 
   // User patterns
@@ -1141,9 +1171,13 @@ async function checkDailyCap() {
   const data = await getJestyData();
   const today = getLocalDate();
 
-  // Ensure daily_cap is valid
+  // Ensure daily_cap matches tier (8 for free, unlimited for premium)
+  const freeCap = 8;
+  if (!data.settings.is_premium) {
+    data.settings.daily_cap = freeCap;
+  }
   if (!data.settings.daily_cap || data.settings.daily_cap < 1) {
-    data.settings.daily_cap = 12;
+    data.settings.daily_cap = freeCap;
   }
 
   // Reset if new day (or if date was never set)
@@ -1193,14 +1227,14 @@ async function resetDailyCap() {
 }
 
 /**
- * Check chat cap per conversation (12 messages for free, unlimited for premium).
+ * Check chat cap per conversation (8 messages for free, unlimited for premium).
  * Returns { allowed: boolean, remaining: number, messageCount: number }
  */
 async function checkChatCap(conversationId) {
   const data = await getJestyData();
   const conv = data.conversations.find(c => c.id === conversationId);
   const count = conv ? conv.message_count : 0;
-  const cap = data.settings.is_premium ? Infinity : 12;
+  const cap = data.settings.is_premium ? Infinity : 8;
   const remaining = cap - count;
   return {
     allowed: remaining > 0,

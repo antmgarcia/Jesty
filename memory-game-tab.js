@@ -253,8 +253,10 @@
         }
         await chrome.storage.local.set({jesty_data: r.jesty_data});
       }
-      // Signal sidepanel to show XP toast when tab closes
-      await chrome.storage.local.set({ memoryGameXP: { xp: xp, timestamp: Date.now() } });
+      // Accumulate session XP so sidepanel shows total earned across all levels
+      var prev = await chrome.storage.local.get(['memoryGameXP']);
+      var prevXP = (prev.memoryGameXP && prev.memoryGameXP.xp) || 0;
+      await chrome.storage.local.set({ memoryGameXP: { xp: prevXP + xp, timestamp: Date.now() } });
     } catch(e) {}
     var cat = state.mistakes === 0 ? 'perfect' : stars >= 2 ? 'good' : 'okay';
     var roast = COMPLETION_ROASTS[cat][Math.floor(Math.random() * COMPLETION_ROASTS[cat].length)];

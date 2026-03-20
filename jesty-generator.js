@@ -63,6 +63,7 @@ const JestyGenerator = (() => {
   let roastText = '';
   let roastMode = 'off';
   let xpAwarded = false;
+  let exportTheme = 'auto'; // 'auto' | 'light' | 'dark'
 
   // Canvas drag state
   let isDragging = false;
@@ -93,6 +94,9 @@ const JestyGenerator = (() => {
 
     const roastBtn = document.getElementById('generator-island-text');
     if (roastBtn) roastBtn.addEventListener('click', toggleRoast);
+
+    const themeBtn = document.getElementById('generator-island-theme');
+    if (themeBtn) themeBtn.addEventListener('click', toggleExportTheme);
 
     // Download menu
     const shareBtn = document.getElementById('generator-island-share');
@@ -162,6 +166,7 @@ const JestyGenerator = (() => {
     xpAwarded = false;
     roastMode = 'off';
     roastText = '';
+    exportTheme = 'auto';
 
     const overlay = document.getElementById('generator-overlay');
     if (overlay) overlay.classList.remove('hidden');
@@ -243,6 +248,36 @@ const JestyGenerator = (() => {
   }
 
   // ── Options ──
+
+  // ── Theme Toggle ──
+
+  const THEME_ICON_SUN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  const THEME_ICON_MOON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+  function toggleExportTheme() {
+    const cycle = ['auto', 'light', 'dark'];
+    exportTheme = cycle[(cycle.indexOf(exportTheme) + 1) % cycle.length];
+
+    const btn = document.getElementById('generator-island-theme');
+    const viewport = document.getElementById('generator-viewport');
+    if (!viewport) return;
+
+    // Remove previous overrides
+    viewport.classList.remove('generator-theme-light', 'generator-theme-dark');
+
+    if (exportTheme === 'light') {
+      viewport.classList.add('generator-theme-light');
+      if (btn) { btn.classList.add('active'); btn.innerHTML = THEME_ICON_SUN; }
+    } else if (exportTheme === 'dark') {
+      viewport.classList.add('generator-theme-dark');
+      if (btn) { btn.classList.add('active'); btn.innerHTML = THEME_ICON_MOON; }
+    } else {
+      if (btn) { btn.classList.remove('active'); btn.innerHTML = THEME_ICON_SUN; }
+    }
+
+    // Update roast overlay color
+    updateRoastOverlay();
+  }
 
   function toggleRoast() {
     const idx = ROAST_MODES.indexOf(roastMode);
@@ -458,19 +493,29 @@ const JestyGenerator = (() => {
       ).join('');
 
       const ls = Math.round(fontSize * (-2 / 56));
-      roastSvg = `${barSvg}<text x="${Math.round(targetW / 2)}" y="${Math.round(baseY)}" font-family="DM Sans, sans-serif" font-weight="700" font-size="${fontSize}" fill="#1C1917" text-anchor="middle" letter-spacing="${ls}">${tspans}</text>`;
+      const textFill = getComputedTextColor();
+      roastSvg = `${barSvg}<text x="${Math.round(targetW / 2)}" y="${Math.round(baseY)}" font-family="DM Sans, sans-serif" font-weight="700" font-size="${fontSize}" fill="${textFill}" text-anchor="middle" letter-spacing="${ls}">${tspans}</text>`;
     }
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${targetW}" height="${targetH}"><rect width="${targetW}" height="${targetH}" fill="${bg}"/><g transform="translate(${cx},${cy}) scale(${scale})">${inner}</g>${roastSvg}</svg>`;
   }
 
   function getComputedBg() {
+    if (exportTheme === 'light') return '#F5F3F0';
+    if (exportTheme === 'dark') return '#1F1F23';
     const viewport = document.getElementById('generator-viewport');
     if (viewport) {
       const bg = getComputedStyle(viewport).backgroundColor;
       if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') return bg;
     }
     return '#EFEBE6';
+  }
+
+  function getComputedTextColor() {
+    if (exportTheme === 'light') return '#1C1917';
+    if (exportTheme === 'dark') return '#F4F4F5';
+    const val = getComputedStyle(document.documentElement).getPropertyValue('--jesty-text').trim();
+    return val || '#1C1917';
   }
 
   function buildExportCellSvg(data, r, c) {

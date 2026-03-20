@@ -587,7 +587,7 @@ const JestyTabQuiz = (() => {
 
     if (typeof awardXP === 'function') {
       await awardXP(xp);
-      if (typeof showXPToast === 'function') showXPToast(xp);
+      if (typeof showXPToast === 'function') showXPToast(xp, 'game');
     }
 
     // Roast

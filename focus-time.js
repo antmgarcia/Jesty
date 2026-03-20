@@ -7,7 +7,7 @@
  * Depends on: CONFIG (config.js), JestyStorage (storage.js), generateUUID (storage.js)
  */
 const JestyFocusTime = (() => {
-  const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+  const CHAT_API_URL = CONFIG.API_URL + '/api/chat';
   const MAX_SESSIONS = 5;
 
   /* ──────────────────────────────────────────────
@@ -105,10 +105,9 @@ const JestyFocusTime = (() => {
 
   async function generateEndRoast(session) {
     try {
-      const apiKey = typeof CONFIG !== 'undefined' ? CONFIG.OPENAI_API_KEY : null;
-      if (!apiKey) return null;
+      if (typeof CONFIG === 'undefined' || !CONFIG.API_URL) return null;
 
-      const durationMins = Math.floor((session.endedAt - session.startedAt) / 60000);
+      const durationMins = Math.floor(((session.endedAt || Date.now()) - session.startedAt) / 60000);
       const d = session.distractionCount || 0;
 
       // Get unique distraction domains
@@ -123,24 +122,21 @@ const JestyFocusTime = (() => {
         `Focus session: ${durationMins} minute${durationMins !== 1 ? 's' : ''}.`,
         `${d} distraction${d !== 1 ? 's' : ''}.`,
         distractionDomains.length ? `Distraction sites: ${distractionDomains.join(', ')}.` : '',
-        d === 0 ? 'Zero distractions — actually impressive.' : '',
+        d === 0 ? 'Zero distractions, actually impressive.' : '',
         d >= 5 ? 'Heavy distraction pattern.' : '',
         durationMins < 10 ? 'Very short session.' : '',
         durationMins > 60 ? 'Long session.' : ''
       ].filter(Boolean).join(' ');
 
-      const response = await fetch(OPENAI_API_URL, {
+      const response = await fetch(CHAT_API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
-              content: `You're Jesty — a snarky blob who just watched someone's focus session. Roast their performance in one punchy line. Max 15 words. Be specific about what they did. No emojis. End with | and a mood tag (smug, disappointed, impressed, eyeroll, suspicious, dead, yikes).`
+              content: `You're Jesty, a snarky blob who just watched someone's focus session. Roast their performance in one punchy line. Max 15 words. Be specific about what they did. No emojis. Never use em dashes. End with | and a mood tag (smug, disappointed, impressed, eyeroll, suspicious, dead, yikes).`
             },
             { role: 'user', content: context }
           ],
@@ -161,8 +157,9 @@ const JestyFocusTime = (() => {
         roastText = parts[0].trim();
         mood = parts[1].trim().toLowerCase();
       }
-      // Remove surrounding quotes if present
+      // Remove surrounding quotes and em dashes
       roastText = roastText.replace(/^["']+|["']+$/g, '');
+      roastText = roastText.replace(/\s*[—–]\s*/g, ', ');
 
       // Update history entry with roast
       const { jesty_data } = await chrome.storage.local.get(['jesty_data']);

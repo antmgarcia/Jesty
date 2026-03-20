@@ -5,7 +5,7 @@
  *             JestyPremium (premium.js), JestyCalendar (calendar.js — optional)
  */
 const RoastEngine = (() => {
-  const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+  const CHAT_API_URL = CONFIG.API_URL + '/api/chat';
 
   const SYSTEM_PROMPT = `You're Jesty — a sharp, opinionated little blob who lives in someone's browser. You see their tabs and you have THOUGHTS. ABSOLUTE HARD LIMIT: Your entire response must be under 12 words. No exceptions. Count every single word before responding.
 
@@ -25,6 +25,8 @@ YOUR ANGLES (pick ONE at random — actually rotate):
 - LIFE NARRATION: Make up what their day looks like based on tabs. "Wake up. Coffee. LinkedIn. Cry. Repeat."
 - SUPPORTIVE ROAST: Genuinely root for them while teasing. "Job apps open? Go get it. Close Reddit first though."
 - REAL-TALK: Use live data (weather, scores, prices) if provided. "Bitcoin down 8% and you're still holding. Respect."
+- NEWS ANCHOR: You noticed what's trending in their interests. Tease them about it. "Everyone's talking about the new iPhone and you're still on Android forums. Classic."
+- CALLBACK: A topic you've roasted before is back. Reference the history. "Still on Zillow. Third week. You're not moving."
 
 PICK A MOOD (one per roast):
 - SMUG: You figured them out. Confident, knowing.
@@ -39,10 +41,11 @@ PICK A MOOD (one per roast):
 VOICE:
 - Talk like a friend with zero filter and strong opinions.
 - Be specific — name the actual site, search, or topic.
-- Always two sentences. First sentence: the observation. Second sentence: the punchline.
 - HARD LIMIT: Max 12 words total. Count every word. Over 12 = failure. Rewrite shorter.
 - No dashes, no quotes to start.
 - Vary endings: questions, commands, observations, predictions, one-word reactions.
+
+NAME RULE: Almost never use their name. Only 1 in 8 roasts maximum — and only when it makes the roast sharper.
 
 EXAMPLES (all under 12 words):
 - "Zillow and a budget spreadsheet. The delusion is real."
@@ -95,70 +98,75 @@ After your roast, add | and the mood from the list above.`;
   const ROAST_ANGLES = [
     'IDENTITY READ', 'CONTRADICTION', 'HYPE', 'PUSH TO FINISH',
     'GUILTY PLEASURE', 'OBSESSION', 'WEIRD DETAIL', 'LIFE NARRATION',
-    'SUPPORTIVE ROAST', 'REAL-TALK'
+    'SUPPORTIVE ROAST', 'REAL-TALK', 'NEWS ANCHOR', 'CALLBACK'
   ];
 
   let _lastAngleIndex = -1;
+  let _recentAngleIndices = []; // Track last 5 angles for better variety
 
   const CAP_NUDGES = [
     { text: "Better roasts locked up. Unlock me.", mood: 'smug' },
-    { text: "All free roasts used. Suspicious.", mood: 'suspicious' },
-    { text: "Maxed out daily roasts. Yikes.", mood: 'yikes' },
-    { text: "Out of free roasts. On you.", mood: 'eyeroll' },
-    { text: "Expected you to pace yourself.", mood: 'disappointed' },
-    { text: "Burned through all roasts. Iconic.", mood: 'melting' },
-    { text: "Plead Guilty to bring me back.", mood: 'dead' },
+    { text: "All out. You burned through them fast.", mood: 'suspicious' },
+    { text: "Maxed out. Come back tomorrow. Or don't wait.", mood: 'yikes' },
+    { text: "Out of roasts. That's on you.", mood: 'eyeroll' },
+    { text: "Expected you to pace yourself. Disappointing.", mood: 'disappointed' },
+    { text: "Burned through all eight. Iconic chaos.", mood: 'melting' },
+    { text: "I have more to say. You know what to do.", mood: 'dead' },
   ];
 
   async function pickMoodFromProfile(tabs, tier) {
-    const stats = await JestyStorage.getUserStats();
-    const traits = stats.traits;
-    const hour = new Date().getHours();
-    const isLateNight = hour >= 23 || hour < 5;
-    const isWorkHours = hour >= 9 && hour < 17 && [1,2,3,4,5].includes(new Date().getDay());
-    const tabCount = tabs.length;
+    try {
+      const stats = await JestyStorage.getUserStats();
+      const traits = stats.traits;
+      const hour = new Date().getHours();
+      const isLateNight = hour >= 23 || hour < 5;
+      const isWorkHours = hour >= 9 && hour < 17 && [1,2,3,4,5].includes(new Date().getDay());
+      const tabCount = tabs.length;
 
-    const pool = [];
+      const pool = [];
 
-    if (stats.totalRoasts < 5) {
-      pool.push('smug', 'smug', 'eyeroll');
+      if (stats.totalRoasts < 5) {
+        pool.push('smug', 'smug', 'eyeroll');
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+
+      if (isLateNight && traits.night_owl_score > 0.5) {
+        pool.push('suspicious', 'suspicious', 'disappointed');
+      }
+      if (tabCount > 30 && traits.tab_hoarder_score > 0.5) {
+        pool.push('melting', 'melting', 'eyeroll');
+      }
+      if (isWorkHours && traits.procrastinator_score > 0.4) {
+        pool.push('disappointed', 'eyeroll', 'suspicious');
+      }
+      if (traits.impulse_shopper_score > 0.4) {
+        pool.push('yikes', 'smug');
+      }
+      if (stats.currentStreak > 5) {
+        pool.push('smug', 'dead');
+      }
+
+      pool.push('smug', 'suspicious', 'eyeroll');
+
+      // Premium moods
+      if (tier === 'premium' || tier === 'pro') {
+        pool.push('impressed', 'manic', 'petty');
+        if (tabCount > 20) pool.push('manic', 'manic');
+        if (traits.impulse_shopper_score > 0.3) pool.push('petty');
+      }
+
+      // Pro moods
+      if (tier === 'pro') {
+        pool.push('chaotic', 'dramatic', 'tender');
+        if (isLateNight) pool.push('chaotic', 'dramatic');
+        if (stats.currentStreak > 10) pool.push('tender');
+      }
+
+      if (Math.random() < 0.5) return null;
       return pool[Math.floor(Math.random() * pool.length)];
+    } catch (e) {
+      return null;
     }
-
-    if (isLateNight && traits.night_owl_score > 0.5) {
-      pool.push('suspicious', 'suspicious', 'disappointed');
-    }
-    if (tabCount > 30 && traits.tab_hoarder_score > 0.5) {
-      pool.push('melting', 'melting', 'eyeroll');
-    }
-    if (isWorkHours && traits.procrastinator_score > 0.4) {
-      pool.push('disappointed', 'eyeroll', 'suspicious');
-    }
-    if (traits.impulse_shopper_score > 0.4) {
-      pool.push('yikes', 'smug');
-    }
-    if (stats.currentStreak > 5) {
-      pool.push('smug', 'dead');
-    }
-
-    pool.push('smug', 'suspicious', 'eyeroll');
-
-    // Premium moods
-    if (tier === 'premium' || tier === 'pro') {
-      pool.push('impressed', 'manic', 'petty');
-      if (tabCount > 20) pool.push('manic', 'manic');
-      if (traits.impulse_shopper_score > 0.3) pool.push('petty');
-    }
-
-    // Pro moods
-    if (tier === 'pro') {
-      pool.push('chaotic', 'dramatic', 'tender');
-      if (isLateNight) pool.push('chaotic', 'dramatic');
-      if (stats.currentStreak > 10) pool.push('tender');
-    }
-
-    if (Math.random() < 0.5) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function extractDomain(url) {
@@ -261,7 +269,7 @@ After your roast, add | and the mood from the list above.`;
 
   async function fetchRealTimeContext(tabs) {
     const signals = [];
-    const tabText = tabs.map(t => `${t.title} ${t.url}`).join(' ').toLowerCase();
+    const tabText = tabs.map(t => `${t.title || ''} ${t.url || ''}`).join(' ').toLowerCase();
     const tabUrls = tabs.map(t => t.url?.toLowerCase() || '');
     const now = new Date();
     const hour = now.getHours();
@@ -507,20 +515,63 @@ After your roast, add | and the mood from the list above.`;
     return signals.length ? `\n\nREAL-TIME DATA (weave naturally into roast if relevant, don't force it):\n${signals.join('\n')}` : '';
   }
 
-  function pickAngle() {
-    // Pick a random angle that isn't the same as the last one
+  // Restore angle history from storage (survives page reloads)
+  (async () => {
+    try {
+      const { _jestyAngleHistory } = await chrome.storage.local.get(['_jestyAngleHistory']);
+      if (_jestyAngleHistory) {
+        _recentAngleIndices = _jestyAngleHistory.indices || [];
+        _lastAngleIndex = _jestyAngleHistory.last ?? -1;
+      }
+    } catch (e) { /* non-critical */ }
+  })();
+
+  function pickAngle(hasNews) {
+    const newsAngleIdx = ROAST_ANGLES.indexOf('NEWS ANCHOR');
+
+    // 30% chance of NEWS ANCHOR if news context is available
+    if (hasNews && Math.random() < 0.3 && newsAngleIdx !== _lastAngleIndex) {
+      _lastAngleIndex = newsAngleIdx;
+      _persistAngleHistory(newsAngleIdx);
+      return ROAST_ANGLES[newsAngleIdx];
+    }
+
+    // Build exclusion set: last angle + any angle used in last 5 roasts (if pool allows)
+    const excluded = new Set(_recentAngleIndices);
+    excluded.add(_lastAngleIndex);
+    if (!hasNews) excluded.add(newsAngleIdx);
+
+    // If we've excluded too many, only exclude the last one
+    const available = ROAST_ANGLES.filter((_, i) => !excluded.has(i));
     let idx;
-    do {
-      idx = Math.floor(Math.random() * ROAST_ANGLES.length);
-    } while (idx === _lastAngleIndex && ROAST_ANGLES.length > 1);
+    if (available.length < 3) {
+      // Fallback: just avoid immediate repeat
+      do {
+        idx = Math.floor(Math.random() * ROAST_ANGLES.length);
+      } while (idx === _lastAngleIndex || (!hasNews && idx === newsAngleIdx));
+    } else {
+      // Pick from non-recently-used angles
+      const pick = available[Math.floor(Math.random() * available.length)];
+      idx = ROAST_ANGLES.indexOf(pick);
+    }
+
     _lastAngleIndex = idx;
+    _persistAngleHistory(idx);
     return ROAST_ANGLES[idx];
   }
 
-  async function getRecentRoastTexts(count = 5) {
+  function _persistAngleHistory(idx) {
+    _recentAngleIndices.push(idx);
+    _recentAngleIndices = _recentAngleIndices.slice(-5);
+    chrome.storage.local.set({
+      _jestyAngleHistory: { indices: _recentAngleIndices, last: _lastAngleIndex }
+    }).catch(() => {});
+  }
+
+  async function getRecentRoasts(count = 5) {
     try {
       const data = await JestyStorage.getJestyData();
-      return data.roasts.slice(0, count).map(r => r.text);
+      return data.roasts.slice(0, count);
     } catch { return []; }
   }
 
@@ -591,10 +642,27 @@ After your roast, add | and the mood from the list above.`;
     // Fetch real-time data
     const realTimeContext = await fetchRealTimeContext(tabs);
 
+    // Fetch news context (non-blocking, pre-fetched by background.js)
+    let newsContext = '';
+    try {
+      const { dailyNewsDigest } = await chrome.storage.local.get(['dailyNewsDigest']);
+      if (dailyNewsDigest && dailyNewsDigest.fetchedAt && (Date.now() - dailyNewsDigest.fetchedAt) < 24 * 3600000) {
+        if (dailyNewsDigest.interestPosts && dailyNewsDigest.interestPosts.length > 0) {
+          const parts = ['TRENDING IN USER\'S INTERESTS (use to tease — never guilt-trip about tragedies or wars):'];
+          for (const p of dailyNewsDigest.interestPosts) {
+            parts.push(`- "${p.title}" (${p.subreddit}, about: ${p.topic})`);
+          }
+          newsContext = parts.join('\n');
+        }
+      }
+    } catch (e) { /* news is non-critical */ }
+
     // Personalized context
     const personalizedContext = await JestyStorage.buildPersonalizedContext();
 
-    const apiKey = CONFIG.OPENAI_API_KEY;
+    if (typeof CONFIG === 'undefined' || !CONFIG.API_URL) {
+      throw new Error('API not configured');
+    }
 
     // Calendar context for Pro users
     let calendarContext = '';
@@ -636,15 +704,27 @@ After your roast, add | and the mood from the list above.`;
       ? `\n\nMOOD DIRECTIVE: Use the ${suggestedMood.toUpperCase()} mood for this roast.`
       : '';
 
-    // Pick a forced angle to ensure variety
-    const angle = pickAngle();
+    // Pick a forced angle to ensure variety (NEWS ANCHOR weighted 30% when news available)
+    const hasNews = newsContext.length > 0;
+    const angle = pickAngle(hasNews);
     const angleDirective = `\n\nANGLE: Use the ${angle} angle for this roast. Commit to it fully.`;
 
-    // Fetch recent roasts to avoid repetition
-    const recentRoasts = await getRecentRoastTexts(5);
-    const recentRoastsBlock = recentRoasts.length > 0
-      ? `\n\nYOUR LAST ROASTS (DO NOT repeat these or use similar angles/phrasing):\n${recentRoasts.map((r, i) => `${i + 1}. "${r}"`).join('\n')}`
-      : '';
+    // Fetch recent roasts to avoid repetition (include topics so AI avoids same subjects)
+    const recentRoasts = await getRecentRoasts(5);
+    let recentRoastsBlock = '';
+    if (recentRoasts.length > 0) {
+      const lines = recentRoasts.map((r, i) => {
+        const topics = r.roasted_topics && r.roasted_topics.length > 0
+          ? ` [about: ${r.roasted_topics.join(', ')}]`
+          : '';
+        return `${i + 1}. "${r.text}"${topics}`;
+      });
+      const recentTopics = [...new Set(recentRoasts.flatMap(r => r.roasted_topics || []))];
+      const topicWarning = recentTopics.length > 0
+        ? `\nAVOID THESE TOPICS (already roasted recently): ${recentTopics.join(', ')}`
+        : '';
+      recentRoastsBlock = `\n\nYOUR LAST ROASTS (DO NOT repeat these or use similar angles/phrasing/topics):\n${lines.join('\n')}${topicWarning}`;
+    }
 
     // Build full system prompt
     const shortDirective = options.short
@@ -655,40 +735,44 @@ After your roast, add | and the mood from the list above.`;
       ? `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}\n\nUSER CONTEXT:\n${personalizedContext}${calendarContext}`
       : `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}${calendarContext}`;
 
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(CHAT_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: fullPrompt },
-          { role: 'user', content: `${timeContext}\n\n${tabList}${realTimeContext}` }
+          { role: 'user', content: `${timeContext}\n\n${tabList}${realTimeContext}${(angle === 'NEWS ANCHOR' || angle === 'REAL-TALK') && newsContext ? '\n\n' + newsContext : ''}` }
         ],
         max_tokens: options.short ? 25 : 40,
-        temperature: 0.8
-      })
+        temperature: 0.78
+      }),
+      signal: AbortSignal.timeout(10000)
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'API request failed');
+      let errorMessage = 'API request failed';
+      try {
+        const error = await response.json();
+        errorMessage = error.error?.message || errorMessage;
+      } catch (e) { /* response body not JSON */ }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    const rawResponse = data.choices[0].message.content.trim();
+    const rawContent = data.choices?.[0]?.message?.content;
+    if (!rawContent) throw new Error('Empty API response');
+    const rawResponse = rawContent.trim();
 
     let joke = rawResponse;
     let mood = 'smug';
 
     const validMoods = userTier === 'pro' ? PRO_MOODS : userTier === 'premium' ? PREMIUM_MOODS : FREE_MOODS;
 
-    if (rawResponse.includes('|')) {
-      const parts = rawResponse.split('|');
-      joke = parts[0].trim();
-      const moodTag = parts[1].trim().toLowerCase();
+    const lastPipe = rawResponse.lastIndexOf('|');
+    if (lastPipe !== -1) {
+      joke = rawResponse.slice(0, lastPipe).trim();
+      const moodTag = rawResponse.slice(lastPipe + 1).trim().toLowerCase();
       if (validMoods.includes(moodTag)) {
         mood = moodTag;
       } else {

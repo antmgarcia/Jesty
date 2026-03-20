@@ -65,8 +65,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   try {
     if (changeInfo.url.startsWith('chrome://')) return;
 
-    // Detect Stripe payment success URL
-    if (changeInfo.url.includes('/success') && changeInfo.url.includes('session_id=')) {
+    // Detect Stripe payment success URL (jesty.fun with session_id + tier params)
+    if (changeInfo.url.includes('jesty.fun') && changeInfo.url.includes('session_id=') && changeInfo.url.includes('tier=')) {
       await handlePaymentSuccess(changeInfo.url);
     }
 
@@ -103,7 +103,14 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 // Clean up expired roasted domains periodically
-chrome.alarms.create('cleanupExpired', { periodInMinutes: 5 });
+chrome.alarms.get('cleanupExpired', (existing) => {
+  if (!existing) chrome.alarms.create('cleanupExpired', { periodInMinutes: 5 });
+});
+
+// News digest — fetch trending headlines every 12 hours
+chrome.alarms.get('newsDigest', (existing) => {
+  if (!existing) chrome.alarms.create('newsDigest', { periodInMinutes: 720 });
+});
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'cleanupExpired') {
@@ -112,6 +119,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await checkDailyReport();
   } else if (alarm.name === 'subscriptionCheck') {
     await checkSubscriptionStatus();
+  } else if (alarm.name === 'newsDigest') {
+    await fetchDailyNews();
   }
 });
 
@@ -138,6 +147,7 @@ async function createPendingXPGain(closedTab) {
   const xpGain = {
     xp,
     domain: closedTab.domain,
+    source: 'tab_close',
     timestamp: Date.now()
   };
 
@@ -170,8 +180,16 @@ async function createPendingXPGain(closedTab) {
       }
 
       // Record action followed
-      if (!jesty_data.milestones.actions_followed) jesty_data.milestones.actions_followed = 0;
-      jesty_data.milestones.actions_followed++;
+      if (!jesty_data.milestones.actions) {
+        jesty_data.milestones.actions = {
+          total_actions_followed: 0,
+          first_action_followed: null,
+          action_streak: 0,
+          longest_action_streak: 0,
+          last_action_date: null
+        };
+      }
+      jesty_data.milestones.actions.total_actions_followed++;
 
       await chrome.storage.local.set({ jesty_data });
     }
@@ -218,22 +236,42 @@ async function cleanupExpiredData() {
 /**
  * Handle Stripe payment success URL detection
  */
+let _lastProcessedSession = null;
+
 async function handlePaymentSuccess(url) {
   try {
     const urlObj = new URL(url);
     const sessionId = urlObj.searchParams.get('session_id');
-    const tier = urlObj.searchParams.get('tier') || 'premium';
+    const tier = urlObj.searchParams.get('tier') || 'guilty';
 
     if (!sessionId) return;
+
+    // Deduplicate — jesty.fun may redirect internally, firing onUpdated twice
+    if (sessionId === _lastProcessedSession) return;
+    _lastProcessedSession = sessionId;
+
+    // Verify payment server-side before activating
+    const verifyRes = await fetch(
+      `https://jesty-api.hey-9f5.workers.dev/api/verify?session_id=${encodeURIComponent(sessionId)}`
+    );
+    const verification = await verifyRes.json();
+
+    if (!verification.paid) {
+      console.warn('Jesty: Payment not confirmed for session', sessionId);
+      return;
+    }
+
+    const confirmedTier = verification.tier || tier;
 
     // Activate premium locally
     const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
     if (!jesty_data) return;
 
-    if (tier === 'pro') {
+    if (confirmedTier === 'pro') {
       jesty_data.settings.subscription_tier = 'pro';
       jesty_data.settings.subscription_status = 'active';
       jesty_data.settings.is_premium = true;
+      jesty_data.settings.subscription_expires = Date.now() + 30 * 24 * 60 * 60 * 1000;
       if (!jesty_data.settings.premium_since) {
         jesty_data.settings.premium_since = new Date().toISOString();
       }
@@ -244,7 +282,9 @@ async function handlePaymentSuccess(url) {
 
     jesty_data.settings.premium_session_id = sessionId;
     await chrome.storage.local.set({ jesty_data });
-    console.log(`Jesty: ${tier} activated via session ${sessionId}`);
+    // Signal sidepanel to show celebration
+    await chrome.storage.local.set({ premiumJustActivated: Date.now() });
+    console.log(`Jesty: ${confirmedTier} activated via session ${sessionId}`);
   } catch (e) {
     console.error('Jesty: Error handling payment success:', e);
   }
@@ -329,6 +369,7 @@ async function trackFocusTabSwitch(tabId) {
     };
 
     if (!focusSession.tabSwitches) focusSession.tabSwitches = [];
+    if (focusSession.tabSwitches.length >= 500) focusSession.tabSwitches.shift();
     focusSession.tabSwitches.push(event);
 
     // Update distraction count + streak
@@ -441,10 +482,14 @@ async function injectFocusIslandIntoAllTabs() {
 }
 
 // Daily report alarm — runs every hour, checks if 9PM
-chrome.alarms.create('dailyReportCheck', { periodInMinutes: 60 });
+chrome.alarms.get('dailyReportCheck', (existing) => {
+  if (!existing) chrome.alarms.create('dailyReportCheck', { periodInMinutes: 60 });
+});
 
 // Subscription status check — once daily
-chrome.alarms.create('subscriptionCheck', { periodInMinutes: 1440 });
+chrome.alarms.get('subscriptionCheck', (existing) => {
+  if (!existing) chrome.alarms.create('subscriptionCheck', { periodInMinutes: 1440 });
+});
 
 /* ──────────────────────────────────────────────
    DAILY ROAST REPORT
@@ -529,6 +574,73 @@ async function checkSubscriptionStatus() {
   }
 }
 
+/* ──────────────────────────────────────────────
+   DAILY NEWS DIGEST
+   ────────────────────────────────────────────── */
+
+/**
+ * Fetch trending headlines (Google News) and interest-based posts (Reddit).
+ * Stores result in chrome.storage.local as `dailyNewsDigest`.
+ * All fetches are non-blocking with 3s timeouts — fails silently.
+ */
+async function fetchDailyNews() {
+  try {
+    // Freshness check — skip if fetched within the last 10 hours
+    const { dailyNewsDigest } = await chrome.storage.local.get(['dailyNewsDigest']);
+    if (dailyNewsDigest && dailyNewsDigest.fetchedAt && (Date.now() - dailyNewsDigest.fetchedAt) < 10 * 3600000) {
+      return;
+    }
+
+    const interestPosts = [];
+
+    // Reddit — posts based on user interests (no generic world news)
+    try {
+      const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+      const interests = jesty_data?.profile?.interests;
+      if (interests && Array.isArray(interests) && interests.length > 0) {
+        // Get top 3 interests by count
+        const sorted = [...interests]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3)
+          .map(item => item.topic);
+
+        for (const topic of sorted) {
+          try {
+            const resp = await fetch(
+              `https://www.reddit.com/search.json?q=${encodeURIComponent(topic)}&sort=hot&limit=3&t=day`,
+              { signal: AbortSignal.timeout(3000) }
+            );
+            if (resp.ok) {
+              const data = await resp.json();
+              const children = data?.data?.children || [];
+              for (const child of children) {
+                const post = child.data;
+                if (post && post.title) {
+                  interestPosts.push({
+                    title: post.title,
+                    subreddit: post.subreddit_name_prefixed || '',
+                    topic
+                  });
+                }
+              }
+            }
+          } catch (e) { /* fail silently per topic */ }
+        }
+      }
+    } catch (e) { /* fail silently */ }
+
+    // Store result
+    await chrome.storage.local.set({
+      dailyNewsDigest: {
+        interestPosts,
+        fetchedAt: Date.now()
+      }
+    });
+  } catch (e) {
+    console.error('Jesty: Error fetching daily news:', e);
+  }
+}
+
 /**
  * Initialize: snapshot all current tabs
  */
@@ -563,6 +675,12 @@ async function initializeOpenTabs() {
 
 // Initialize on service worker start
 initializeOpenTabs();
+
+// Restore sidePanelOpen state from storage (survives service worker restart)
+chrome.storage.local.get(['_sidePanelOpen'], (r) => { sidePanelOpen = !!r._sidePanelOpen; });
+
+// Fetch news on startup so first roast of a session has context
+fetchDailyNews();
 
 // Open side panel when toolbar icon is clicked (replacing popup)
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })

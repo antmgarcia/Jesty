@@ -556,7 +556,7 @@ const JestyRoastTrivia = (() => {
 
     if (typeof awardXP === 'function') {
       await awardXP(xp);
-      if (typeof showXPToast === 'function') showXPToast(xp);
+      if (typeof showXPToast === 'function') showXPToast(xp, 'game');
     }
 
     const cat = state.score === total ? 'perfect' : state.score >= 5 ? 'good' : state.score >= 3 ? 'okay' : 'bad';

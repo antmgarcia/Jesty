@@ -10,7 +10,7 @@ const JestyAccessories = (() => {
    */
   const CATALOG = [
     // Always unlocked (free, no level requirement)
-    { id: 'party-hat', name: 'Party Hat', slot: 'hat', tier: 'free', symbolId: 'acc-party-hat' },
+    { id: 'bucket-hat', name: 'Bucket Hat', slot: 'hat', tier: 'free', symbolId: 'acc-bucket-hat' },
     { id: 'sunglasses', name: 'Sunglasses', slot: 'glasses', tier: 'free', symbolId: 'acc-sunglasses' },
     { id: 'beanie', name: 'Beanie', slot: 'hat', tier: 'free', symbolId: 'acc-beanie' },
     { id: 'aviators', name: 'Aviators', slot: 'glasses', tier: 'free', symbolId: 'acc-aviators' },
@@ -30,6 +30,12 @@ const JestyAccessories = (() => {
     { id: 'top-hat', name: 'Top Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-top-hat', unlockLevel: 14 },
     { id: 'pirate-hat', name: 'Pirate Hat', slot: 'hat', tier: 'premium', symbolId: 'acc-pirate-hat', unlockLevel: 15 },
     { id: 'halo', name: 'Halo', slot: 'hat', tier: 'premium', symbolId: 'acc-halo', unlockLevel: 16 },
+    // Guilty-exclusive accessories (unlocked by paying Guilty tier)
+    { id: 'party-hat', name: 'Party Hat', slot: 'hat', tier: 'guilty', symbolId: 'acc-party-hat' },
+    { id: 'cowboy-hat', name: 'Cowboy Hat', slot: 'hat', tier: 'guilty', symbolId: 'acc-cowboy-hat' },
+    { id: 'beret', name: 'Beret', slot: 'hat', tier: 'guilty', symbolId: 'acc-beret' },
+    { id: 'round-glasses', name: 'Round Glasses', slot: 'glasses', tier: 'guilty', symbolId: 'acc-round-glasses' },
+    { id: 'pixel-shades', name: 'Pixel Shades', slot: 'glasses', tier: 'guilty', symbolId: 'acc-pixel-shades' },
     // Pro-exclusive accessories
     { id: 'flame-crown', name: 'Flame Crown', slot: 'hat', tier: 'pro', symbolId: 'acc-flame-crown' },
     { id: 'neon-shades', name: 'Neon Shades', slot: 'glasses', tier: 'pro', symbolId: 'acc-neon-shades' },
@@ -42,34 +48,34 @@ const JestyAccessories = (() => {
    */
   const ANCHORS = {
     hat: {
-      smug:         { x: 38, y: -2, rotate: 0 },
-      suspicious:   { x: 38, y: -4, rotate: 6 },
-      yikes:        { x: 40, y: -10, rotate: 0 },
-      eyeroll:      { x: 36, y: 2, rotate: -3 },
-      disappointed: { x: 40, y: 18, rotate: 0 },
-      melting:      { x: 38, y: 0, rotate: 0 },
-      dead:         { x: 38, y: 2, rotate: 8 },
-      thinking:     { x: 38, y: -2, rotate: -5 },
-      happy:        { x: 38, y: -8, rotate: 0 },
-      impressed:    { x: 38, y: -4, rotate: 0 },
-      manic:        { x: 38, y: -6, rotate: -4 },
-      petty:        { x: 38, y: 0, rotate: 3 },
-      chaotic:      { x: 40, y: -4, rotate: -8 },
-      dramatic:     { x: 38, y: -2, rotate: 5 },
-      tender:       { x: 38, y: -2, rotate: 0 }
+      smug:         { x: 36, y: -2, rotate: 0 },
+      suspicious:   { x: 36, y: -6, rotate: 6 },
+      yikes:        { x: 38, y: -10, rotate: 0 },
+      eyeroll:      { x: 34, y: 0, rotate: -3 },
+      disappointed: { x: 38, y: 18, rotate: 0 },
+      melting:      { x: 36, y: -2, rotate: 0 },
+      dead:         { x: 36, y: 0, rotate: 8 },
+      thinking:     { x: 34, y: -4, rotate: -5 },
+      happy:        { x: 36, y: -8, rotate: 0 },
+      impressed:    { x: 36, y: -4, rotate: 0 },
+      manic:        { x: 36, y: -6, rotate: -4 },
+      petty:        { x: 36, y: 0, rotate: 3 },
+      chaotic:      { x: 38, y: -4, rotate: -8 },
+      dramatic:     { x: 36, y: -2, rotate: 5 },
+      tender:       { x: 36, y: -2, rotate: 0 }
     },
     glasses: {
       smug:         { x: 32, y: 42, rotate: 0 },
-      suspicious:   { x: 32, y: 42, rotate: 3 },
-      yikes:        { x: 34, y: 36, rotate: 0 },
-      eyeroll:      { x: 32, y: 42, rotate: -2 },
-      disappointed: { x: 34, y: 52, rotate: 0 },
+      suspicious:   { x: 32, y: 40, rotate: 3 },
+      yikes:        { x: 34, y: 34, rotate: 0 },
+      eyeroll:      { x: 32, y: 44, rotate: -2 },
+      disappointed: { x: 34, y: 54, rotate: 0 },
       melting:      { x: 32, y: 42, rotate: 0 },
       dead:         { x: 32, y: 44, rotate: 5 },
-      thinking:     { x: 34, y: 40, rotate: -3 },
-      happy:        { x: 32, y: 40, rotate: 0 },
-      impressed:    { x: 32, y: 42, rotate: 0 },
-      manic:        { x: 32, y: 40, rotate: -3 },
+      thinking:     { x: 32, y: 40, rotate: -3 },
+      happy:        { x: 32, y: 38, rotate: 0 },
+      impressed:    { x: 32, y: 40, rotate: 0 },
+      manic:        { x: 32, y: 38, rotate: -3 },
       petty:        { x: 32, y: 42, rotate: 2 },
       chaotic:      { x: 34, y: 40, rotate: -8 },
       dramatic:     { x: 32, y: 42, rotate: 5 },
@@ -77,11 +83,70 @@ const JestyAccessories = (() => {
     }
   };
 
+  /**
+   * Per-accessory anchor overrides.
+   * Accessories that sit differently (e.g. bandana wraps around the head)
+   * define full anchor maps here instead of using the shared slot anchors.
+   */
+  const ACC_ANCHORS = {
+    'bandana': {
+      smug:         { x: 35, y: 6, rotate: -3 },
+      suspicious:   { x: 35, y: 4, rotate: 8 },
+      yikes:        { x: 37, y: -2, rotate: -2 },
+      eyeroll:      { x: 33, y: 10, rotate: -5 },
+      disappointed: { x: 37, y: 26, rotate: 2 },
+      melting:      { x: 35, y: 8, rotate: -2 },
+      dead:         { x: 35, y: 10, rotate: 10 },
+      thinking:     { x: 30, y: 6, rotate: -7 },
+      happy:        { x: 35, y: 0, rotate: -2 },
+      impressed:    { x: 35, y: 4, rotate: -3 },
+      manic:        { x: 35, y: 2, rotate: -6 },
+      petty:        { x: 35, y: 8, rotate: 5 },
+      chaotic:      { x: 37, y: 4, rotate: -10 },
+      dramatic:     { x: 35, y: 6, rotate: 7 },
+      tender:       { x: 35, y: 6, rotate: -2 }
+    },
+    'beret': {
+      smug:         { x: 34, y: 2, rotate: -8 },
+      suspicious:   { x: 34, y: 0, rotate: -2 },
+      yikes:        { x: 36, y: -6, rotate: -8 },
+      eyeroll:      { x: 32, y: 6, rotate: -11 },
+      disappointed: { x: 36, y: 22, rotate: -8 },
+      melting:      { x: 34, y: 4, rotate: -8 },
+      dead:         { x: 34, y: 6, rotate: 0 },
+      thinking:     { x: 30, y: 2, rotate: -13 },
+      happy:        { x: 34, y: -4, rotate: -8 },
+      impressed:    { x: 34, y: 0, rotate: -8 },
+      manic:        { x: 34, y: -2, rotate: -12 },
+      petty:        { x: 34, y: 4, rotate: -5 },
+      chaotic:      { x: 36, y: 0, rotate: -16 },
+      dramatic:     { x: 34, y: 2, rotate: -3 },
+      tender:       { x: 34, y: 2, rotate: -8 }
+    },
+    'headband': {
+      smug:         { x: 34, y: 12, rotate: 0 },
+      suspicious:   { x: 34, y: 10, rotate: 6 },
+      yikes:        { x: 36, y: 4, rotate: 0 },
+      eyeroll:      { x: 32, y: 16, rotate: -3 },
+      disappointed: { x: 36, y: 30, rotate: 0 },
+      melting:      { x: 34, y: 14, rotate: 0 },
+      dead:         { x: 34, y: 16, rotate: 8 },
+      thinking:     { x: 34, y: 12, rotate: -5 },
+      happy:        { x: 34, y: 6, rotate: 0 },
+      impressed:    { x: 34, y: 10, rotate: 0 },
+      manic:        { x: 34, y: 8, rotate: -4 },
+      petty:        { x: 34, y: 14, rotate: 3 },
+      chaotic:      { x: 36, y: 10, rotate: -8 },
+      dramatic:     { x: 34, y: 12, rotate: 5 },
+      tender:       { x: 34, y: 12, rotate: 0 }
+    }
+  };
+
   // Currently equipped accessories
   let equipped = { hat: null, glasses: null };
 
   // Default accessories for new users (auto-onboarding)
-  const DEFAULT_HATS = ['party-hat', 'beanie'];
+  const DEFAULT_HATS = ['bucket-hat', 'beanie'];
   const DEFAULTS_GLASSES = 'aviators';
 
   /**
@@ -126,6 +191,12 @@ const JestyAccessories = (() => {
     // Pro-exclusive accessories require pro tier
     if (acc.tier === 'pro') {
       if (typeof JestyPremium !== 'undefined' && !(await JestyPremium.isPro())) return false;
+      return true;
+    }
+
+    // Guilty-exclusive accessories require premium (guilty) tier or higher
+    if (acc.tier === 'guilty') {
+      if (typeof JestyPremium !== 'undefined' && !(await JestyPremium.isPremium())) return false;
       return true;
     }
 
@@ -210,6 +281,47 @@ const JestyAccessories = (() => {
   function renderAccessories(expressionId, svgContainer) {
     if (!svgContainer) return;
 
+    // Detect layered SVG (GSAP animated character)
+    const layerAccGroup = svgContainer.querySelector('#layer-accessories');
+    const isLayeredSvg = !!layerAccGroup;
+
+    if (isLayeredSvg) {
+      // Layered mode: render directly into #layer-accessories
+      layerAccGroup.innerHTML = '';
+
+      const hasAccs = Object.values(equipped).some(v => v);
+      if (!hasAccs) return;
+
+      for (const slot of ['hat', 'glasses']) {
+        const accId = equipped[slot];
+        if (!accId) continue;
+
+        const accessory = CATALOG.find(a => a.id === accId);
+        if (!accessory) continue;
+
+        const accAnchors = ACC_ANCHORS[accId] || ANCHORS[slot];
+        const anchor = accAnchors[expressionId] || accAnchors['smug'];
+
+        const symbol = document.getElementById(accessory.symbolId);
+        if (!symbol) continue;
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.classList.add('jesty-accessory');
+
+        let transform = `translate(${anchor.x}, ${anchor.y})`;
+        if (anchor.rotate) {
+          const vb = symbol.getAttribute('viewBox');
+          const [, , symW, symH] = vb ? vb.split(/\s+/).map(Number) : [0, 0, 44, 30];
+          transform += ` rotate(${anchor.rotate}, ${symW / 2}, ${symH / 2})`;
+        }
+        g.setAttribute('transform', transform);
+        g.innerHTML = symbol.innerHTML;
+        layerAccGroup.appendChild(g);
+      }
+      return;
+    }
+
+    // Static mode (newtab, games, etc): original inline approach
     // Remove existing accessory overlays, groups, and inlined faces
     svgContainer.querySelectorAll('.jesty-accessory, .jesty-acc-group, .jesty-face-inline').forEach(el => el.remove());
 
@@ -230,8 +342,8 @@ const JestyAccessories = (() => {
       const accessory = CATALOG.find(a => a.id === accId);
       if (!accessory) continue;
 
-      const anchors = ANCHORS[slot];
-      const anchor = anchors[expressionId] || anchors['smug'];
+      const accAnchors = ACC_ANCHORS[accId] || ANCHORS[slot];
+      const anchor = accAnchors[expressionId] || accAnchors['smug'];
 
       const symbol = document.getElementById(accessory.symbolId);
       if (!symbol) continue;
@@ -268,8 +380,8 @@ const JestyAccessories = (() => {
       const accessory = CATALOG.find(a => a.id === accId);
       if (!accessory) continue;
 
-      const anchors = ANCHORS[slot];
-      const anchor = anchors[expressionId] || anchors['smug'];
+      const accAnchors = ACC_ANCHORS[accId] || ANCHORS[slot];
+      const anchor = accAnchors[expressionId] || accAnchors['smug'];
 
       const symbol = document.getElementById(accessory.symbolId);
       if (!symbol) continue;
@@ -312,7 +424,7 @@ const JestyAccessories = (() => {
 
   return {
     init, getCatalog, equipAccessory, unequipAccessory, unequipAll, getEquipped,
-    renderAccessories, getAccessorySvgContent, isUnlocked
+    renderAccessories, getAccessorySvgContent, isUnlocked, inlineFaceContent
   };
 })();
 

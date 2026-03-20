@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', init);
 
+let _onboardingSeeded = false;
+
 // Re-check daily cap when user returns (e.g. left computer overnight)
 document.addEventListener('visibilitychange', async () => {
   if (!document.hidden) {
@@ -17,13 +19,13 @@ chrome.storage.onChanged.addListener(async (changes) => {
       const capStatus = await JestyStorage.checkDailyCap();
       updateRoastsRemaining(capStatus.remaining);
     } catch (e) { /* non-critical */ }
-    renderNewtabTasks();
+    renderNewtabTasksDebounced();
   }
   // XP gain from tab closure (while newtab is already open)
   if (changes.pendingXPGain && changes.pendingXPGain.newValue) {
     const xpGain = changes.pendingXPGain.newValue;
     chrome.storage.local.remove(['pendingXPGain']);
-    showXPToast(xpGain.xp);
+    showXPToast(xpGain.xp, xpGain.source);
     renderNewtabLevelBadge();
   }
 });
@@ -62,6 +64,10 @@ async function init() {
   const refreshBtn = document.getElementById('refresh-btn');
   const talkbackBtn = document.getElementById('talkback-btn');
   const tabCountEl = document.getElementById('tab-count');
+
+  // Hero CTA (Plead Guilty) — opens upgrade panel
+  const heroCta = document.getElementById('hero-cta');
+  if (heroCta) heroCta.addEventListener('click', () => openUpgradePanel());
 
   // Show tab count (clickable → opens tab manager)
   const tabs = await chrome.tabs.query({});
@@ -132,11 +138,14 @@ async function init() {
 
   // Show XP toast if pending, then proceed to normal flow
   if (pendingXPGain) {
-    showXPToast(pendingXPGain.xp);
+    showXPToast(pendingXPGain.xp, pendingXPGain.source);
   }
 
   // Seed onboarding task for new users (even if widget is hidden)
   await seedOnboardingTask();
+
+  // Render tasks widget on init (always visible for all tiers)
+  renderNewtabTasks();
 
   // Initialize focus island (inline, not iframe — extension pages can't use content scripts)
   await initNewtabFocusIsland();
@@ -236,10 +245,16 @@ function showWelcomePrompt() {
   loadingText.classList.add('hidden');
   welcomePrompt.classList.remove('hidden');
 
-  // Render character naked (no accessories) during onboarding
+  // Render character naked (no accessories) during onboarding, with blink + squash
   const character = document.getElementById('character');
   if (character) {
-    character.innerHTML = `<svg viewBox="-5 -10 130 140" width="120" height="112"><use href="#face-smug"/></svg>`;
+    character.innerHTML = `<svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-smug"/></svg>`;
+    const svg = character.querySelector('svg');
+    if (svg && window.JestyAccessories) {
+      JestyAccessories.inlineFaceContent('smug', svg);
+    }
+    tagNewtabEyes(character);
+    if (!_newtabIdleTimer && !_newtabFirstBlink) startNewtabIdleCycle();
   }
 
   // Pick a random default color for this user
@@ -330,6 +345,10 @@ function isValidUrl(string) {
   return urlPattern.test(string);
 }
 
+let _newtabIdleTimer = null;
+let _newtabFirstBlink = null;
+let _newtabBlinkMid = null;
+
 function setExpression(mood) {
   const character = document.getElementById('character');
   character.innerHTML = `<svg viewBox="-15 -10 150 140" width="120" height="112"><use href="#face-${mood}"/></svg>`;
@@ -342,6 +361,134 @@ function setExpression(mood) {
   if (svg && window.JestyAccessories) {
     JestyAccessories.renderAccessories(mood, svg);
   }
+
+  // Lift thinking bubbles above all layers (accessories, etc.)
+  if (svg && mood === 'thinking') {
+    liftThinkingBubbles(svg);
+  }
+
+  // Tag eyes so blink animation can find them
+  tagNewtabEyes(character);
+  // Start idle cycle only once
+  if (!_newtabIdleTimer && !_newtabFirstBlink) startNewtabIdleCycle();
+}
+
+/**
+ * Move thinking bubble circles to the end of the SVG so they render
+ * above accessories. Identifies them by their gray fill colors.
+ */
+function liftThinkingBubbles(svg) {
+  const inlined = svg.querySelector('.jesty-face-inline');
+  if (!inlined) return;
+  const bubbleFills = ['#E0E0E0', '#E8E8E8', '#EEEEEE'];
+  const bubbles = [...inlined.querySelectorAll('circle')].filter(c =>
+    bubbleFills.includes(c.getAttribute('fill'))
+  );
+  for (const b of bubbles) {
+    svg.appendChild(b);
+  }
+}
+
+/**
+ * Find eye elements in the inlined face and tag them with .newtab-eye.
+ */
+function tagNewtabEyes(container) {
+  const inlined = container.querySelector('.jesty-face-inline');
+  if (!inlined) return;
+  inlined.querySelectorAll('ellipse[fill="#FFFFFF"], circle[fill="#FFFFFF"], circle[fill="#2D2A26"]').forEach(el => {
+    const cy = parseFloat(el.getAttribute('cy'));
+    if (cy >= 30 && cy <= 65) el.classList.add('newtab-eye');
+  });
+}
+
+function newtabBlink() {
+  const character = document.getElementById('character');
+  if (!character) return;
+  const eyes = character.querySelectorAll('.newtab-eye');
+  eyes.forEach(el => {
+    el.classList.remove('blinking');
+    void el.offsetWidth;
+    el.classList.add('blinking');
+  });
+  setTimeout(() => eyes.forEach(el => el.classList.remove('blinking')), 350);
+}
+
+function newtabBodyShake() {
+  const character = document.getElementById('character');
+  if (!character) return;
+  const svg = character.querySelector('svg');
+  if (!svg) return;
+  // Use soft breath during onboarding, full shake otherwise
+  const welcomeVisible = !document.getElementById('welcome-prompt')?.classList.contains('hidden');
+  const cls = welcomeVisible ? 'newtab-breath' : 'newtab-shake';
+  if (svg) {
+    svg.classList.remove(cls);
+    void svg.offsetWidth;
+    svg.classList.add(cls);
+    svg.addEventListener('animationend', () => svg.classList.remove(cls), { once: true });
+  }
+}
+
+function newtabAccShake() {
+  const character = document.getElementById('character');
+  if (!character) return;
+  const accEls = character.querySelectorAll('.jesty-accessory');
+
+  accEls.forEach((accG, i) => {
+    // Ensure inner wrapper exists for animation (keeps SVG transform attribute intact on outer g)
+    let inner = accG.querySelector('.acc-anim-wrap');
+    if (!inner) {
+      inner = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      inner.classList.add('acc-anim-wrap');
+      while (accG.firstChild) inner.appendChild(accG.firstChild);
+      accG.appendChild(inner);
+    }
+
+    const isHat = i === 0;
+    const cls = isHat ? 'acc-shake-hat' : 'acc-shake-glasses';
+    const delay = isHat ? 0 : 80; // glasses lag behind
+
+    setTimeout(() => {
+      inner.classList.remove(cls);
+      void inner.offsetWidth;
+      inner.classList.add(cls);
+      inner.addEventListener('animationend', () => inner.classList.remove(cls), { once: true });
+    }, delay);
+  });
+}
+
+/**
+ * Idle cycle:
+ *   Blinks every 3-4s
+ *   Squash + acc shake every 12s (after initial 5s delay)
+ */
+let _newtabSquashTimer = null;
+
+function startNewtabIdleCycle() {
+  // Blink every 3-4s
+  function scheduleBlink() {
+    const delay = 3000 + Math.random() * 1000;
+    _newtabBlinkMid = setTimeout(() => {
+      newtabBlink();
+      scheduleBlink();
+    }, delay);
+  }
+
+  // First blink after 3s, then keep going
+  _newtabFirstBlink = setTimeout(() => {
+    newtabBlink();
+    scheduleBlink();
+  }, 3000);
+
+  // Squash + acc shake every 12s, starting after 5s
+  _newtabSquashTimer = setTimeout(() => {
+    newtabBodyShake();
+    newtabAccShake();
+    _newtabSquashTimer = setInterval(() => {
+      newtabBodyShake();
+      newtabAccShake();
+    }, 12000);
+  }, 5000);
 }
 
 /**
@@ -395,9 +542,7 @@ function showJoke(text, mood) {
   // Hide CTA if it was showing from a previous cap hit
   document.getElementById('hero-cta').classList.add('hidden');
 
-  // Fit text to 2 lines without truncation
-  const fittedText = fitTextToTwoLines(jokeText, text);
-  jokeText.textContent = fittedText;
+  jokeText.textContent = text;
   jokeText.classList.remove('hidden');
   loadingText.classList.add('hidden');
   jestyActions.classList.remove('hidden');
@@ -408,21 +553,9 @@ function showJoke(text, mood) {
   jokeText.style.animation = 'fadeInUp 0.4s ease-out';
 
   setExpression(mood);
+  // Persist mood so sidepanel can pick it up
+  chrome.storage.local.set({ lastRoastMood: mood });
 }
-
-function fitTextToTwoLines(element, text) {
-  // Just return full text — never truncate mid-sentence.
-  // GPT prompt already enforces max 12 words / 2 lines.
-  // If it overflows slightly, showing the full roast is better than cutting it off.
-  return text;
-}
-
-function restoreHidden(element) {
-  element.classList.add('hidden');
-  element.style.visibility = '';
-  element.style.position = '';
-}
-
 
 async function generateRoast() {
   // Morning briefing check (newtab-specific, runs before roast)
@@ -468,7 +601,7 @@ async function generateRoast() {
     // Award milestone XP
     if (result.milestone && result.milestone.xp) {
       await chrome.storage.local.set({ pendingXPGain: { xp: result.milestone.xp, source: 'milestone', timestamp: Date.now() } });
-      showXPToast(result.milestone.xp);
+      showXPToast(result.milestone.xp, 'milestone');
     }
 
     // Award streak XP
@@ -477,7 +610,7 @@ async function generateRoast() {
       const delay = (result.milestone && result.milestone.xp) ? 1500 : 0;
       setTimeout(() => {
         chrome.storage.local.set({ pendingXPGain: { xp: result.streakReward.xp, source: 'streak', timestamp: Date.now() } });
-        showXPToast(result.streakReward.xp);
+        showXPToast(result.streakReward.xp, 'streak');
       }, delay);
     }
 
@@ -489,85 +622,288 @@ async function generateRoast() {
   }
 }
 
+// ── Share: color map for pattern tiles ──
+const SHARE_COLORS = {
+  lime:   { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' },
+  pink:   { body: '#FF8FA3', limb: '#E0637A', shadow: '#B84D60', highlight: '#FFD4DC' },
+  sky:    { body: '#87CEEB', limb: '#5BAED4', shadow: '#3A8CB5', highlight: '#C8E8F5' },
+  purple: { body: '#A78BFA', limb: '#7C5FD6', shadow: '#5B3FB5', highlight: '#D4C8FD' },
+  mint:   { body: '#34D399', limb: '#1EB57F', shadow: '#15875F', highlight: '#A7F0D4' },
+  peach:  { body: '#FDBA74', limb: '#E09550', shadow: '#B87638', highlight: '#FEE0C0' },
+};
+const SHARE_COLOR_KEYS = ['lime', 'pink', 'sky', 'purple', 'mint', 'peach'];
+const SHARE_SOURCE_COLOR = { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' };
+const SHARE_EXPRESSIONS = [
+  'smug', 'suspicious', 'yikes', 'eyeroll', 'disappointed', 'melting', 'dead',
+  'thinking', 'happy', 'impressed', 'manic', 'petty', 'chaotic', 'dramatic', 'tender'
+];
+
+function shareRecolorSvg(content, from, to) {
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    if (from[key] && to[key]) {
+      content = content.replace(new RegExp(from[key].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), to[key]);
+    }
+  }
+  return content;
+}
+
+function renderSharePatternTiles(cols, rows, tileSize, allowedColorKeys) {
+  return new Promise((resolve) => {
+    try {
+      const totalW = (cols + 1) * tileSize;
+      const totalH = rows * tileSize;
+
+      let innerSvg = '';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const expr = SHARE_EXPRESSIONS[Math.floor(Math.random() * SHARE_EXPRESSIONS.length)];
+          const colorKey = allowedColorKeys[Math.floor(Math.random() * allowedColorKeys.length)];
+          const color = SHARE_COLORS[colorKey];
+          const symbol = document.getElementById(`face-${expr}`);
+          if (!symbol) continue;
+
+          const uid = `nt${r}_${c}`;
+          let content = symbol.innerHTML;
+          content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-${uid}"`);
+          content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-${uid})`);
+          content = shareRecolorSvg(content, newtabCurrentColor, color);
+
+          const x = c * tileSize + (r % 2 === 1 ? Math.floor(tileSize / 2) : 0);
+          const y = r * tileSize;
+
+          innerSvg += `<svg x="${x}" y="${y}" width="${tileSize}" height="${tileSize}" viewBox="-15 -10 150 140">${content}</svg>`;
+        }
+      }
+
+      const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}">${innerSvg}</svg>`;
+      const blob = new Blob([fullSvg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const offscreen = document.createElement('canvas');
+        offscreen.width = totalW;
+        offscreen.height = totalH;
+        const octx = offscreen.getContext('2d');
+        octx.drawImage(img, 0, 0);
+        resolve(offscreen);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function shareSvgToImage(svgContent, viewBox, width, height, uid) {
+  return new Promise((resolve) => {
+    // Rewrite clip-path IDs to avoid collisions
+    let content = svgContent;
+    if (uid) {
+      content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-${uid}"`);
+      content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-${uid})`);
+    }
+    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="${width}" height="${height}">${content}</svg>`;
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+function shareRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function shareDrawPill(ctx, x, y, w, h, r, bg, textColor, text) {
+  shareRoundRect(ctx, x, y, w, h, r);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.font = '500 26px -apple-system, "DM Sans", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + w / 2, y + h / 2 + 1);
+}
+
 function generateShareBlob() {
   return new Promise(async (resolve, reject) => {
     const jokeText = document.getElementById('joke-text').textContent;
     const character = document.getElementById('character');
     if (!jokeText) return reject('No roast text');
 
-    const storage = await chrome.storage.local.get(['lastTabCount']);
-    const tabCount = storage.lastTabCount || 0;
-
     try {
+      const data = await JestyStorage.getJestyData();
+      const profile = data.profile || {};
+      const userName = profile.user_name || 'Jesty';
+      const totalRoasts = profile.total_roasts || 0;
+      const storageData = await chrome.storage.local.get(['jestyColor']);
+      const userColorObj = storageData.jestyColor || NEWTAB_DEFAULT_PURPLE;
+      const userBodyColor = userColorObj.body;
+      const allCategories = profile.top_categories || [];
+      const totalTabsSeen = allCategories.reduce((sum, c) => sum + (c.count || 0), 0);
+
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      canvas.width = 1080;
-      canvas.height = 1350;
+      const W = 1080, H = 1350;
+      canvas.width = W;
+      canvas.height = H;
 
+      // Background — white base + very soft user color overlay
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = userBodyColor;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1.0;
 
+      // White card
+      const cardW = 800, cardH = 1100;
+      const cardX = (W - cardW) / 2;
+      const cardY = (H - cardH) / 2 - 20;
+      const cardR = 32;
+
+      ctx.shadowColor = 'rgba(0,0,0,0.18)';
+      ctx.shadowBlur = 60;
+      ctx.shadowOffsetY = 16;
+      shareRoundRect(ctx, cardX, cardY, cardW, cardH, cardR);
+      ctx.fillStyle = '#FFFDF9';
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      ctx.strokeStyle = '#F0EDEA';
+      ctx.lineWidth = 8;
+      shareRoundRect(ctx, cardX, cardY, cardW, cardH, cardR);
+      ctx.stroke();
+
+      // Colored verdict area
+      const vMargin = 16;
+      const vLeft = cardX + vMargin;
+      const vTop = cardY + vMargin;
+      const vWidth = cardW - vMargin * 2;
+      const vHeight = cardH - 140;
+      const vR = 20;
+
+      shareRoundRect(ctx, vLeft, vTop, vWidth, vHeight, vR);
+      ctx.fillStyle = userBodyColor;
+      ctx.fill();
+
+      // Roast text — centered in colored area
+      ctx.fillStyle = '#1C1917';
+      ctx.font = 'bold 60px -apple-system, "DM Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      const maxTextW = vWidth - 100;
+      const lineHeight = 78;
+      const words = jokeText.split(' ');
+      let line = '';
+      const lines = [];
+      for (const word of words) {
+        const testLine = line + word + ' ';
+        if (ctx.measureText(testLine).width > maxTextW && line !== '') {
+          lines.push(line.trim());
+          line = word + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line.trim());
+
+      const totalTextH = lines.length * lineHeight;
+      const textY = vTop + (vHeight - totalTextH) / 2;
+      lines.forEach((l, i) => ctx.fillText(l, vLeft + vWidth / 2, textY + i * lineHeight));
+
+      // Get current expression
       const useElement = character.querySelector('use');
-      const symbolId = useElement.getAttribute('href').replace('#', '');
-      const expressionId = symbolId.replace('face-', '');
-      const symbolElement = document.getElementById(symbolId);
-      const svgContent = symbolElement ? symbolElement.innerHTML : '';
+      const expressionId = useElement
+        ? useElement.getAttribute('href').replace('#face-', '')
+        : (character.dataset.expression || 'smug');
+
+      // Character face + accessories — recolor body/limb/shadow/highlight to match
+      // the frame bg so only facial features (eyes, mouth, brows) + accessories show
+      const symbolElement = document.getElementById('face-' + expressionId);
+      let svgContent = symbolElement ? symbolElement.innerHTML : '';
       const accessoryContent = window.JestyAccessories ? JestyAccessories.getAccessorySvgContent(expressionId) : '';
+      const flatColor = { body: userBodyColor, limb: userBodyColor, shadow: userBodyColor, highlight: userBodyColor };
+      svgContent = shareRecolorSvg(svgContent, newtabCurrentColor, flatColor);
+      const charSize = 280;
+      const charImg = await shareSvgToImage(svgContent + accessoryContent, '-15 -10 150 140', charSize, charSize, 'share-char');
+      if (charImg) {
+        const charX = vLeft + (vWidth - charSize) / 2;
+        const charY = vTop + vHeight - charSize - 4;
+        ctx.drawImage(charImg, charX, charY, charSize, charSize);
+      }
 
-      const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -10 150 140" width="360" height="336">${svgContent}${accessoryContent}</svg>`], {type: 'image/svg+xml'});
-      const svgUrl = URL.createObjectURL(svgBlob);
+      // Bottom row
+      const bottomSpace = (cardY + cardH) - (vTop + vHeight);
+      const badgeR = 40;
+      const badgeX = cardX + vMargin + badgeR + 8;
+      const badgeY = vTop + vHeight + bottomSpace / 2;
 
-      const img = new Image();
-      img.onload = () => {
-        const charX = (canvas.width - 360) / 2;
-        ctx.drawImage(img, charX, 280, 360, 345);
+      // Profile badge — dark circle with colored face clipped on top (same as card)
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+      ctx.fillStyle = '#1C1917';
+      ctx.fill();
 
-        ctx.fillStyle = '#2D2A26';
-        ctx.font = 'bold 52px "DM Sans", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-
-        const maxWidth = 900;
-        const lineHeight = 70;
-        const words = jokeText.split(' ');
-        let line = '';
-        let lines = [];
-        for (const word of words) {
-          const testLine = line + word + ' ';
-          if (ctx.measureText(testLine).width > maxWidth && line !== '') {
-            lines.push(line.trim());
-            line = word + ' ';
-          } else {
-            line = testLine;
-          }
-        }
-        lines.push(line.trim());
-
-        const textY = 700;
-        lines.forEach((l, i) => ctx.fillText(l, canvas.width / 2, textY + (i * lineHeight)));
-
-        if (tabCount > 0) {
-          ctx.fillStyle = '#9CA3AF';
-          ctx.font = '500 32px "DM Sans", sans-serif';
-          ctx.fillText(`Based on ${tabCount} open tabs`, canvas.width / 2, textY + (lines.length * lineHeight) + 60);
-        }
-
-        ctx.fillStyle = '#9CA3AF';
-        ctx.font = '500 28px "DM Sans", sans-serif';
-        ctx.fillText('Jesty', canvas.width / 2, 1250);
-
-        ctx.strokeStyle = '#F5F9A8';
-        ctx.lineWidth = 3;
+      const smugSymbol = document.getElementById('face-smug');
+      let badgeSvgContent = smugSymbol ? smugSymbol.innerHTML : '';
+      // Recolor badge face to user's color (source is newtabCurrentColor)
+      badgeSvgContent = shareRecolorSvg(badgeSvgContent, newtabCurrentColor, userColorObj);
+      const badgeScale = 9;
+      const badgeImg = await shareSvgToImage(badgeSvgContent, '-15 -10 150 140', badgeR * badgeScale, badgeR * badgeScale * 0.93, 'share-badge');
+      if (badgeImg) {
+        ctx.save();
         ctx.beginPath();
-        ctx.moveTo(440, 1230);
-        ctx.lineTo(640, 1230);
-        ctx.stroke();
+        ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+        ctx.clip();
+        const bW = badgeR * badgeScale;
+        const bH = badgeR * badgeScale * 0.93;
+        ctx.drawImage(badgeImg, badgeX - bW / 2, badgeY - bH * 0.38 - 16, bW, bH);
+        ctx.restore();
+      }
 
-        URL.revokeObjectURL(svgUrl);
-        canvas.toBlob((blob) => resolve(blob), 'image/png');
-      };
-      img.src = svgUrl;
+      // Name
+      ctx.fillStyle = '#6B6560';
+      ctx.font = '700 32px -apple-system, "DM Sans", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(userName, badgeX + badgeR + 14, badgeY);
+
+      // Stat pills
+      ctx.font = '500 26px -apple-system, "DM Sans", sans-serif';
+      const roastsPill = `${totalRoasts} Roasts`;
+      const currentTabs = await chrome.tabs.query({});
+      const tabsPill = `${currentTabs.length} Tabs Open`;
+      const pillPad = 18, pillH = 48, pillR = 24;
+
+      const tabsW = ctx.measureText(tabsPill).width + pillPad * 2;
+      const tabsX = cardX + cardW - vMargin - 8;
+      shareDrawPill(ctx, tabsX - tabsW, badgeY - pillH / 2, tabsW, pillH, pillR, '#F0EDEA', '#9C968F', tabsPill);
+
+      const roastsW = ctx.measureText(roastsPill).width + pillPad * 2;
+      shareDrawPill(ctx, tabsX - tabsW - 8 - roastsW, badgeY - pillH / 2, roastsW, pillH, pillR, '#F0EDEA', '#9C968F', roastsPill);
+
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject('Canvas toBlob returned null');
+      }, 'image/png');
     } catch (error) {
+      console.error('generateShareBlob error:', error);
       reject(error);
     }
   });
@@ -643,10 +979,241 @@ async function updateRoastsRemaining(remaining) {
   if (isPremium) {
     el.textContent = 'unlimited roasts';
     el.classList.remove('low');
+    el.style.cursor = 'default';
   } else {
     el.textContent = `${remaining} roasts left today`;
     el.classList.toggle('low', remaining <= 3);
+    el.style.cursor = 'pointer';
+    el.onclick = () => openUpgradePanel();
   }
+}
+
+/* ──────────────────────────────────────────────
+   UPGRADE PANEL
+   ────────────────────────────────────────────── */
+
+const NT_TIER_DATA = [
+  {
+    key: 'free', name: 'Suspect', tagline: 'Under observation',
+    price: 'Free', priceSub: '',
+    features: ['8 roasts per day', '3 basic accessories', 'Memory Match (levels 1-5)'],
+    cta: null
+  },
+  {
+    key: 'premium', name: 'Guilty', tagline: 'Full judgement',
+    price: '$5', priceSub: 'once',
+    features: ['Unlimited roasts & chat', 'All games unlocked', 'Tasks', '+5 unlockable accessories'],
+    cta: { label: 'Plead Guilty', style: 'primary', action: 'checkout' }
+  },
+  {
+    key: 'pro', name: 'Sentenced', tagline: 'No escape',
+    price: '$5', priceSub: '/mo',
+    features: ['Everything in Guilty', 'Calendar events with Jesty commentary', 'Exclusive accessories'],
+    cta: { label: 'Launching Soon', style: 'secondary', action: 'disabled' }
+  }
+];
+
+const NT_TIER_COMBOS = {
+  free:    { expression: 'smug', hat: null, glasses: null, color: 'lime' },
+  premium: { expression: 'happy', hat: 'acc-crown', glasses: null, color: 'pink' },
+  pro:     { expression: 'smug', hat: 'acc-flame-crown', glasses: null, color: 'mint' },
+};
+
+const NT_TIER_COLORS = {
+  lime:   { body: '#EBF34F', limb: '#C8D132', shadow: '#8A9618', highlight: '#F8FBCE' },
+  pink:   { body: '#FF8FA3', limb: '#E0637A', shadow: '#B84D60', highlight: '#FFD4DC' },
+  mint:   { body: '#34D399', limb: '#1EB57F', shadow: '#15875F', highlight: '#A7F0D4' },
+};
+
+const NT_ACC_ANCHORS = { hat: { x: 38, y: -2 }, glasses: { x: 32, y: 42 } };
+
+function buildNtTierSvg(combo, width = 52, height = 48) {
+  const color = NT_TIER_COLORS[combo.color];
+  if (!color) return '';
+  const symbol = document.getElementById(`face-${combo.expression}`);
+  if (!symbol) return '';
+
+  const id = Math.random().toString(36).slice(2, 8);
+  let content = symbol.innerHTML;
+  content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-nt-${id}`);
+  content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-nt-${id})`);
+
+  let accsHtml = '';
+  if (combo.hat) {
+    const a = NT_ACC_ANCHORS.hat;
+    const hatSym = document.getElementById(combo.hat);
+    if (hatSym) accsHtml += `<g transform="translate(${a.x},${a.y})">${hatSym.innerHTML}</g>`;
+  }
+  if (combo.glasses) {
+    const a = NT_ACC_ANCHORS.glasses;
+    const glassSym = document.getElementById(combo.glasses);
+    if (glassSym) accsHtml += `<g transform="translate(${a.x},${a.y})">${glassSym.innerHTML}</g>`;
+  }
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '-15 -10 150 140');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  svg.innerHTML = content + accsHtml;
+
+  // Recolor from current user color to tier color
+  const replacements = {};
+  for (const key of ['body', 'limb', 'shadow', 'highlight']) {
+    replacements[newtabCurrentColor[key].toUpperCase()] = color[key];
+  }
+  svg.querySelectorAll('*').forEach(el => {
+    for (const attr of ['fill', 'stroke']) {
+      const val = el.getAttribute(attr);
+      if (val && replacements[val.toUpperCase()]) {
+        el.setAttribute(attr, replacements[val.toUpperCase()]);
+      }
+    }
+  });
+
+  return svg.outerHTML;
+}
+
+const UPGRADE_ROASTS = [
+  ["8 roasts a day?", "Even your tabs are embarrassed for you."],
+  ["Running low on roasts?", "Your browsing history still has plenty of material."],
+  ["Hit your daily limit?", "I was about to drop something devastating."],
+  ["Rationing roasts like it's the apocalypse?", "Just upgrade already."],
+  ["Had the perfect roast queued up?", "Shame about that daily limit."],
+  ["Only 12 chances to judge you?", "That's not even enough for your morning tabs."],
+];
+
+let _upgradePanelOpen = false;
+
+async function openUpgradePanel() {
+  if (_upgradePanelOpen) return;
+  _upgradePanelOpen = true;
+
+  const panel = document.getElementById('upgrade-panel');
+  const countEl = document.getElementById('upgrade-panel-count');
+  const quipEl = document.getElementById('upgrade-panel-quip');
+  const cardsEl = document.getElementById('upgrade-panel-cards');
+  const container = document.querySelector('.container');
+  const topBarLeft = document.getElementById('top-bar-left');
+  const topLinks = document.querySelector('.top-links');
+  const footer = document.querySelector('.privacy-footer');
+  const tasksWidget = document.getElementById('newtab-tasks');
+
+  if (!panel) return;
+
+  // Hide main content
+  if (container) container.style.display = 'none';
+  if (topBarLeft) topBarLeft.style.display = 'none';
+  if (topLinks) topLinks.style.display = 'none';
+  if (footer) footer.style.display = 'none';
+  if (tasksWidget) tasksWidget.style.display = 'none';
+
+  // Render header
+  const cap = await JestyStorage.checkDailyCap();
+  const [line1, line2] = UPGRADE_ROASTS[Math.floor(Math.random() * UPGRADE_ROASTS.length)];
+  if (countEl) countEl.textContent = `${cap.remaining} roasts left today`;
+  if (quipEl) quipEl.innerHTML = `${line1}<br>${line2}`;
+
+  // Render tier cards
+  const currentTier = await JestyPremium.getTier();
+  const tierOrder = ['free', 'premium', 'pro'];
+  const currentIdx = tierOrder.indexOf(currentTier);
+  const nextTier = currentIdx < tierOrder.length - 1 ? tierOrder[currentIdx + 1] : null;
+
+  cardsEl.innerHTML = '';
+  NT_TIER_DATA.forEach((tier, i) => {
+    const card = document.createElement('div');
+    card.className = 'nt-tier-card';
+    card.style.animationDelay = `${i * 0.1}s`;
+
+    const tierIdx = tierOrder.indexOf(tier.key);
+    const isCurrent = tier.key === currentTier;
+    const isUpgrade = tierIdx > currentIdx;
+
+    if (isUpgrade && tier.key === nextTier) card.classList.add('highlighted');
+    if (isCurrent && currentTier !== 'free') card.classList.add('current');
+
+    const combo = NT_TIER_COMBOS[tier.key];
+    const bgColor = combo ? NT_TIER_COLORS[combo.color].body : '#ccc';
+    const svgHtml = combo ? buildNtTierSvg(combo, 72, 66) : '';
+    const characterHtml = svgHtml
+      ? `<div class="nt-tier-card-character">
+           <div class="nt-tier-card-character-bg" style="background:${bgColor}"></div>
+           ${svgHtml}
+         </div>`
+      : '';
+
+    const featuresHtml = tier.features.map(f => `<li>${f}</li>`).join('');
+
+    let ctaHtml = '';
+    if (isCurrent && currentTier !== 'free') {
+      ctaHtml = `<div class="nt-tier-card-current-label">Your current plan</div>`;
+    } else if (isUpgrade && tier.cta) {
+      const isDisabled = tier.cta.action === 'disabled';
+      ctaHtml = `<button class="nt-tier-card-cta ${tier.cta.style}"${isDisabled ? ' disabled' : ''}>${tier.cta.label}</button>`;
+    }
+
+    card.innerHTML = `
+      <div class="nt-tier-card-top">
+        ${characterHtml}
+        <div class="nt-tier-card-top-info">
+          <div class="nt-tier-card-header">
+            <span class="nt-tier-card-name">${tier.name}</span>
+            <span class="nt-tier-card-badge badge-${tier.key}">${tier.tagline}</span>
+          </div>
+          <div class="nt-tier-card-price">${tier.price} <span>${tier.priceSub}</span></div>
+        </div>
+      </div>
+      <ul class="nt-tier-card-features">${featuresHtml}</ul>
+      ${ctaHtml}
+    `;
+
+    const ctaBtn = card.querySelector('.nt-tier-card-cta');
+    if (ctaBtn) {
+      ctaBtn.addEventListener('click', async () => {
+        try {
+          const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+          const userId = jesty_data ? jesty_data.profile.user_id : '';
+          chrome.tabs.create({ url: `${CONFIG.API_URL}/api/checkout?user_id=${userId}` });
+        } catch (e) {
+          console.error('Error opening checkout:', e);
+        }
+      });
+    }
+
+    cardsEl.appendChild(card);
+  });
+
+  panel.classList.remove('hidden');
+  panel.classList.remove('closing');
+
+  // Back button
+  const backBtn = document.getElementById('upgrade-panel-back');
+  if (backBtn) {
+    backBtn.onclick = () => closeUpgradePanel();
+  }
+}
+
+function closeUpgradePanel() {
+  const panel = document.getElementById('upgrade-panel');
+  const container = document.querySelector('.container');
+  const topBarLeft = document.getElementById('top-bar-left');
+  const topLinks = document.querySelector('.top-links');
+  const footer = document.querySelector('.privacy-footer');
+  const tasksWidget = document.getElementById('newtab-tasks');
+
+  if (!panel) return;
+
+  panel.classList.add('closing');
+  setTimeout(() => {
+    panel.classList.add('hidden');
+    panel.classList.remove('closing');
+    if (container) container.style.display = '';
+    if (topBarLeft) topBarLeft.style.display = '';
+    if (topLinks) topLinks.style.display = '';
+    if (footer) footer.style.display = '';
+    if (tasksWidget) tasksWidget.style.display = '';
+    _upgradePanelOpen = false;
+  }, 300);
 }
 
 /* ──────────────────────────────────────────────
@@ -688,6 +1255,8 @@ chrome.storage.onChanged.addListener((changes) => {
         const useEl = svg.querySelector('use');
         const mood = useEl ? useEl.getAttribute('href').replace('#face-', '') : 'smug';
         JestyAccessories.renderAccessories(mood, svg);
+        if (mood === 'thinking') liftThinkingBubbles(svg);
+        tagNewtabEyes(character);
       }
     }
   }
@@ -699,6 +1268,7 @@ chrome.storage.onChanged.addListener((changes) => {
         const useEl = svg.querySelector('use');
         const mood = useEl ? useEl.getAttribute('href').replace('#face-', '') : 'smug';
         JestyAccessories.renderAccessories(mood, svg);
+        if (mood === 'thinking') liftThinkingBubbles(svg);
       }
     });
   }
@@ -745,10 +1315,21 @@ function recolorNewtabSVGs(color) {
 
   newtabCurrentColor = { ...color };
 
-  // Clear any drop-shadow on the hero character
+  // Also recolor inlined face content in hero character
   const heroSvg = document.querySelector('.hero-character svg');
   if (heroSvg) {
     heroSvg.style.filter = '';
+    const inlined = heroSvg.querySelector('.jesty-face-inline');
+    if (inlined) {
+      inlined.querySelectorAll('*').forEach(el => {
+        for (const attr of ['fill', 'stroke']) {
+          const val = el.getAttribute(attr);
+          if (val && replacements[val.toUpperCase()]) {
+            el.setAttribute(attr, replacements[val.toUpperCase()]);
+          }
+        }
+      });
+    }
   }
 }
 
@@ -775,11 +1356,12 @@ const NT_ACC_VIEWBOXES = {
 const NT_RING_CIRCUMFERENCE = 94.25;
 
 const NT_LEVEL_UNLOCKS = {
-  2: 'Bandana', 3: 'Aviators', 4: 'Chef Hat', 5: '3D Glasses',
+  2: 'Bandana', 3: 'Heart Shades', 4: 'Chef Hat', 5: '3D Glasses',
   6: 'Monocle', 7: 'Propeller Hat', 8: 'Star Glasses', 9: 'Crown',
   10: 'Bow Tie', 11: 'Detective Hat', 12: 'Headband', 13: 'Viking Helmet',
   14: 'Top Hat', 15: 'Pirate Hat', 16: 'Halo'
 };
+
 
 async function initTopBar() {
   renderNewtabMiniSlots();
@@ -843,24 +1425,24 @@ async function renderNewtabLevelBadge() {
     stageEl.textContent = tierName;
     stageEl.dataset.tier = tier;
     stageEl.style.cursor = 'pointer';
-    stageEl.addEventListener('click', () => {
+    stageEl.onclick = () => {
       const panel = document.getElementById('level-panel');
       if (panel) panel.classList.remove('visible');
       openSidePanelTo('plans');
-    });
+    };
   }
 
   if (fillEl) fillEl.style.width = `${pct * 100}%`;
   if (xpEl) xpEl.textContent = `${prog.xp} / ${prog.xp_to_next} XP`;
 
-  // Next unlock
+  // Next unlock — play to level up button
   const nextEl = document.getElementById('level-panel-next');
   if (nextEl) {
     const unlockLevels = Object.keys(NT_LEVEL_UNLOCKS).map(Number).sort((a, b) => a - b);
     const nextUnlock = unlockLevels.find(l => l > prog.level);
     if (nextUnlock) {
       const reward = NT_LEVEL_UNLOCKS[nextUnlock];
-      nextEl.innerHTML = `<strong>Level ${nextUnlock}</strong> — ${reward}`;
+      nextEl.textContent = `Play to unlock ${reward}`;
     } else {
       nextEl.textContent = 'All accessories unlocked!';
     }
@@ -896,6 +1478,7 @@ function initLevelPanel() {
       openSidePanelTo('levels');
     });
   }
+
 }
 
 async function openSidePanelTo(mode) {
@@ -934,20 +1517,24 @@ function newtabMigrateTaskNotes(task) {
 }
 
 async function seedOnboardingTask() {
+  if (_onboardingSeeded) return;
+  _onboardingSeeded = true;
+
   const { jestyTaskSeeded } = await chrome.storage.local.get(['jestyTaskSeeded']);
   if (jestyTaskSeeded) return;
 
   await chrome.storage.local.set({ jestyTaskSeeded: true });
 
   const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
-  const data = jesty_data || {};
+  if (!jesty_data) return; // storage not initialized yet — seeding will happen next render
+  const data = jesty_data;
   const tasks = data.user_tasks || [];
 
   // Only seed if user has no tasks at all
   if (tasks.length > 0) return;
 
-  const onboardingTask = {
-    id: 'user_onboarding',
+  const onboardingTask1 = {
+    id: 'user_onboarding_1',
     title: 'Try managing tasks with Jesty',
     notes: [
       { text: 'Tap a task to open its details', done: false },
@@ -959,8 +1546,28 @@ async function seedOnboardingTask() {
     createdAt: Date.now()
   };
 
-  data.user_tasks = [onboardingTask];
+  const onboardingTask2 = {
+    id: 'user_onboarding_2',
+    title: 'Organise your browser tabs',
+    notes: [
+      { text: 'Close tabs you no longer need', done: false },
+      { text: 'Bookmark pages you want to keep', done: false }
+    ],
+    completed: false,
+    completedAt: null,
+    createdAt: Date.now() + 1
+  };
+
+  data.user_tasks = [onboardingTask1, onboardingTask2];
   await chrome.storage.local.set({ jesty_data: data });
+}
+
+let _newtabTaskIds = []; // track currently rendered task IDs for diffing
+let _renderTasksTimer = null;
+
+function renderNewtabTasksDebounced() {
+  clearTimeout(_renderTasksTimer);
+  _renderTasksTimer = setTimeout(() => renderNewtabTasks(), 150);
 }
 
 async function renderNewtabTasks() {
@@ -968,38 +1575,57 @@ async function renderNewtabTasks() {
   const list = document.getElementById('newtab-tasks-list');
   if (!widget || !list) return;
 
-  // Only show for premium+ users
-  const isPremium = await JestyPremium.isPremium();
-  if (!isPremium) {
-    widget.classList.add('hidden');
-    return;
-  }
-
   // Seed onboarding task on first ever load
   await seedOnboardingTask();
 
   const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
   const tasks = (jesty_data && jesty_data.user_tasks) || [];
 
-  // Migrate notes, exclude drafts, sort newest first, take 3
+  // Migrate notes, exclude drafts + hidden, newest first, cap at 3
   tasks.forEach(newtabMigrateTaskNotes);
   const visible = tasks
-    .filter(t => !t.draft)
+    .filter(t => !t.draft && !t.hidden_from_newtab)
     .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 3);
+    .slice(0, 8);
 
-  // Hide if no tasks or all completed
-  if (visible.length === 0 || visible.every(t => t.completed)) {
-    widget.classList.add('hidden');
-    return;
-  }
+  // Don't show tasks during onboarding
+  const welcomeVisible = !document.getElementById('welcome-prompt')?.classList.contains('hidden');
+  if (welcomeVisible) return;
 
   widget.classList.remove('hidden');
-  list.innerHTML = '';
+
+  const newIds = visible.map(t => t.id);
+  const removedIds = _newtabTaskIds.filter(id => !newIds.includes(id));
+  const addedIds = newIds.filter(id => !_newtabTaskIds.includes(id));
+  const isFirstRender = _newtabTaskIds.length === 0 && list.children.length === 0;
+
+  // Animate removed rows out, then remove only those rows
+  if (removedIds.length > 0) {
+    const removePromises = removedIds.map(id => {
+      const row = list.querySelector(`[data-task-id="${id}"]`);
+      if (!row) return Promise.resolve();
+      row.classList.add('slide-out');
+      return new Promise(resolve => {
+        row.addEventListener('animationend', () => { row.remove(); resolve(); }, { once: true });
+        setTimeout(() => { row.remove(); resolve(); }, 250); // fallback
+      });
+    });
+    await Promise.all(removePromises);
+  }
+
+  // Remove remaining task rows and add button (keep DOM clean for rebuild)
+  Array.from(list.children).forEach(el => el.remove());
 
   visible.forEach(task => {
     const row = document.createElement('div');
     row.className = `newtab-task${task.completed ? ' checked' : ''}`;
+    row.dataset.taskId = task.id;
+
+    // Slide in new tasks (skip on first render)
+    if (!isFirstRender && addedIds.includes(task.id)) {
+      row.classList.add('slide-in');
+      row.addEventListener('animationend', () => row.classList.remove('slide-in'), { once: true });
+    }
 
     const check = document.createElement('div');
     check.className = 'newtab-task-check';
@@ -1027,7 +1653,8 @@ async function renderNewtabTasks() {
       if (data && data.user_tasks) {
         const idx = data.user_tasks.findIndex(t => t.id === task.id);
         if (idx >= 0) {
-          data.user_tasks[idx] = task;
+          data.user_tasks[idx].completed = task.completed;
+          data.user_tasks[idx].completedAt = task.completedAt;
           await chrome.storage.local.set({ jesty_data: data });
         }
       }
@@ -1059,9 +1686,120 @@ async function renderNewtabTasks() {
     }
     row.appendChild(badge);
 
+    // Drag to dismiss
+    setupTaskDragInteraction(row, task);
+
     list.appendChild(row);
   });
+
+  // Add task button — always visible when empty, hover-reveal otherwise
+  const addRow = document.createElement('div');
+  addRow.className = 'newtab-task newtab-task-add';
+  if (visible.length === 0) addRow.classList.add('always-visible');
+  addRow.innerHTML = `<span class="newtab-task-title">Add task</span>`;
+  addRow.addEventListener('click', () => {
+    openSidePanelTo('task-new');
+  });
+  list.appendChild(addRow);
+
+  _newtabTaskIds = newIds;
 }
+
+/**
+ * Drag-to-dismiss: swipe a task row horizontally to hide it from newtab.
+ */
+function setupTaskDragInteraction(row, task) {
+  let startX = 0, startY = 0, dragging = false, didDismiss = false;
+  const DRAG_THRESHOLD = 8;
+  const DISMISS_DISTANCE = 120;
+
+  row.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('.newtab-task-check')) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    dragging = false;
+    didDismiss = false;
+    row.setPointerCapture(e.pointerId);
+  });
+
+  row.addEventListener('pointermove', (e) => {
+    if (startX === 0 && startY === 0) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (!dragging && dist > DRAG_THRESHOLD) {
+      // Only start drag if mostly horizontal
+      if (Math.abs(dx) < Math.abs(dy)) {
+        startX = 0; startY = 0;
+        return;
+      }
+      dragging = true;
+      row.classList.add('dragging');
+    }
+
+    if (dragging) {
+      row.style.transform = `translate(${dx}px, ${dy}px)`;
+      row.style.opacity = Math.max(0, 1 - dist / (DISMISS_DISTANCE * 2));
+      row.classList.toggle('dismiss-ready', dist >= DISMISS_DISTANCE);
+    }
+  });
+
+  row.addEventListener('pointerup', async (e) => {
+    if (!dragging) { startX = 0; startY = 0; return; }
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist >= DISMISS_DISTANCE) {
+      didDismiss = true;
+      row.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+      row.style.transform = `translate(${dx * 2}px, ${dy * 2}px)`;
+      row.style.opacity = '0';
+      setTimeout(async () => {
+        row.remove();
+        const { jesty_data: data } = await chrome.storage.local.get(['jesty_data']);
+        if (data && data.user_tasks) {
+          const idx = data.user_tasks.findIndex(t => t.id === task.id);
+          if (idx >= 0) {
+            data.user_tasks[idx].hidden_from_newtab = true;
+            await chrome.storage.local.set({ jesty_data: data });
+          }
+        }
+        renderNewtabTasks();
+      }, 200);
+    } else {
+      row.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s ease';
+      row.style.transform = '';
+      row.style.opacity = '';
+      setTimeout(() => {
+        row.style.transition = '';
+        row.classList.remove('dragging', 'dismiss-ready');
+      }, 250);
+    }
+
+    startX = 0; startY = 0;
+    dragging = false;
+  });
+
+  row.addEventListener('pointercancel', (e) => {
+    row.releasePointerCapture(e.pointerId);
+    row.style.transform = '';
+    row.style.opacity = '';
+    row.classList.remove('dragging', 'dismiss-ready');
+    startX = 0; startY = 0;
+    dragging = false;
+  });
+
+  row.addEventListener('click', (e) => {
+    if (didDismiss || dragging) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  }, true);
+}
+
 
 function escapeHtml(str) {
   const d = document.createElement('div');
@@ -1321,12 +2059,20 @@ async function openTabManager() {
   const backBtn = document.getElementById('tab-manager-back');
   backBtn.onclick = () => closeTabManager();
 
+
   // Escape key
   document.addEventListener('keydown', _tabManagerEscHandler);
 }
 
 function _tabManagerEscHandler(e) {
-  if (e.key === 'Escape') closeTabManager();
+  if (e.key === 'Escape') {
+    const panel = document.getElementById('insights-panel');
+    if (panel && !panel.classList.contains('hidden')) {
+      toggleInsightsPanel();
+    } else {
+      closeTabManager();
+    }
+  }
 }
 
 async function closeTabManager() {
@@ -1343,6 +2089,10 @@ async function closeTabManager() {
   const tasksWidget = document.getElementById('newtab-tasks');
 
   manager.classList.add('closing');
+
+  // Close insights if open
+  const insightsPanel = document.getElementById('insights-panel');
+  if (insightsPanel) insightsPanel.classList.add('hidden');
 
   // Refresh tab count
   const tabs = await chrome.tabs.query({});
@@ -1364,16 +2114,38 @@ async function closeTabManager() {
    FOCUS ISLAND (inline on newtab)
    ────────────────────────────────────────────── */
 
+/* ──────────────────────────────────────────────
+   INSIGHTS PANEL (inside tab manager)
+   ────────────────────────────────────────────── */
+
+
+/* ──────────────────────────────────────────────
+   FOCUS ISLAND (inline on newtab)
+   ────────────────────────────────────────────── */
+
 async function initNewtabFocusIsland() {
   const iframe = document.getElementById('focus-island-iframe');
   const blurOverlay = document.getElementById('newtab-focus-blur');
   if (!iframe) return;
 
+  function showIsland() {
+    if (!iframe.classList.contains('hidden')) return;
+    // Reload iframe so focus-island.js re-initializes with fresh session data
+    // (display:none iframes may have stale/suspended timers)
+    iframe.src = iframe.src;
+    iframe.classList.remove('hidden');
+  }
+
+  function hideIsland() {
+    iframe.classList.add('hidden');
+    if (blurOverlay) blurOverlay.classList.add('hidden');
+  }
+
   const { focusSession, focusBlurEnabled } = await chrome.storage.local.get(['focusSession', 'focusBlurEnabled']);
   const isActive = focusSession && focusSession.active;
 
   if (isActive) {
-    iframe.classList.remove('hidden');
+    showIsland();
     if (blurOverlay && focusBlurEnabled) blurOverlay.classList.remove('hidden');
   }
 
@@ -1381,10 +2153,9 @@ async function initNewtabFocusIsland() {
     if (changes.focusSession) {
       const session = changes.focusSession.newValue;
       if (session && session.active) {
-        iframe.classList.remove('hidden');
+        showIsland();
       } else {
-        iframe.classList.add('hidden');
-        if (blurOverlay) blurOverlay.classList.add('hidden');
+        hideIsland();
       }
     }
     if (changes.focusBlurEnabled && blurOverlay) {

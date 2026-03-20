@@ -1,0 +1,703 @@
+:root {
+  --jesty-bg: #FAF8F5;
+  --jesty-bg-secondary: #F0EDEA;
+  --jesty-bg-tertiary: #F5F3F0;
+  --jesty-text: #1C1917;
+  --jesty-text-secondary: #6B6560;
+  --jesty-text-muted: #9C968F;
+  --jesty-text-faint: #CCC7C2;
+  --jesty-border: #DDD9D5;
+  --jesty-btn-bg: #1C1917;
+  --jesty-btn-text: #FAF8F5;
+  --jesty-btn-hover: #292524;
+  --user-color: #A78BFA;
+  --user-color-shadow: #5B3FB5;
+  --user-color-highlight: #D4C8FD;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--jesty-bg-secondary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+
+/* ── Page layout ── */
+.card-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 24px 20px 40px;
+  max-width: 900px;
+  width: 100%;
+}
+
+/* ── Page header ── */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 720px;
+}
+
+.card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-header-icon {
+  width: 36px;
+  height: 34px;
+}
+
+.card-header-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.card-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--jesty-text);
+}
+
+.card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-header-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--jesty-border);
+  background: transparent;
+  color: var(--jesty-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.card-header-btn:hover {
+  color: var(--jesty-text);
+  border-color: var(--jesty-text-muted);
+}
+
+/* ── Main: card on top, conclusion below ── */
+.card-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+/* ── 3D Scene ── */
+.card-scene {
+  perspective: 1200px;
+  width: 320px;
+  height: 460px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.card-scene:active {
+  cursor: grabbing;
+}
+
+.card-body {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
+}
+
+.card-body.flipped {
+  transform: rotateY(180deg) !important;
+}
+
+.card-body.flip-transition {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Card faces (front & back) ── */
+.card-front,
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ── FRONT: Bright card, always light regardless of theme ── */
+.card-front {
+  background: #FFFDF9;
+  color: #1C1917;
+  border: 5px solid #F0EDEA;
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.15),
+    0 2px 8px rgba(0,0,0,0.10),
+    inset 0 0 0 1px rgba(255,255,255,0.8);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Glow effect on tilt ── */
+.card-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background: radial-gradient(
+    circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    rgba(255,255,255,0.3) 0%,
+    transparent 60%
+  );
+}
+
+.card-scene:hover .card-glow {
+  opacity: 1;
+}
+
+/* ── Verdict (MAIN element — dominates the card) ── */
+.card-verdict {
+  position: relative;
+  margin: 6px 10px 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--user-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Face features peeking at the bottom of the verdict box */
+.card-verdict-face {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.card-verdict-face svg {
+  width: 100px;
+  height: 100px;
+}
+
+.card-verdict-text {
+  position: relative;
+  z-index: 1;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.35;
+  color: #1C1917;
+  padding: 20px 16px 24px;
+}
+
+/* ── Face badge (island-style clipped circle) ── */
+.card-face-badge {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1C1917;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.card-face-badge svg {
+  width: 144px;
+  height: 132px;
+  flex-shrink: 0;
+  margin-top: 24px;
+  margin-left: -14px;
+}
+
+/* ── Bottom row: face badge + name + ID ── */
+.card-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.card-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6B6560;
+  flex: 1;
+}
+
+.card-stat-pill {
+  font-size: 9px;
+  font-weight: 700;
+  color: #9C968F;
+  background: #F0EDEA;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+/* ══════════════════════════════════════════════
+   CARD BACK — Pure pattern art, thick gold border
+   ══════════════════════════════════════════════ */
+.card-back {
+  transform: rotateY(180deg);
+  border: 5px solid #D4A843;
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.18),
+    0 2px 8px rgba(0,0,0,0.12),
+    inset 0 0 0 2px #E8C96A;
+}
+
+.card-back-pattern {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 11px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-back-row {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.card-back-row.offset {
+  margin-left: -18px;
+}
+
+.card-back-cell {
+  width: 36px;
+  height: 33px;
+  flex-shrink: 0;
+}
+
+.card-back-cell svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Conclusion roast (below card, full width) ── */
+.card-conclusion {
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+}
+
+.card-conclusion-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--jesty-text-faint);
+  margin-bottom: 16px;
+}
+
+.card-conclusion-text {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--jesty-text);
+  line-height: 1.7;
+  font-style: italic;
+}
+
+/* ── Action buttons ── */
+.card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.card-action-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: 24px;
+  border: 1.5px solid var(--jesty-border);
+  background: var(--jesty-bg);
+  color: var(--jesty-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-action-btn:hover {
+  background: var(--jesty-bg-secondary);
+  border-color: var(--jesty-text-muted);
+}
+
+.card-action-btn.primary {
+  background: var(--jesty-btn-bg);
+  color: var(--jesty-btn-text);
+  border-color: var(--jesty-btn-bg);
+}
+
+.card-action-btn.primary:hover {
+  background: var(--jesty-btn-hover);
+}
+
+/* ── Share menu ── */
+.card-share-wrapper {
+  position: relative;
+}
+
+.card-share-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--jesty-bg);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  animation: cardShareIn 0.15s ease-out;
+}
+
+.card-share-menu.hidden {
+  display: none;
+}
+
+@keyframes cardShareIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.card-share-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--jesty-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.card-share-option:hover {
+  background: var(--jesty-bg-secondary);
+}
+
+.card-share-option svg {
+  flex-shrink: 0;
+  color: var(--jesty-text-muted);
+}
+
+#card-inscribe-btn {
+  border-color: #F7931A;
+  color: #F7931A;
+}
+
+#card-inscribe-btn:hover {
+  background: #F7931A;
+  color: #FFFFFF;
+  border-color: #F7931A;
+}
+
+/* ── Inscription modal ── */
+.inscribe-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.inscribe-overlay.open {
+  display: flex;
+}
+
+.inscribe-modal {
+  background: var(--jesty-bg);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+.inscribe-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: var(--jesty-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+}
+
+.inscribe-close:hover {
+  color: var(--jesty-text);
+  background: var(--jesty-bg-secondary);
+}
+
+.inscribe-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--jesty-text);
+  margin-bottom: 8px;
+}
+
+.inscribe-desc {
+  font-size: 13px;
+  color: var(--jesty-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.inscribe-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jesty-text-muted);
+  margin-bottom: 8px;
+}
+
+.inscribe-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--jesty-border);
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--jesty-text);
+  background: var(--jesty-bg-secondary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.inscribe-input:focus {
+  border-color: #F7931A;
+}
+
+.inscribe-size {
+  font-size: 11px;
+  color: var(--jesty-text-muted);
+  margin-top: 8px;
+}
+
+.inscribe-error {
+  font-size: 12px;
+  color: #DC2626;
+  margin-top: 6px;
+  min-height: 18px;
+}
+
+.inscribe-btns {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.inscribe-btns .card-action-btn {
+  width: 100%;
+}
+
+.inscribe-wallet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jesty-text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.inscribe-wallet-link:hover {
+  color: var(--jesty-text);
+}
+
+.inscribe-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--jesty-border);
+  border-top-color: #F7931A;
+  border-radius: 50%;
+  animation: inscribe-spin 0.8s linear infinite;
+  margin: 24px auto;
+}
+
+@keyframes inscribe-spin {
+  to { transform: rotate(360deg); }
+}
+
+.inscribe-spinner-sm {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+  margin: 0;
+}
+
+/* ── Payment step ── */
+.inscribe-payment {
+  background: var(--jesty-bg-secondary);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.inscribe-pay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.inscribe-pay-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jesty-text-muted);
+}
+
+.inscribe-pay-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--jesty-text);
+  font-family: monospace;
+}
+
+.inscribe-pay-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--jesty-text-muted);
+}
+
+.inscribe-pay-sats {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--jesty-text-faint);
+  margin-left: 4px;
+}
+
+.inscribe-pay-divider {
+  height: 1px;
+  background: var(--jesty-border);
+  margin: 12px 0;
+}
+
+.inscribe-pay-address-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--jesty-bg);
+  border: 1.5px solid var(--jesty-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.inscribe-pay-address {
+  flex: 1;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--jesty-text);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.inscribe-copy-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1.5px solid #F7931A;
+  background: transparent;
+  color: #F7931A;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.inscribe-copy-btn:hover {
+  background: #F7931A;
+  color: #fff;
+}
+
+.inscribe-pay-qr {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.inscribe-pay-qr canvas {
+  border-radius: 8px;
+}
+
+.inscribe-pay-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jesty-text-muted);
+  padding: 8px 0 0;
+}
+
+.inscribe-pay-status.paid {
+  color: #16A34A;
+}
+
+.inscribe-pay-order {
+  font-size: 11px;
+  color: var(--jesty-text-faint);
+  margin-top: 12px;
+  text-align: center;
+}
+
+.inscribe-pay-order code {
+  font-family: monospace;
+  font-size: 10px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 720px) {
+  .card-scene {
+    width: 280px;
+    height: 400px;
+  }
+}

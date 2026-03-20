@@ -1,5 +1,5 @@
-// Copy this file to config.js and add your API key
+// Copy this file to config.js
 const CONFIG = {
-  OPENAI_API_KEY: 'sk-your-api-key-here',
-  DEV_MODE: false  // Set to true to enable tier switching in DevTools console
+  API_URL: 'https://jesty-api.hey-9f5.workers.dev',
+  DEV_MODE: false
 };

@@ -532,7 +532,7 @@ const JestyMemoryGame = (() => {
     // Award XP
     if (typeof awardXP === 'function') {
       await awardXP(xp);
-      if (typeof showXPToast === 'function') showXPToast(xp);
+      if (typeof showXPToast === 'function') showXPToast(xp, 'game');
     }
 
     // Pick roast
