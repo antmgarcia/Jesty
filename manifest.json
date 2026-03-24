@@ -2,13 +2,9 @@
   "manifest_version": 3,
   "name": "Jesty",
   "version": "2.0.0",
-  "description": "AI that reads your tabs and judges you. Short, funny, brutal.",
-  "permissions": ["tabs", "storage", "sidePanel", "identity", "alarms", "scripting"],
+  "description": "Meet Jesty! The companion you need that roasts your browsing, keeps you focused, and rewards you with games and collectibles.",
+  "permissions": ["tabs", "storage", "sidePanel", "alarms", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
-  "oauth2": {
-    "client_id": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": ["https://www.googleapis.com/auth/calendar.readonly"]
-  },
   "background": {
     "service_worker": "background.js"
   },

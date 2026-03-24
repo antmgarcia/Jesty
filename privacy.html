@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jesty — Privacy Policy</title>
-  <link href="fonts/dm-sans.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #202124; max-width: 640px; margin: 0 auto; padding: 48px 24px; line-height: 1.7; }
@@ -20,14 +20,14 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="subtitle">Last updated: February 2026</p>
+  <p class="subtitle">Last updated: March 2026</p>
 
   <h2>What Jesty accesses</h2>
   <p>Jesty reads your open browser tab titles and URLs to generate roasts. This data is:</p>
   <ul>
     <li>Processed locally on your device</li>
-    <li>Sent to OpenAI's API only when generating a roast or chat response</li>
-    <li>Never stored on any server we control</li>
+    <li>Sent to our secure proxy server, which forwards it to OpenAI's API only when generating a roast or chat response</li>
+    <li>Never stored on any server we control — requests are forwarded in real time and discarded</li>
     <li>Never shared with third parties beyond what is described below</li>
   </ul>
 
@@ -39,12 +39,21 @@
     <li>Conversation history (last 50 chats)</li>
     <li>Your display name, color, and accessory preferences</li>
     <li>Progression data (level, XP) and achievement milestones</li>
+    <li>Focus time session history (start time, duration, distraction count)</li>
+    <li>User-created tasks and checklist items</li>
+    <li>Mini-game progress (Memory Match, Tab Quiz, Roast Trivia)</li>
     <li>Subscription status (tier, activation date)</li>
   </ul>
-  <p>This data never leaves your device except when sent to OpenAI for generating responses.</p>
+  <p>This data never leaves your device except when sent to OpenAI (via our proxy) for generating responses.</p>
 
-  <h2>OpenAI API</h2>
-  <p>When generating roasts or chat responses, your tab titles and URLs are sent to OpenAI's GPT-4o-mini model. OpenAI's <a href="https://openai.com/policies/api-data-usage-policies" target="_blank">API data usage policy</a> applies to these calls. We send only the minimum data needed: tab titles, URLs, and browsing pattern summaries. We do not send personal files, passwords, or page content.</p>
+  <h2>Our proxy server</h2>
+  <p>Jesty does not call OpenAI directly. All API requests go through our Cloudflare Worker proxy, which holds the API key server-side. The proxy:</p>
+  <ul>
+    <li>Forwards your request to OpenAI and returns the response</li>
+    <li>Does not log, store, or retain any request data</li>
+    <li>Handles Stripe payment verification (see Payments below)</li>
+  </ul>
+  <p>OpenAI's <a href="https://openai.com/policies/api-data-usage-policies" target="_blank">API data usage policy</a> applies to all forwarded requests. We send only the minimum data needed: tab titles, URLs, and browsing pattern summaries. We do not send personal files, passwords, or page content.</p>
 
   <h2>Real-time context</h2>
   <p>To make roasts more relevant, Jesty may fetch public data from third-party APIs:</p>
@@ -55,24 +64,28 @@
   </ul>
   <p>These requests are made directly from your browser. No personal data is included in these requests.</p>
 
-  <h2>Google account</h2>
-  <p>Jesty uses Chrome's identity API to read your Google account email address for display purposes (avatar initials). This is optional and processed locally.</p>
+  <h2>Focus time</h2>
+  <p>Focus time is available to all users. When active, Jesty injects a small floating UI element on web pages to display your timer and provide quick actions. Session data (duration, distraction count) is stored locally and never sent to any server.</p>
 
-  <h2>Google Calendar (Pro tier only)</h2>
-  <p>If you subscribe to the Pro tier and choose to connect your Google Calendar, Jesty requests read-only access to your calendar events via OAuth 2.0. Calendar data is:</p>
+  <h2>Mini-games and progression</h2>
+  <p>Jesty includes mini-games (Memory Match, Tab Quiz, Roast Trivia) and an XP/leveling system. All game progress, scores, and unlocked accessories are stored locally in your browser. No gameplay data is sent to any server.</p>
+
+  <h2>Bitcoin inscription (optional)</h2>
+  <p>Premium users can optionally inscribe their Jesty Card on the Bitcoin blockchain via OrdinalsBot. If you choose to inscribe:</p>
   <ul>
-    <li>Used solely to make roasts aware of your schedule</li>
-    <li>Cached locally for up to 15 minutes for performance</li>
-    <li>Never sent to any server other than Google's API and OpenAI (as part of roast context)</li>
-    <li>Revocable at any time by disconnecting in the extension</li>
+    <li>Your card's HTML content (verdict text, stats, character art) is sent to the OrdinalsBot API</li>
+    <li>You provide a Bitcoin receiving address directly to OrdinalsBot</li>
+    <li>We verify verdict uniqueness via our proxy server</li>
+    <li>No inscription happens without your explicit action and payment</li>
   </ul>
+  <p>OrdinalsBot's <a href="https://ordinalsbot.com" target="_blank">terms of service</a> apply to inscription orders.</p>
 
   <h2>Background activity</h2>
   <p>Jesty runs a background service worker that:</p>
   <ul>
     <li>Monitors tab opens and closes to detect when you act on a roast (e.g., closing a tab Jesty mentioned)</li>
-    <li>Checks focus mode status if you have it enabled (Premium feature)</li>
-    <li>Generates a daily browsing summary at 9 PM if you have Premium</li>
+    <li>Checks focus mode status if you have it enabled</li>
+    <li>Manages subscription validation</li>
   </ul>
   <p>All background processing happens locally on your device.</p>
 
@@ -83,9 +96,9 @@
   <p>Jesty does not use analytics, cookies, or any tracking services. There are no ads. Your browsing data stays between you and your browser.</p>
 
   <h2>Data deletion</h2>
-  <p>Uninstalling the extension removes all locally stored data. You can also clear data manually through Chrome's extension settings. To revoke Google Calendar access, disconnect from within the extension or remove Jesty from your <a href="https://myaccount.google.com/permissions" target="_blank">Google account permissions</a>.</p>
+  <p>Uninstalling the extension removes all locally stored data. You can also clear data manually through Chrome's extension settings.</p>
 
   <h2>Contact</h2>
-  <p>Questions? Reach out at the Jesty GitHub repository.</p>
+  <p>Questions? Reach out at <a href="mailto:hey@jesty.fun">hey@jesty.fun</a>.</p>
 </body>
 </html>
