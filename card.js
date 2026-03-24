@@ -78,9 +78,8 @@ const ALL_EXPRESSIONS = [
     return val > (best.val || 0) ? { ...t, val } : best;
   }, { short: 'Under Investigation', label: 'Unknown', val: 0 });
 
-  // Total tabs seen (sum of all category counts, including filtered-out ones)
-  const allCategories = profile.top_categories || [];
-  const totalTabsSeen = allCategories.reduce((sum, c) => sum + (c.count || 0), 0);
+  // Unique domains visited
+  const totalTabsSeen = (profile.unique_domains || []).length;
 
   // ── Page header icon ──
   const headerIcon = document.getElementById('card-header-icon');
@@ -126,11 +125,36 @@ const ALL_EXPRESSIONS = [
   // ── Card back: pattern generator face grid ──
   renderCardBackPattern();
 
-  // ── Conclusion roast (beside the card) ──
-  document.getElementById('card-conclusion').innerHTML = `
-    <div class="card-conclusion-label">The Verdict</div>
-    <div class="card-conclusion-text">${esc(generateConclusion(categories, traits, topTrait, totalRoasts, userName, topMood, topMoodPct))}</div>
+  // ── Autopsy (AI deep read, replaces old template conclusion) ──
+  const conclusionEl = document.getElementById('card-conclusion');
+  const fallbackConclusion = generateConclusion(categories, traits, topTrait, totalRoasts, userName, topMood, topMoodPct);
+  conclusionEl.innerHTML = `
+    <div class="card-conclusion-label">Autopsy</div>
+    <div class="card-conclusion-text" style="color:var(--jesty-text-muted)">Reading your tabs...</div>
   `;
+
+  // Generate AI deep read, fallback to template
+  (async () => {
+    try {
+      if (typeof RoastEngine !== 'undefined') {
+        const result = await RoastEngine.generateDeepRead();
+        if (!result.error && result.body) {
+          conclusionEl.innerHTML = `
+            <div class="card-conclusion-label">Autopsy</div>
+            <div class="card-conclusion-text">${esc(result.body)}</div>
+          `;
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Autopsy generation failed:', e);
+    }
+    // Fallback to template conclusion
+    conclusionEl.innerHTML = `
+      <div class="card-conclusion-label">Autopsy</div>
+      <div class="card-conclusion-text">${esc(fallbackConclusion)}</div>
+    `;
+  })();
 
   // ── 3D Tilt ──
   initTilt();

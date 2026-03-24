@@ -158,11 +158,148 @@ body {
 /* ─── Action Buttons Row ─── */
 .action-btns {
   display: flex;
-  gap: 8px;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.roast-me-btn {
+/* ─── Deep Read Drawer ─── */
+.deep-read-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.deep-read-overlay.visible {
+  display: flex;
+}
+.deep-read-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--jesty-overlay);
+  animation: fadeIn 0.2s ease-out;
+}
+.deep-read-sheet {
+  position: relative;
+  background: var(--jesty-bg);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--jesty-border);
+  height: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 -4px 24px rgba(var(--jesty-drawer-shadow-rgb), var(--jesty-drawer-shadow-a));
+}
+.deep-read-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 16px 0;
+  flex-shrink: 0;
+}
+.deep-read-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: var(--jesty-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+}
+.deep-read-close:hover {
+  color: var(--jesty-text);
+  background: var(--jesty-bg-secondary);
+}
+.deep-read-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px 24px;
+}
+.deep-read-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--jesty-text);
+  margin-bottom: 16px;
+}
+.deep-read-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.deep-read-paragraph {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--jesty-text-secondary);
+  line-height: 1.7;
+}
+.deep-read-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 16px 20px;
+  border-top: 1px solid var(--jesty-border);
+  flex-shrink: 0;
+}
+
+/* Deep read chat bubble — collapsible */
+.deep-read-bubble {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.deep-read-bubble-title {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+}
+.deep-read-bubble-body {
+  display: block;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 8px;
+  color: var(--jesty-text-secondary);
+}
+.deep-read-bubble.collapsed .deep-read-bubble-body {
+  display: none;
+}
+.deep-read-bubble.collapsed .deep-read-bubble-title::after {
+  content: ' ›';
+  color: var(--jesty-text-muted);
+  font-weight: 400;
+}
+.deep-read-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: 24px;
+  border: 1.5px solid var(--jesty-border);
+  background: var(--jesty-bg);
+  color: var(--jesty-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.deep-read-btn:hover {
+  background: var(--jesty-bg-secondary);
+  border-color: var(--jesty-text-muted);
+}
+.deep-read-btn.primary {
+  background: var(--jesty-btn-bg);
+  color: var(--jesty-btn-text);
+  border-color: var(--jesty-btn-bg);
+}
+.deep-read-btn.primary:hover {
+  background: var(--jesty-btn-hover);
+}
+
+.focus-btn {
   padding: 8px 20px;
   background: var(--jesty-btn-bg);
   color: var(--jesty-btn-text);
@@ -175,33 +312,9 @@ body {
   transition: all 0.2s;
 }
 
-.roast-me-btn:hover:not(:disabled) {
+.focus-btn:hover {
   background: var(--jesty-btn-hover);
   transform: scale(1.03);
-}
-
-.roast-me-btn:disabled {
-  background: var(--jesty-btn-disabled-bg);
-  color: var(--jesty-btn-disabled-text);
-  cursor: default;
-}
-
-.focus-btn {
-  padding: 8px 16px;
-  background: none;
-  color: var(--jesty-text-secondary);
-  border: 1.5px solid var(--jesty-border);
-  border-radius: 20px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.focus-btn:hover {
-  border-color: var(--jesty-text);
-  color: var(--jesty-text);
 }
 
 .focus-btn.active {
@@ -2468,7 +2581,9 @@ body {
 
 .focus-overlay-character {
   margin-bottom: -8px;
-  opacity: 0.7;
+  display: flex;
+  justify-content: center;
+  margin-left: -12px;
 }
 
 .focus-overlay-timer.timer-note-msg {
@@ -4331,7 +4446,7 @@ body {
 .xp-win-subtitle {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: #FFFFFF;
   margin-top: 2px;
   letter-spacing: 0;
 }
@@ -4618,7 +4733,7 @@ body {
   font-family: 'DM Sans', sans-serif;
   font-size: 11px;
   font-weight: 600;
-  color: var(--jesty-text-muted);
+  color: #1C1917;
 }
 
 .xp-win-particles {
@@ -4877,7 +4992,7 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -2px;
-  color: var(--jesty-bg-secondary);
+  color: var(--jesty-border);
   line-height: 1;
   transition: color 0.3s;
 }
@@ -5022,32 +5137,29 @@ body {
 }
 
 .dossier-insights-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 .dossier-insight {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 10px 4px;
-  background: var(--jesty-bg-secondary);
-  border-radius: 8px;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--jesty-border);
 }
-.dossier-insight-value {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--jesty-text);
-  line-height: 1;
+.dossier-insight:last-child {
+  border-bottom: none;
 }
 .dossier-insight-label {
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--jesty-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  text-align: center;
+}
+.dossier-insight-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--jesty-text);
 }
 
 .dossier-card-btn-wrap {
@@ -6330,7 +6442,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding: 0 4px;
 }
 

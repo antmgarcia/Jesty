@@ -107,7 +107,7 @@ Open side panel
     ├── Tab count comment (30+, 50+, 100+)
     └── Generic observation
   → User actions:
-    ├── "Roast me now" → Opens new tab (roast happens there)
+    ├── "Stay Focused" → Starts focus time session (primary button, centered pill)
     ├── Pencil icon → Settings panel (name + face-based color picker + theme)
     ├── Chat drawer (drag/tap to open)
     │   ├── Type message → OpenAI chat with JESTY_PERSONALITY
@@ -116,7 +116,7 @@ Open side panel
     ├── Promo card → Tier overlay (slot machine + plans)
     ├── Stat pills → Tier overlay (all clickable)
     └── Accessories grid → Equip/unequip cosmetics
-  → Focus Time (all tiers) → Distraction blocker with floating island iframe
+  → Focus Time (all tiers, single "Stay Focused" primary button) → Distraction blocker with floating island iframe
     ├── Island: face circle + timer badge, hover reveals eye/pencil/end-focus
     ├── Eye button: toggle sidepanel open/close (via windowId)
     ├── Pencil button: open sidepanel in focus-note mode, highlight input
@@ -132,8 +132,24 @@ Open side panel
     ├── Fun Zone → Memory Match, Tab Quiz, Roast Trivia (3 games)
     ├── XP Bar → Level progression → Unlock accessories
     ├── Wall of Shame / Hall of Fame → Stats
+    ├── Dossier Card → "View card" opens card.html (premium) / "Plead Guilty" upgrade nudge (free)
     ├── Schedule Card (Pro) → Google Calendar events
     └── Daily Report (Pro) → AI-generated day summary
+```
+
+### 4. Card Page (`card.*`) — Premium only
+```
+Open card page (via dossier "View card" button)
+  → Render 3D trading card (verdict, face, stats)
+  → Auto-generate AI Autopsy (deep read of current tabs)
+    ├── Shows "Reading your tabs..." while loading
+    ├── On success: displays AI-generated paragraph
+    └── On failure: falls back to template-based conclusion
+  → User actions:
+    ├── Tilt/drag card for 3D effect
+    ├── Flip card (back shows face pattern grid)
+    ├── Share → Copy image / Share to X / Download PNG
+    └── Inscribe on Bitcoin → OrdinalsBot inscription flow
 ```
 
 ### 3. Background Service Worker (`background.js`)
@@ -161,6 +177,9 @@ Always running:
 | `sidepanel.js` | Chat, live comments, settings, tasks, fun zone, premium UI, tier overlay | characters, storage, premium, accessories, calendar, character-animator, roast-engine, memory-game, tab-quiz, roast-trivia, focus-time, theme |
 | `sidepanel.html` | Side panel markup (main screen, drawers, overlays) | sidepanel.css |
 | `sidepanel.css` | Side panel styles (~3800 lines) | — |
+| `card.html` | Premium collectible trading card page with 3D tilt, Autopsy, share, inscription | card.css |
+| `card.js` | Card rendering, AI Autopsy (deep read), share image generation, Bitcoin inscription | characters, config, storage, premium, accessories, roast-engine, theme |
+| `card.css` | Card page styles (3D card, inscription modal) | — |
 | `roast-engine.js` | AI roast generation, real-time context, mood parsing, profile-based mood selection | config, storage, premium, calendar |
 | `storage.js` | All persistence: profile, roasts, conversations, milestones, schema migrations | chrome.storage.local |
 | `premium.js` | Tier gating (Suspect/Guilty/Sentenced), feature checks | storage |

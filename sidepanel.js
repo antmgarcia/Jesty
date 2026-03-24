@@ -293,11 +293,17 @@ async function init() {
   // Initialize accessory picker
   initAccessoryPicker();
 
+  // Check if premium was activated while sidepanel was closed (within last hour)
+  const { premiumJustActivated } = await chrome.storage.local.get(['premiumJustActivated']);
+  if (premiumJustActivated && (Date.now() - premiumJustActivated < 60 * 60 * 1000)) {
+    chrome.storage.local.remove('premiumJustActivated');
+    setTimeout(() => showPremiumCelebration(), 500);
+  }
+
   // Initialize messages left counter & tier overlay
   updateMsgsLeft();
   initTierOverlay();
   initEmptyNewTabBtn();
-  initRoastMeBtn();
 
   // Re-check daily cap when user returns (e.g. left computer overnight)
   document.addEventListener('visibilitychange', () => {
@@ -312,6 +318,13 @@ async function init() {
     if (changes.jesty_data) {
       updateMsgsLeft();
       loadStats();
+      renderLevelBadge();
+      // Live update dossier sites count
+      const newData = changes.jesty_data.newValue;
+      if (newData && newData.profile) {
+        const sitesEl = document.querySelector('.dossier-stat-dark');
+        if (sitesEl) sitesEl.textContent = (newData.profile.unique_domains || []).length;
+      }
     }
     // Dedicated signal from background.js after payment verified
     if (changes.premiumJustActivated && changes.premiumJustActivated.newValue) {
@@ -634,25 +647,130 @@ function initEmptyNewTabBtn() {
   }
 }
 
-function initRoastMeBtn() {
-  const btn = document.getElementById('roast-me-btn');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      chrome.tabs.create({ active: true });
-    });
+function showDeepReadOverlay(result) {
+  const { title, body, text, mood } = result;
+  document.querySelector('.deep-read-overlay')?.remove();
+
+  const close = () => {
+    overlay.classList.remove('visible');
+    setTimeout(() => overlay.remove(), 300);
+  };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'deep-read-overlay';
+
+  // Backdrop
+  const backdrop = document.createElement('div');
+  backdrop.className = 'deep-read-backdrop';
+  backdrop.addEventListener('click', close);
+  overlay.appendChild(backdrop);
+
+  // Sheet
+  const sheet = document.createElement('div');
+  sheet.className = 'deep-read-sheet';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'deep-read-header';
+  const backBtn = document.createElement('button');
+  backBtn.className = 'deep-read-close';
+  backBtn.textContent = '\u00D7';
+  backBtn.addEventListener('click', close);
+  header.appendChild(backBtn);
+  sheet.appendChild(header);
+
+  // Scrollable content
+  const content = document.createElement('div');
+  content.className = 'deep-read-content';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'deep-read-title';
+  titleEl.textContent = title;
+  content.appendChild(titleEl);
+
+  const bodyWrap = document.createElement('div');
+  bodyWrap.className = 'deep-read-body';
+  const sentences = body.split(/(?<=\.)\s+/);
+  const chunks = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    chunks.push(sentences.slice(i, i + 2).join(' '));
   }
+  chunks.forEach(chunk => {
+    const p = document.createElement('p');
+    p.className = 'deep-read-paragraph';
+    p.textContent = chunk;
+    bodyWrap.appendChild(p);
+  });
+  content.appendChild(bodyWrap);
+  sheet.appendChild(content);
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'deep-read-actions';
+
+  const talkBtn = document.createElement('button');
+  talkBtn.className = 'deep-read-btn primary';
+  talkBtn.textContent = 'Argue back';
+  talkBtn.addEventListener('click', () => {
+    close();
+    currentRoast = text;
+    conversationHistory = [
+      { role: 'system', content: buildChatPersonality(0) },
+      { role: 'assistant', content: text }
+    ];
+
+    // Add collapsed message — title only, expandable
+    document.getElementById('empty-state')?.classList.add('hidden');
+    const chatContainer = document.getElementById('chat-messages');
+    if (chatContainer) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message jesty';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble deep-read-bubble collapsed';
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'deep-read-bubble-title';
+      titleSpan.textContent = title;
+      bubble.appendChild(titleSpan);
+      const bodySpan = document.createElement('span');
+      bodySpan.className = 'deep-read-bubble-body';
+      bodySpan.textContent = body;
+      bubble.appendChild(bodySpan);
+      bubble.addEventListener('click', () => {
+        bubble.classList.toggle('collapsed');
+      });
+      msgDiv.appendChild(bubble);
+      chatContainer.appendChild(msgDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Open chat drawer
+    const drawer = document.querySelector('.chat-drawer');
+    if (drawer && !drawer.classList.contains('open')) {
+      drawer.classList.add('open');
+    }
+    const input = document.getElementById('message-input');
+    if (input) input.focus();
+  });
+  actions.appendChild(talkBtn);
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.className = 'deep-read-btn';
+  dismissBtn.textContent = 'Dismiss';
+  dismissBtn.addEventListener('click', close);
+  actions.appendChild(dismissBtn);
+
+  sheet.appendChild(actions);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('visible'));
+
+  if (typeof JestyAnimator !== 'undefined') JestyAnimator.setExpression(mood, 8000);
 }
 
 // Kept for live real roasts that prime the chat drawer
 async function generateSidepanelRoast() {
-  const btn = document.getElementById('roast-me-btn');
   const commentText = document.getElementById('comment-text');
 
-  // Disable button and show thinking state
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Thinking...';
-  }
   JestyAnimator.setExpression('thinking');
 
   try {
@@ -705,13 +823,7 @@ async function generateSidepanelRoast() {
     }
     JestyAnimator.setExpression('yikes');
     if (JestyAnimator.react) JestyAnimator.react('error');
-  } finally {
-    // Re-enable button
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Roast me now';
-    }
-  }
+  } finally {}
 }
 
 function onDragStart(e) {
@@ -897,7 +1009,7 @@ function initSettings() {
   // Load current plan
   JestyPremium.getTier().then(tier => {
     const displayName = JestyPremium.getTierDisplayName(tier);
-    const tierLabel = tier === 'free' ? 'Free' : tier === 'premium' ? '$5' : '$3/mo';
+    const tierLabel = tier === 'free' ? 'Free' : tier === 'premium' ? PRICE.premium : PRICE.pro;
     if (planEl) {
       planEl.textContent = `${displayName} · ${tierLabel}`;
     }
@@ -1346,8 +1458,8 @@ async function renderDrawerGrid(refreshId) {
   if (tier !== 'pro') {
     const nextTierKey = tier === 'free' ? 'premium' : 'pro';
     const upgrade = tier === 'free'
-      ? { name: 'Guilty', price: '$5 once', desc: 'Unlock all accessories & exclusive drip' }
-      : { name: 'Sentenced', price: '$5/mo', desc: 'Calendar roasts & exclusive accessories' };
+      ? { name: 'Guilty', price: PRICE.premiumFull, desc: 'Unlock all accessories & exclusive drip' }
+      : { name: 'Sentenced', price: PRICE.pro, desc: 'Calendar roasts & exclusive accessories' };
     const combo = TIER_COMBOS[nextTierKey];
     const ucColor = SLOT_COLORS[combo.color];
 
@@ -1585,7 +1697,7 @@ async function renderGalleryItem() {
           ${buildTierComboSvg(TIER_COMBOS.premium, 36, 34)}
         </div>
         <div class="plans-upgrade-info">
-          <span class="plans-upgrade-name">Guilty — $5 once</span>
+          <span class="plans-upgrade-name">Guilty — ${PRICE.premiumFull}</span>
           <span class="plans-upgrade-price">Unlock all accessories & exclusive drip</span>
         </div>
         <svg class="plans-upgrade-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
@@ -1645,22 +1757,25 @@ async function tryLiveRealRoast() {
     JestyAnimator.setExpression(result.mood, 6000);
     if (JestyAnimator.react) JestyAnimator.react('roast');
 
-    // Prime the chat drawer with this roast (don't open it)
-    currentRoast = result.joke;
-    conversationHistory = [
-      { role: 'system', content: buildChatPersonality(0) },
-      { role: 'assistant', content: result.joke }
-    ];
+    // Prime the chat drawer with this roast — only if user hasn't started chatting
+    const userHasActiveChat = conversationHistory.length > 2;
+    if (!userHasActiveChat) {
+      currentRoast = result.joke;
+      conversationHistory = [
+        { role: 'system', content: buildChatPersonality(0) },
+        { role: 'assistant', content: result.joke }
+      ];
 
-    const conversation = await JestyStorage.startConversation(result.roast.id);
-    currentConversationId = conversation.id;
-    await JestyStorage.addMessage(currentConversationId, 'jesty', result.joke);
+      const conversation = await JestyStorage.startConversation(result.roast.id);
+      currentConversationId = conversation.id;
+      await JestyStorage.addMessage(currentConversationId, 'jesty', result.joke);
 
-    // Pre-populate chat container so it's ready if user opens drawer
-    const chatContainer = document.getElementById('chat-container');
-    if (chatContainer) {
-      chatContainer.innerHTML = '';
-      addMessage(result.joke, 'jesty');
+      // Pre-populate chat container so it's ready if user opens drawer
+      const chatContainer = document.getElementById('chat-container');
+      if (chatContainer) {
+        chatContainer.innerHTML = '';
+        addMessage(result.joke, 'jesty');
+      }
     }
 
     // Update stats & msgs left
@@ -2234,7 +2349,7 @@ async function handleFocusStart() {
 
   focusActive = true;
   showFocusOverlay();
-  updateFocusOverlayFace('smug');
+  updateFocusOverlayFace('suspicious');
   startFocusTimer();
 
   const focusBtn = document.getElementById('focus-btn');
@@ -2261,7 +2376,7 @@ async function handleFocusEnd() {
 
   const focusBtn = document.getElementById('focus-btn');
   if (focusBtn) {
-    focusBtn.textContent = 'Focus time';
+    focusBtn.textContent = 'Stay Focused';
     focusBtn.classList.remove('active');
   }
 
@@ -3047,9 +3162,8 @@ async function renderDossierCard() {
   // User color
   const userColor = currentColor.body || '#A78BFA';
 
-  // Total tabs seen
-  const allCategories = profile.top_categories || [];
-  const totalTabsSeen = allCategories.reduce((sum, c) => sum + (c.count || 0), 0);
+  // Unique domains visited
+  const totalTabsSeen = (profile.unique_domains || []).length;
 
   // Dominant trait
   const traitLabels = [
@@ -3142,8 +3256,8 @@ async function renderDossierCard() {
     insights.push({ value: `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`, label: 'Since' });
   }
 
-  const insightsHtml = insights.length ? `<div class="dossier-insights-grid">${insights.map(i =>
-    `<div class="dossier-insight"><span class="dossier-insight-value">${escapeHtml(i.value)}</span><span class="dossier-insight-label">${escapeHtml(i.label)}</span></div>`
+  const insightsHtml = isPremium && insights.length ? `<div class="dossier-insights-grid">${insights.map(i =>
+    `<div class="dossier-insight"><span class="dossier-insight-label">${escapeHtml(i.label)}</span><span class="dossier-insight-value">${escapeHtml(i.value)}</span></div>`
   ).join('')}</div>` : '';
 
   container.style.setProperty('--jesty-user-color', userColor);
@@ -3160,7 +3274,6 @@ async function renderDossierCard() {
         </div>
       </div>
       <div class="dossier-divider"></div>
-      ${insightsHtml}
       <div class="dossier-verdict" id="dossier-verdict">
         ${punchline ? `<span class="dossier-verdict-text">${escapeHtml(punchline)}</span>` : ''}
       </div>
@@ -3174,6 +3287,7 @@ async function renderDossierCard() {
       <div class="dossier-card-btn-wrap">
         ${isPremium ? `<button class="task-add-btn" id="dossier-open-card">View card</button>` : `<button class="task-add-btn" data-upgrade="true" id="dossier-open-card">Plead Guilty for full breakdown</button>`}
       </div>
+      ${insightsHtml}
     </div>
   `;
 
@@ -3184,7 +3298,6 @@ async function renderDossierCard() {
       if (isPremium) {
         chrome.tabs.create({ url: chrome.runtime.getURL('card.html') });
       } else {
-        // Open slot machine rigged to always land on Guilty (premium)
         showTierOverlayGuilty();
       }
     });
@@ -3274,7 +3387,7 @@ function renderDossierCrowd() {
 
   crowd.addEventListener('mouseenter', () => {
     cacheOrigins();
-    faces.forEach(face => { face.style.transition = 'none'; });
+    faces.forEach(face => { face.style.transition = 'transform 0.15s ease-out'; });
   });
 
   crowd.addEventListener('mousemove', (e) => {
@@ -3387,12 +3500,12 @@ async function initPlansSection() {
   const upgrades = [];
   if (tier === 'free') {
     upgrades.push(
-      { name: 'Guilty', price: '$5 once', desc: 'Unlimited roasts, tasks & all accessories', action: 'checkout', tierKey: 'premium' },
-      { name: 'Sentenced', price: '$5/mo', desc: 'Launching soon', action: 'disabled', tierKey: 'pro' }
+      { name: 'Guilty', price: PRICE.premiumFull, desc: 'Unlimited roasts, tasks & all accessories', action: 'checkout', tierKey: 'premium' },
+      { name: 'Sentenced', price: PRICE.pro, desc: 'Launching soon', action: 'disabled', tierKey: 'pro' }
     );
   } else if (tier === 'premium') {
     upgrades.push(
-      { name: 'Sentenced', price: '$5/mo', desc: 'Launching soon', action: 'disabled', tierKey: 'pro' }
+      { name: 'Sentenced', price: PRICE.pro, desc: 'Launching soon', action: 'disabled', tierKey: 'pro' }
     );
   }
 
@@ -3451,7 +3564,7 @@ function renderPromoFaces() {
 
     // Make clipPath IDs unique to avoid collisions with the shared symbols
     let content = symbol.innerHTML;
-    content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-promo-${i}`);
+    content = content.replace(/id="clip-([^"]+)"/g, `id="clip-$1-promo-${i}"`);
     content = content.replace(/url\(#clip-([^)]+)\)/g, `url(#clip-$1-promo-${i})`);
     svg.innerHTML = content;
 
@@ -4966,7 +5079,7 @@ async function renderGameUpgradeCard(container) {
       ${buildTierComboSvg(combo, 36, 34)}
     </div>
     <div class="plans-upgrade-info">
-      <span class="plans-upgrade-name">Guilty — $5 once</span>
+      <span class="plans-upgrade-name">Guilty — ${PRICE.premiumFull}</span>
       <span class="plans-upgrade-price">Unlock all levels & unlimited fun</span>
     </div>
     <svg class="plans-upgrade-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
@@ -5628,7 +5741,7 @@ const TIER_DATA = [
     key: 'premium',
     name: 'Guilty',
     tagline: 'Full judgement',
-    price: '$5',
+    price: PRICE.premium,
     priceSub: 'once',
     features: [
       'Unlimited roasts & chat',
@@ -5642,7 +5755,7 @@ const TIER_DATA = [
     key: 'pro',
     name: 'Sentenced',
     tagline: 'No escape',
-    price: '$5',
+    price: PRICE.premium,
     priceSub: '/mo',
     features: [
       'Everything in Guilty',
@@ -5703,8 +5816,8 @@ const SLOT_ROASTS = {
   ],
   premium: [
     "One payment. Unlimited judgement. You know you want it.",
-    "$5 to unlock my full roast potential? Cheaper than your coffee habit.",
-    "For $5 I'll judge you forever. That's a bargain and you know it.",
+    `${PRICE.premium} to unlock my full roast potential? Cheaper than your coffee habit.`,
+    `For ${PRICE.premium} I'll judge you forever. That's a bargain and you know it.`,
   ],
   pro: [
     "The full sentence. No parole. No mercy. No limits.",
@@ -6160,8 +6273,8 @@ function showChatLock() {
       <svg viewBox="-15 -10 150 140" width="58" height="54"><use href="#face-disappointed"/></svg>
     </div>
     <p class="premium-title">I have so much more to say.</p>
-    <p class="premium-text">You've used all your daily roasts. Come back tomorrow or plead Guilty for $5 for unlimited.</p>
-    <button class="premium-btn" id="chat-premium-btn">Plead Guilty — $5</button>
+    <p class="premium-text">You've used all your daily roasts. Come back tomorrow or plead Guilty for ${PRICE.premium} for unlimited.</p>
+    <button class="premium-btn" id="chat-premium-btn">Plead Guilty — ${PRICE.premium}</button>
   `;
   chatContainer.appendChild(lockDiv);
   chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -6182,7 +6295,8 @@ async function openPremiumCheckout() {
   try {
     const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
     const userId = jesty_data ? jesty_data.profile.user_id : '';
-    chrome.tabs.create({ url: `${CONFIG.API_URL}/api/checkout?user_id=${userId}` });
+    const locale = navigator.language || '';
+    chrome.tabs.create({ url: `${CONFIG.API_URL}/api/checkout?user_id=${userId}&locale=${encodeURIComponent(locale)}` });
   } catch (e) {
     console.error('Error opening checkout:', e);
   }
