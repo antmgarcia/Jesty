@@ -5,15 +5,20 @@ A Chrome extension that reads your open tabs and delivers short, witty roasts us
 ## UI Changes
 
 - Make minimal, targeted edits. Do NOT change layout, animations, or surrounding elements unless explicitly asked.
-- If reverting, revert completely — no partial rollbacks.
+- If reverting, revert completely — no partial rollbacks. Do NOT try to "fix forward" by layering corrections on top of broken changes. Clean revert first, then try a new approach.
 - For visual/design tasks: describe what you plan to change BEFORE editing. Wait for user confirmation on layout direction, sizing, colors, and composition before writing code.
 - Do not add or remove elements beyond what was requested. A color change doesn't need a layout refactor.
+- Never add animations, transitions, or visual effects unless explicitly asked. The user prefers minimal motion.
+- When editing CSS, verify the change works across ALL contexts where the component appears (sidepanel, newtab, focus overlay, card page). Classes are shared across surfaces.
+- After SVG-related changes, verify the SVG renders at the correct dimensions — SVG collapsing to 0/1px is a recurring issue.
+- When targeting animations with GSAP, double-check you're targeting the correct element and property. Log the selector if unsure.
 
 ## High-Risk Files
 
 - `sidepanel.js` (~6200 lines), `newtab.js` (~2200 lines), and `storage.js` (~1250 lines) are shared across surfaces. Edits to these are high-risk — always verify the extension still loads after changes.
 - When modifying tier/feature-lock logic, ensure changes are functional (not just CSS visual). Storage values must actually gate features, not just styling.
 - Scope-lock: only edit files explicitly mentioned in the request unless a cross-file change is clearly necessary.
+- `sidepanel.css` (~6400 lines) — many classes are reused across overlays, drawers, and cards. Grep for the class name before editing to understand all usages.
 
 ## Common Pitfalls
 
@@ -21,6 +26,9 @@ A Chrome extension that reads your open tabs and delivers short, witty roasts us
 - Migrations must apply to existing users, not just fresh installs.
 - When touching animation code (GSAP timelines, character-animator.js), verify that timers and state flags (`_isTransitioning`, `pinnedMood`, `isStrolling`) are properly reset.
 - Test that new features work across both light and dark themes.
+- CSS `width: auto` cannot be animated with CSS transitions. Use fixed values or GSAP for width animations.
+- `justify-content` and `margin: auto` cannot be transitioned. Use explicit gaps, padding, or GSAP for layout shifts.
+- When fixing a bug, verify the fix doesn't break adjacent functionality. Check one level out from the change.
 
 ## Architecture
 

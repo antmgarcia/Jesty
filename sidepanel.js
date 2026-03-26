@@ -225,6 +225,7 @@ let currentColor = { ...DEFAULT_COLOR };
    ────────────────────────────────────────────── */
 
 async function init() {
+  JestyAnalytics.track('sidepanel_opened');
   JestyTheme.init();
 
   // Inject shared SVG symbols (faces + accessories)
@@ -1082,6 +1083,7 @@ function initSettings() {
       btn.classList.add('active');
 
       applyColor(entry.color);
+      JestyAnalytics.track('settings_changed', { type: 'color', value: entry.label || entry.color.body });
       chrome.storage.local.set({ jestyColor: entry.color });
     });
   }
@@ -1100,6 +1102,7 @@ function initSettings() {
       if (!btn) return;
       themeContainer.querySelectorAll('.settings-theme-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      JestyAnalytics.track('settings_changed', { type: 'theme', value: btn.dataset.theme });
       chrome.storage.local.set({ jestyThemePreference: btn.dataset.theme });
     });
   }
@@ -1433,6 +1436,7 @@ async function renderDrawerGrid(refreshId) {
           await JestyAccessories.unequipAccessory(slot);
         } else {
           await JestyAccessories.equipAccessory(slot, acc.id);
+          JestyAnalytics.track('accessory_equipped', { slot, accessory_id: acc.id });
         }
         await refreshAllAccessoryUI();
       });
@@ -2347,6 +2351,7 @@ async function handleFocusStart() {
   const session = await JestyFocusTime.startSession();
   if (!session) return;
 
+  JestyAnalytics.track('focus_started');
   focusActive = true;
   showFocusOverlay();
   updateFocusOverlayFace('suspicious');
@@ -2402,6 +2407,7 @@ async function handleFocusEnd() {
 
   const endedSession = await JestyFocusTime.endSession();
   if (!endedSession) { hideFocusOverlay(); return; }
+  JestyAnalytics.track('focus_ended', { duration_seconds: Math.floor((endedSession.endedAt - endedSession.startedAt) / 1000) });
   const notes = (endedSession.notes || []).filter(n => n.text && n.text.trim());
 
   // 3. Content swap → resume screen with roast + save/guilty card
@@ -2988,7 +2994,7 @@ async function initFunZone(isPremium) {
   // Memory Match — always clickable (level gating inside game)
   const memoryCard = document.getElementById('memory-game-card');
   if (memoryCard && !funZoneInited) {
-    memoryCard.addEventListener('click', () => JestyMemoryGame.show());
+    memoryCard.addEventListener('click', () => { JestyAnalytics.track('game_started', { game: 'memory_match' }); JestyMemoryGame.show(); });
   }
 
   // Tab Quiz — click handler checks tier at runtime
@@ -2998,6 +3004,7 @@ async function initFunZone(isPremium) {
       const prem = await JestyPremium.isPremium();
       if (prem) {
         if (!tabQuizInited) { await JestyTabQuiz.init(); tabQuizInited = true; }
+        JestyAnalytics.track('game_started', { game: 'tab_quiz' });
         JestyTabQuiz.show();
       } else {
         showTierOverlayPlans();
@@ -3012,6 +3019,7 @@ async function initFunZone(isPremium) {
       const prem = await JestyPremium.isPremium();
       if (prem) {
         if (!roastTriviaInited) { await JestyRoastTrivia.init(); roastTriviaInited = true; }
+        JestyAnalytics.track('game_started', { game: 'roast_trivia' });
         JestyRoastTrivia.show();
       } else {
         showTierOverlayPlans();
@@ -3296,6 +3304,7 @@ async function renderDossierCard() {
   if (cardBtn) {
     cardBtn.addEventListener('click', () => {
       if (isPremium) {
+        JestyAnalytics.track('card_viewed');
         chrome.tabs.create({ url: chrome.runtime.getURL('card.html') });
       } else {
         showTierOverlayGuilty();
@@ -5587,6 +5596,7 @@ async function sendMessage() {
   if (!userIsPremium) {
     const capStatus = await JestyStorage.checkDailyCap();
     if (!capStatus.allowed) {
+      JestyAnalytics.track('daily_cap_hit', { surface: 'sidepanel' });
       showChatLock();
       return;
     }
@@ -5596,6 +5606,9 @@ async function sendMessage() {
   messageInput.value = '';
   messageInput.style.height = 'auto';
   sendBtn.disabled = true;
+
+  JestyAnalytics.track('chat_message_sent');
+  JestyAnalytics.increment('total_chats');
 
   // Add user message to chat
   addMessage(userMessage, 'user');
@@ -6533,7 +6546,10 @@ function showLevelUpToast(level, unlock) {
   }, hasFlip ? 6500 : 4000);
 }
 
-function showPremiumCelebration() {
+async function showPremiumCelebration() {
+  const tier = await JestyPremium.getTier();
+  JestyAnalytics.track('tier_upgraded', { tier });
+  JestyAnalytics.identify({ tier });
   document.querySelector('.premium-celebration-overlay')?.remove();
 
   const overlay = document.createElement('div');

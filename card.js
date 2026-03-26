@@ -30,6 +30,8 @@ const ALL_EXPRESSIONS = [
 ];
 
 (async function initCard() {
+  JestyAnalytics.track('card_page_viewed');
+
   // Apply theme (dark/light) from user preference
   if (typeof JestyTheme !== 'undefined') JestyTheme.init();
 
@@ -139,6 +141,7 @@ const ALL_EXPRESSIONS = [
       if (typeof RoastEngine !== 'undefined') {
         const result = await RoastEngine.generateDeepRead();
         if (!result.error && result.body) {
+          JestyAnalytics.track('autopsy_generated');
           conclusionEl.innerHTML = `
             <div class="card-conclusion-label">Autopsy</div>
             <div class="card-conclusion-text">${esc(result.body)}</div>
@@ -185,6 +188,7 @@ const ALL_EXPRESSIONS = [
     if (!option) return;
     const action = option.dataset.action;
     shareMenu.classList.add('hidden');
+    JestyAnalytics.track('card_shared', { method: action });
     if (action === 'copy') await copyCardImage();
     else if (action === 'twitter') await shareCardToTwitter();
     else if (action === 'download') await downloadCardImage();
@@ -220,7 +224,10 @@ const ALL_EXPRESSIONS = [
     setTimeout(() => showInscribeStep('address'), 300);
   }
 
-  inscribeBtn.addEventListener('click', () => overlay.classList.add('open'));
+  inscribeBtn.addEventListener('click', () => {
+    JestyAnalytics.track('inscription_started');
+    overlay.classList.add('open');
+  });
   document.getElementById('inscribe-close-btn').addEventListener('click', closeInscribeModal);
 
   // Close overlay on background click

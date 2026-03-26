@@ -97,6 +97,7 @@ async function init() {
 
   // Refresh button - track refresh before generating new roast
   refreshBtn.addEventListener('click', async () => {
+    JestyAnalytics.track('roast_refreshed');
     await JestyStorage.markRoastRefreshed();
     generateRoast();
   });
@@ -134,6 +135,7 @@ async function init() {
     } else if (action === 'download') {
       await downloadRoastImage();
     }
+    JestyAnalytics.track('roast_shared', { method: action });
   });
 
   // Show XP toast if pending, then proceed to normal flow
@@ -153,6 +155,15 @@ async function init() {
   const userName = await JestyStorage.getUserName();
   const data = await JestyStorage.getJestyData();
   const isFirstLaunch = data.profile.total_roasts === 0;
+
+  // Analytics: identify user profile (once per install)
+  const { _jestyIdentified } = await chrome.storage.local.get('_jestyIdentified');
+  if (!_jestyIdentified) {
+    const _tier = await JestyPremium.getTier();
+    const { jestyColor: _color } = await chrome.storage.local.get('jestyColor');
+    JestyAnalytics.identify({ tier: _tier, color: _color?.body || 'unknown', total_roasts: data.profile.total_roasts || 0 });
+    await chrome.storage.local.set({ _jestyIdentified: true });
+  }
 
   if (!userName && isFirstLaunch) {
     showWelcomePrompt();
@@ -309,6 +320,7 @@ function showWelcomePrompt() {
     if (name) {
       await JestyStorage.setUserName(name);
     }
+    JestyAnalytics.track('onboarding_complete', { name_length: name.length });
     dismissWelcome();
   });
 
@@ -592,11 +604,17 @@ async function generateRoast() {
       showJoke(result.nudge.text, result.nudge.mood);
       document.getElementById('hero-cta').classList.remove('hidden');
       updateRoastsRemaining(result.remaining);
+      JestyAnalytics.track('daily_cap_hit', { surface: 'newtab' });
       return;
     }
 
     showJoke(result.joke, result.mood);
     updateRoastsRemaining(result.remaining);
+
+    // Analytics: roast generated
+    const _tabs = await chrome.tabs.query({});
+    JestyAnalytics.track('roast_generated', { mood: result.mood, surface: 'newtab', tab_count: _tabs.length });
+    JestyAnalytics.increment('total_roasts');
 
     // Award milestone XP
     if (result.milestone && result.milestone.xp) {
@@ -1001,13 +1019,13 @@ const NT_TIER_DATA = [
   },
   {
     key: 'premium', name: 'Guilty', tagline: 'Full judgement',
-    price: '$5', priceSub: 'once',
+    price: PRICE.premium, priceSub: 'once',
     features: ['Unlimited roasts & chat', 'All games unlocked', 'Tasks', '+5 unlockable accessories'],
     cta: { label: 'Plead Guilty', style: 'primary', action: 'checkout' }
   },
   {
     key: 'pro', name: 'Sentenced', tagline: 'No escape',
-    price: '$5', priceSub: '/mo',
+    price: PRICE.pro, priceSub: '/mo',
     features: ['Everything in Guilty', 'Calendar events with Jesty commentary', 'Exclusive accessories'],
     cta: { label: 'Launching Soon', style: 'secondary', action: 'disabled' }
   }
@@ -2068,7 +2086,8 @@ function _tabManagerEscHandler(e) {
   if (e.key === 'Escape') {
     const panel = document.getElementById('insights-panel');
     if (panel && !panel.classList.contains('hidden')) {
-      toggleInsightsPanel();
+      const panel = document.getElementById('insights-panel');
+      if (panel) panel.classList.add('hidden');
     } else {
       closeTabManager();
     }
