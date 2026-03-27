@@ -2,6 +2,17 @@ document.addEventListener('DOMContentLoaded', init);
 
 let _onboardingSeeded = false;
 
+// Track first sidepanel entry point after install (fires once ever, then every session)
+async function trackSidepanelEntry(entryPoint) {
+  const { _jestySidepanelFirstEntry } = await chrome.storage.local.get('_jestySidepanelFirstEntry');
+  const isFirst = !_jestySidepanelFirstEntry;
+  JestyAnalytics.track('sidepanel_entry', { entry_point: entryPoint, is_first: isFirst });
+  if (isFirst) {
+    JestyAnalytics.track('first_sidepanel_entry', { entry_point: entryPoint });
+    await chrome.storage.local.set({ _jestySidepanelFirstEntry: Date.now() });
+  }
+}
+
 // Re-check daily cap when user returns (e.g. left computer overnight)
 document.addEventListener('visibilitychange', async () => {
   if (!document.hidden) {
@@ -161,7 +172,8 @@ async function init() {
   if (!_jestyIdentified) {
     const _tier = await JestyPremium.getTier();
     const { jestyColor: _color } = await chrome.storage.local.get('jestyColor');
-    JestyAnalytics.identify({ tier: _tier, color: _color?.body || 'unknown', total_roasts: data.profile.total_roasts || 0 });
+    const _email = data.profile?.email || null;
+    JestyAnalytics.identify({ tier: _tier, color: _color?.body || 'unknown', total_roasts: data.profile.total_roasts || 0, ...(_email ? { $email: _email, email: _email } : {}) });
     await chrome.storage.local.set({ _jestyIdentified: true });
   }
 
@@ -344,6 +356,7 @@ async function openSidePanel() {
       sidePanelOpenMode: 'chat',
       loadRoastIntoChat: { text: lastRoast, roastId: lastRoastId, timestamp: Date.now() }
     });
+    trackSidepanelEntry('argue_back');
     await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id });
   } catch (e) {
     alert('Right-click the Jesty icon and select "Open side panel" to talk back!');
@@ -1502,6 +1515,14 @@ function initLevelPanel() {
 async function openSidePanelTo(mode) {
   try {
     await chrome.storage.local.set({ sidePanelOpenMode: mode, sidePanelOpenAt: Date.now() });
+    const entryMap = {
+      'accessories': 'accessories',
+      'levels': 'levels',
+      'plans': 'levels',
+      'task-detail': 'tasks',
+      'task-new': 'tasks'
+    };
+    trackSidepanelEntry(entryMap[mode] || mode);
     await chrome.sidePanel.open({ windowId: (await chrome.windows.getCurrent()).id });
   } catch (e) { /* fallback */ }
 }

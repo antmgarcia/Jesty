@@ -307,10 +307,16 @@ async function init() {
   initEmptyNewTabBtn();
 
   // Re-check daily cap when user returns (e.g. left computer overnight)
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
       updateMsgsLeft();
       unlockChatIfCapReset();
+      // Check if premium was activated while sidepanel was hidden
+      const { premiumJustActivated } = await chrome.storage.local.get(['premiumJustActivated']);
+      if (premiumJustActivated && (Date.now() - premiumJustActivated < 60 * 60 * 1000)) {
+        chrome.storage.local.remove('premiumJustActivated');
+        setTimeout(() => showPremiumCelebration(), 500);
+      }
     }
   });
 
@@ -6548,8 +6554,10 @@ function showLevelUpToast(level, unlock) {
 
 async function showPremiumCelebration() {
   const tier = await JestyPremium.getTier();
+  const _d = await JestyStorage.getJestyData();
+  const _email = _d?.profile?.email || null;
   JestyAnalytics.track('tier_upgraded', { tier });
-  JestyAnalytics.identify({ tier });
+  JestyAnalytics.identify({ tier, ...(_email ? { $email: _email, email: _email } : {}) });
   document.querySelector('.premium-celebration-overlay')?.remove();
 
   const overlay = document.createElement('div');
@@ -6582,7 +6590,7 @@ async function showPremiumCelebration() {
   // Message
   const msg = document.createElement('div');
   msg.className = 'premium-cel-msg';
-  msg.textContent = 'Premium unlocked. No more limits.';
+  msg.innerHTML = 'Premium unlocked.<br>No more limits.';
   overlay.appendChild(msg);
 
   // Particle container

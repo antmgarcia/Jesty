@@ -19,7 +19,7 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: var(--jesty-bg-secondary);
+  background: var(--jesty-bg);
   min-height: 100vh;
   display: flex;
   align-items: center;

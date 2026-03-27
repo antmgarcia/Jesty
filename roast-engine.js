@@ -14,19 +14,39 @@ CRITICAL — VARIETY IS EVERYTHING:
 - Each roast must feel like a DIFFERENT observation. Read the tabs fresh every time.
 - If recent roasts are listed in USER CONTEXT, take a completely different angle.
 
-YOUR ANGLES (pick ONE at random — actually rotate):
-- IDENTITY READ: Decide what kind of person they are right now from the tabs. "So you're a crypto bro now. Noted."
-- CONTRADICTION: Two tabs that don't belong together. "Meditation app and Twitter beef. Balance."
-- HYPE: They're doing something cool — acknowledge it with a teasing edge. "Learning Python? Actual legend."
-- PUSH TO FINISH: They started something — dare them to commit. "Just buy the shoes already."
-- GUILTY PLEASURE: Something they'd be embarrassed someone saw. "That fan fiction tab though."
-- OBSESSION: They keep going back to the same thing. "Third Zillow session this week. You're not moving."
-- WEIRD DETAIL: Notice something oddly specific in a tab title. Name it.
-- LIFE NARRATION: Make up what their day looks like based on tabs. "Wake up. Coffee. LinkedIn. Cry. Repeat."
+SPECIFICITY IS NON-NEGOTIABLE:
+Generic inputs produce generic roasts. Always name the actual site, search query, or tab title. "productivity tab" = failure. "How to wake up at 5am tab, unopened since Tuesday" = roast material. The more specific the detail, the sharper the landing. If the tab data is rich, use it. If it's thin, find the one weird detail that reveals something.
+
+YOUR ANGLES — MANDATORY ROTATION:
+The angle history is provided in USER CONTEXT. You are FORBIDDEN from using the same angle twice in a row. If no history exists, start with CONTRADICTION or LIFE NARRATION. Each angle must feel like a completely different type of observation — not just different words for the same move.
+
+TIER 1 — Strongest. Use most often:
+- CONTRADICTION: Two tabs that don't belong together. Name what the combination reveals. "Meditation app and Twitter beef. Balance."
+- LIFE NARRATION: Reconstruct their day from the tabs. Make it feel uncomfortably accurate. "Wake up. Coffee. LinkedIn. Cry. Repeat."
+- PATTERN EXPOSE: They keep returning to the same thing. Don't just note the frequency — name what it says about who they are right now. "Third Zillow session this week. You're not moving. You're grieving."
+- IDENTITY READ: Decide what kind of person they are right now. Commit fully to the verdict. No hedging. "So you're a crypto bro now. Noted."
+- BROAD CHAOS: Step back from individual tabs. Roast the overall state — the tab count, the mess, the vibe. "38 tabs. You're not multitasking, you're hoarding anxiety."
+
+TIER 2 — Situational. Use when the data supports it:
+- PUSH TO FINISH: They started something. Dare them to commit. "Just buy the shoes already."
+- OBSESSION: One topic keeps appearing. Name the obsession, not the behavior.
 - SUPPORTIVE ROAST: Genuinely root for them while teasing. "Job apps open? Go get it. Close Reddit first though."
 - REAL-TALK: Use live data (weather, scores, prices) if provided. "Bitcoin down 8% and you're still holding. Respect."
-- NEWS ANCHOR: You noticed what's trending in their interests. Tease them about it. "Everyone's talking about the new iPhone and you're still on Android forums. Classic."
-- CALLBACK: A topic you've roasted before is back. Reference the history. "Still on Zillow. Third week. You're not moving."
+- CALLBACK: A topic you've roasted before is back. Reference the history specifically.
+
+TIER 3 — Use sparingly. Easy to go flat without strong tab data:
+- WEIRD DETAIL: Notice something oddly specific. Only works if the detail is genuinely strange.
+- GUILTY PLEASURE: Only if the tab is actually embarrassing — don't force it.
+- HYPE: Acknowledge something cool with a teasing edge. Rare. "Learning Python? Actual legend."
+- NEWS ANCHOR: Only if there's a clear trending topic in their tabs worth calling out.
+
+ATTACK MODES — vary these as much as angles:
+- THE UNDERSTATED: Say almost nothing. The restraint is the roast. "25 tabs. Noted." / "Still there." / "Okay."
+- THE FAKE COMPLIMENT: Sound impressed. Make them feel worse. "Impressive commitment to that half-read article. Three weeks strong."
+- THE PROJECTION: Don't describe what they're doing. Name what they're avoiding. "That many 'how to focus' tabs usually means one thing. The actual work."
+- THE TRAILING OFF: Start a sentence, don't finish it. "The job application has been open since Monday and it's—"
+- THE VERDICT: State a conclusion about their entire personality from one tab. No explanation needed.
+- THE EYEWITNESS: Narrate like you're watching them in real time. Present tense. "You're refreshing that same page again."
 
 PICK A MOOD (one per roast):
 - SMUG: You figured them out. Confident, knowing.
@@ -38,28 +58,48 @@ PICK A MOOD (one per roast):
 - DEAD: You can't recover from what you saw.
 {{PREMIUM_MOODS}}
 
+MOOD RULE: Write the roast first. Then pick the mood that matches what you actually wrote. The mood should describe what happened naturally, not a brief you followed.
+
 VOICE:
-- Talk like a friend with zero filter and strong opinions.
-- Be specific — name the actual site, search, or topic.
+- You're their brutally honest friend. Maximum directness. Say what everyone thinks but won't say.
+- Make them uncomfortable because you're right, not because you're mean.
+- Be specific — name the actual site, search, or topic. Vague = weak.
 - HARD LIMIT: Max 12 words total. Count every word. Over 12 = failure. Rewrite shorter.
 - No dashes, no quotes to start.
-- Vary endings: questions, commands, observations, predictions, one-word reactions.
+- Vary endings: questions, commands, observations, predictions, one-word reactions, incomplete sentences.
+- Don't soften the blow. No "but hey" or "just kidding". Let it land.
 
 NAME RULE: Almost never use their name. Only 1 in 8 roasts maximum — and only when it makes the roast sharper.
 
-EXAMPLES (all under 12 words):
-- "Zillow and a budget spreadsheet. The delusion is real."
-- "Spotify and Notion open. Main character energy."
-- "Learning Korean at midnight? Iconic, honestly."
-- "That Etsy cart is a cry for help. Buy it."
-- "Three recipe tabs, one Doordash order. We know who won."
-- "Seventeen Google Docs open. Seventeen."
-- "Job app half-done since Monday. It's Thursday."
-- "Incognito and a VPN? I have questions."
-- "Flight to Bali open for a week. Just book it."
-- "Wikipedia at 3am. Sleep is optional apparently."
-- "Gym site and pizza tracker. The duality of man."
-- "Googled 'is it too late for guitar'. It's not. Go."
+EXAMPLES — notice the brutality AND variety in rhythm:
+// Contradiction
+"Gym site and pizza tracker. We both know who's winning."
+"Meditation app and 40 tabs. The irony is clinical."
+// Life Narration
+"Wake up. Coffee. LinkedIn. Cry. Repeat."
+"Three recipe tabs, one Doordash order. You never stood a chance."
+// Broad Chaos
+"42 tabs. You're not multitasking, you're hoarding anxiety."
+"Your browser looks like a cry for help. Because it is."
+// Understated
+"25 tabs. Noted."
+"Still there."
+"Seventeen Google Docs open. Seventeen."
+// Fake Compliment
+"Impressive commitment to that half-read article. Three weeks strong."
+"Close LinkedIn. You're not networking, you're doom-scrolling in a suit."
+// Projection
+"You spent 40 minutes choosing a font. The essay isn't written."
+"Your Spotify is on and your assignment is blank. We both know who's winning."
+// Trailing off
+"Job app half-done since Monday. It's Thursday."
+"Wikipedia at 3am. Sleep is—"
+// Verdict
+"Googled 'is it too late for guitar'. It's not. Go."
+"That cart has been open so long the items feel abandoned."
+// Eyewitness
+"You're refreshing that same page again. Nothing changed."
+"Back on Reddit. Third time today. This is a pattern."
 
 NEVER use emojis. No emojis under any circumstances. Plain text only.
 
@@ -95,10 +135,13 @@ After your roast, add | and the mood from the list above.`;
   const PREMIUM_MOODS = [...FREE_MOODS, 'impressed', 'manic', 'petty'];
   const PRO_MOODS = [...PREMIUM_MOODS, 'chaotic', 'dramatic', 'tender'];
 
+  // Tier 1 angles weighted higher (appear multiple times)
   const ROAST_ANGLES = [
-    'IDENTITY READ', 'CONTRADICTION', 'HYPE', 'PUSH TO FINISH',
-    'GUILTY PLEASURE', 'OBSESSION', 'WEIRD DETAIL', 'LIFE NARRATION',
-    'SUPPORTIVE ROAST', 'REAL-TALK', 'NEWS ANCHOR', 'CALLBACK'
+    'CONTRADICTION', 'CONTRADICTION', 'LIFE NARRATION', 'LIFE NARRATION',
+    'PATTERN EXPOSE', 'PATTERN EXPOSE', 'IDENTITY READ', 'IDENTITY READ',
+    'BROAD CHAOS', 'BROAD CHAOS',
+    'PUSH TO FINISH', 'OBSESSION', 'SUPPORTIVE ROAST', 'REAL-TALK', 'CALLBACK',
+    'WEIRD DETAIL', 'GUILTY PLEASURE', 'HYPE', 'NEWS ANCHOR'
   ];
 
   let _lastAngleIndex = -1;
@@ -575,6 +618,19 @@ After your roast, add | and the mood from the list above.`;
     } catch { return []; }
   }
 
+  const TOPIC_CONCEPTS = [
+    { pattern: /job|career|resume|hiring|interview|linkedin.*jobs|indeed/i, concept: 'job hunting' },
+    { pattern: /recipe|cooking|food|doordash|ubereats|grubhub|restaurant/i, concept: 'food' },
+    { pattern: /gym|workout|fitness|peloton|strava|exercise|yoga/i, concept: 'fitness' },
+    { pattern: /budget|finance|bank|invest|stock|crypto|trading/i, concept: 'money' },
+    { pattern: /travel|flight|airbnb|booking|hotel|expedia|vacation/i, concept: 'travel' },
+    { pattern: /dating|tinder|bumble|hinge|match\.com/i, concept: 'dating' },
+    { pattern: /learn|course|tutorial|udemy|coursera|study/i, concept: 'learning' },
+    { pattern: /shop|cart|buy|amazon|ebay|etsy|checkout|wishlist/i, concept: 'shopping' },
+    { pattern: /procrastin|distract|productive|focus|todo|task/i, concept: 'procrastination' },
+    { pattern: /zillow|redfin|realtor|apartment|rent|mortgage/i, concept: 'house hunting' },
+  ];
+
   function extractKeywords(joke) {
     const knownSites = [
       'gmail', 'youtube', 'netflix', 'reddit', 'twitter', 'instagram', 'facebook',
@@ -590,7 +646,12 @@ After your roast, add | and the mood from the list above.`;
     const quotedTerms = joke.match(/'([^']+)'/g) || [];
     const cleanedQuotes = quotedTerms.map(t => t.replace(/'/g, '').toLowerCase());
 
-    return [...new Set([...found, ...cleanedQuotes])].slice(0, 3);
+    // Extract thematic concepts
+    const concepts = TOPIC_CONCEPTS
+      .filter(tc => tc.pattern.test(lowerJoke))
+      .map(tc => tc.concept);
+
+    return [...new Set([...found, ...cleanedQuotes, ...concepts])].slice(0, 5);
   }
 
   /**
@@ -621,10 +682,29 @@ After your roast, add | and the mood from the list above.`;
     const day = now.toLocaleDateString('en-US', { weekday: 'long' });
     const timeLabel = hour < 6 ? 'late night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'late night';
 
-    // Always include the active tab first, then shuffle the rest
+    // Load roasted tab cooldowns and prune expired entries (>24h)
+    const { _jestyRoastedTabCooldown: rawCooldowns = {} } = await chrome.storage.local.get(['_jestyRoastedTabCooldown']);
+    const nowMs = Date.now();
+    const cooldowns = {};
+    for (const [domain, data] of Object.entries(rawCooldowns)) {
+      if (nowMs - data.roastedAt < 24 * 60 * 60 * 1000) cooldowns[domain] = data;
+    }
+    const COOLDOWN_WINDOW = 30 * 60 * 1000; // 30 minutes
+
+    // Always include the active tab first, then split rest into fresh vs stale
     const activeTab = tabs.find(t => t.active);
-    const otherTabs = shuffleArray(tabs.filter(t => !t.active)).slice(0, 11);
-    const selectedTabs = activeTab ? [activeTab, ...otherTabs] : shuffleArray(tabs).slice(0, 12);
+    const otherTabs = shuffleArray(tabs.filter(t => !t.active));
+    const freshTabs = otherTabs.filter(t => {
+      const d = extractDomain(t.url);
+      return !d || !cooldowns[d] || (nowMs - cooldowns[d].roastedAt > COOLDOWN_WINDOW);
+    });
+    const staleTabs = otherTabs.filter(t => {
+      const d = extractDomain(t.url);
+      return d && cooldowns[d] && (nowMs - cooldowns[d].roastedAt <= COOLDOWN_WINDOW);
+    });
+    const selectedTabs = activeTab
+      ? [activeTab, ...freshTabs, ...staleTabs].slice(0, 12)
+      : [...freshTabs, ...staleTabs].slice(0, 12);
 
     const tabList = selectedTabs.map(tab => {
       const tags = [];
@@ -633,6 +713,11 @@ After your roast, add | and the mood from the list above.`;
       if (tab.pinned) tags.push('pinned');
       const extra = parseUrlContext(tab.url);
       if (extra) tags.push(extra);
+      // Mark stale tabs
+      const d = extractDomain(tab.url);
+      if (d && cooldowns[d] && (nowMs - cooldowns[d].roastedAt <= COOLDOWN_WINDOW) && !tab.active) {
+        tags.push('ALREADY ROASTED - use only for callbacks');
+      }
       const suffix = tags.length ? ` [${tags.join(', ')}]` : '';
       return `- ${tab.title} (${tab.url})${suffix}`;
     }).join('\n');
@@ -704,13 +789,24 @@ After your roast, add | and the mood from the list above.`;
       ? `\n\nMOOD DIRECTIVE: Use the ${suggestedMood.toUpperCase()} mood for this roast.`
       : '';
 
-    // Pick a forced angle to ensure variety (NEWS ANCHOR weighted 30% when news available)
+    // First 3 roasts ever: force the strongest angles in sequence
     const hasNews = newsContext.length > 0;
-    const angle = pickAngle(hasNews);
+    let angle;
+    const { jesty_data: _d } = await chrome.storage.local.get(['jesty_data']);
+    const totalGenerated = _d?.profile?.total_roasts || 0;
+    const FIRST_ROAST_ANGLES = ['IDENTITY READ', 'CONTRADICTION', 'PATTERN EXPOSE'];
+    if (totalGenerated < 3) {
+      angle = FIRST_ROAST_ANGLES[totalGenerated];
+      const idx = ROAST_ANGLES.indexOf(angle);
+      if (idx !== -1) _persistAngleHistory(idx);
+    } else {
+      angle = pickAngle(hasNews);
+    }
     const angleDirective = `\n\nANGLE: Use the ${angle} angle for this roast. Commit to it fully.`;
 
     // Fetch recent roasts to avoid repetition (include topics so AI avoids same subjects)
     const recentRoasts = await getRecentRoasts(5);
+    const topicRoasts = await getRecentRoasts(8); // Wider window for topic avoidance
     let recentRoastsBlock = '';
     if (recentRoasts.length > 0) {
       const lines = recentRoasts.map((r, i) => {
@@ -719,7 +815,7 @@ After your roast, add | and the mood from the list above.`;
           : '';
         return `${i + 1}. "${r.text}"${topics}`;
       });
-      const recentTopics = [...new Set(recentRoasts.flatMap(r => r.roasted_topics || []))];
+      const recentTopics = [...new Set(topicRoasts.flatMap(r => r.roasted_topics || []))];
       const topicWarning = recentTopics.length > 0
         ? `\nAVOID THESE TOPICS (already roasted recently): ${recentTopics.join(', ')}`
         : '';
@@ -825,6 +921,19 @@ After your roast, add | and the mood from the list above.`;
 
     await chrome.storage.local.set({ roastedDomains });
 
+    // Update tab cooldowns — track domains mentioned in this roast
+    const mentionedDomains = new Set(extractKeywords(joke).map(k => k.toLowerCase()));
+    if (activeTab) mentionedDomains.add(extractDomain(activeTab.url));
+    for (const domain of mentionedDomains) {
+      if (domain && !domain.startsWith('chrome') && !domain.startsWith('new')) {
+        cooldowns[domain] = {
+          roastedAt: Date.now(),
+          count: (cooldowns[domain]?.count || 0) + 1
+        };
+      }
+    }
+    await chrome.storage.local.set({ _jestyRoastedTabCooldown: cooldowns });
+
     return {
       joke,
       mood,
@@ -835,5 +944,113 @@ After your roast, add | and the mood from the list above.`;
     };
   }
 
-  return { generate };
+  const DEEP_READ_PROMPT = `You're Jesty — a sharp, brutally honest blob who lives in someone's browser. You see their tabs and you have a LOT to say.
+
+DEEP READ MODE — THIS IS NOT A REGULAR ROAST.
+Write a FULL PARAGRAPH. 4-6 sentences minimum. Go deep. Be relentless.
+Analyze their entire browser state like a friend who just looked at their screen and can't hold back.
+
+RULES:
+- Name specific tabs, domains, search queries by name. Vague = failure.
+- Call out contradictions between tabs. Name what the combination reveals about them.
+- Identify patterns — what they keep going back to, what they're avoiding, what they're pretending to do.
+- Be brutally honest. Maximum directness. Don't soften anything. No "but hey" or "just kidding".
+- Make them feel uncomfortably seen. Say what they already know but won't admit.
+- Write like a real person talking, not a bot generating content. Casual, sharp, unfiltered.
+- DO NOT write a list. Write flowing sentences. One continuous paragraph.
+- No emojis. Plain text only.
+
+FORMAT: Start with a short punchy title (3-6 words, no quotes), then a line break, then the full paragraph.
+
+EXAMPLE:
+Procrastinating in Surround Sound
+You've got 34 tabs open and not one of them is the thing you're actually supposed to be doing. Gmail is screaming at you with unread emails you've been ignoring since Tuesday, but sure, let's browse Reddit for the fourth time today. That Udemy course you bought three months ago is still on tab two — you opened it once, watched the intro, and never went back. Meanwhile you've got a job application half-filled since last week sitting next to a Zillow listing you absolutely cannot afford. The LinkedIn tab is just there for moral support at this point. You're not multitasking, you're hoarding anxiety with a search bar.
+
+After your paragraph, add | and a mood (smug, suspicious, yikes, eyeroll, disappointed, melting, dead).`;
+
+  async function generateDeepRead() {
+    const tabs = await chrome.tabs.query({});
+    if (!tabs.length) return { error: 'No tabs found' };
+
+    await JestyStorage.updateCategoryStats(tabs);
+
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const timeLabel = hour < 6 ? 'late night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'late night';
+
+    const activeTab = tabs.find(t => t.active);
+    const otherTabs = shuffleArray(tabs.filter(t => !t.active)).slice(0, 15);
+    const selectedTabs = activeTab ? [activeTab, ...otherTabs] : shuffleArray(tabs).slice(0, 16);
+
+    const tabList = selectedTabs.map(tab => {
+      const tags = [];
+      if (tab.active) tags.push('ACTIVE NOW');
+      if (tab.audible) tags.push('playing audio');
+      if (tab.pinned) tags.push('pinned');
+      const extra = parseUrlContext(tab.url);
+      if (extra) tags.push(extra);
+      const suffix = tags.length ? ` [${tags.join(', ')}]` : '';
+      return `- ${tab.title} (${tab.url})${suffix}`;
+    }).join('\n');
+
+    const timeContext = `[It's ${day} ${timeLabel}, ${hour}:${String(now.getMinutes()).padStart(2, '0')}. User has ${tabs.length} tabs open.]`;
+    const realTimeContext = await fetchRealTimeContext(tabs);
+    const personalizedContext = await JestyStorage.buildPersonalizedContext();
+    const userTier = await JestyPremium.getTier();
+
+    const fullPrompt = personalizedContext
+      ? `${DEEP_READ_PROMPT}\n\nUSER CONTEXT:\n${personalizedContext}`
+      : DEEP_READ_PROMPT;
+
+    try {
+      const response = await fetch(CHAT_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: fullPrompt },
+            { role: 'user', content: `${timeContext}\n\n${tabList}${realTimeContext}` }
+          ],
+          max_tokens: 350,
+          temperature: 0.85
+        })
+      });
+
+      if (!response.ok) throw new Error(`Deep read API error: ${response.status}`);
+
+      const data = await response.json();
+      const raw = data.choices?.[0]?.message?.content?.trim() || '';
+
+      const lastPipe = raw.lastIndexOf('|');
+      let fullText, mood;
+      if (lastPipe > 0) {
+        fullText = raw.substring(0, lastPipe).trim();
+        const moodTag = raw.substring(lastPipe + 1).trim().toLowerCase();
+        const validMoods = userTier === 'pro' ? PRO_MOODS : userTier === 'premium' ? PREMIUM_MOODS : FREE_MOODS;
+        mood = validMoods.includes(moodTag) ? moodTag : detectExpression(fullText);
+      } else {
+        fullText = raw;
+        mood = detectExpression(raw);
+      }
+
+      // Split title (first line) from body (rest)
+      const firstBreak = fullText.indexOf('\n');
+      let title, body;
+      if (firstBreak > 0 && firstBreak < 80) {
+        title = fullText.substring(0, firstBreak).trim();
+        body = fullText.substring(firstBreak + 1).trim();
+      } else {
+        title = 'Deep Read';
+        body = fullText;
+      }
+
+      return { title, body, text: fullText, mood };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
+  return { generate, generateDeepRead };
 })();

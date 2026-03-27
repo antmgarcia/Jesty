@@ -60,15 +60,17 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 
 // Update tab info when URL changes + detect Stripe success
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Detect Stripe payment success — check both URL change and page load complete
+  // (service worker may wake up after URL already changed, so status:'complete' is the backup)
+  const urlToCheck = changeInfo.url || (changeInfo.status === 'complete' && tab.url);
+  if (urlToCheck && urlToCheck.includes('jesty.fun') && urlToCheck.includes('session_id=') && urlToCheck.includes('tier=')) {
+    await handlePaymentSuccess(urlToCheck);
+  }
+
   if (!changeInfo.url) return;
 
   try {
     if (changeInfo.url.startsWith('chrome://')) return;
-
-    // Detect Stripe payment success URL (jesty.fun with session_id + tier params)
-    if (changeInfo.url.includes('jesty.fun') && changeInfo.url.includes('session_id=') && changeInfo.url.includes('tier=')) {
-      await handlePaymentSuccess(changeInfo.url);
-    }
 
     const { openTabs = {} } = await chrome.storage.local.get(['openTabs']);
 
@@ -95,6 +97,19 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     if (openTabs[activeInfo.tabId]) {
       openTabs[activeInfo.tabId].lastActivated = Date.now();
       await chrome.storage.local.set({ openTabs });
+
+      // Track unique domains visited
+      const domain = openTabs[activeInfo.tabId].domain;
+      if (domain && !domain.startsWith('chrome') && !domain.startsWith('new')) {
+        const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
+        if (jesty_data && jesty_data.profile) {
+          if (!jesty_data.profile.unique_domains) jesty_data.profile.unique_domains = [];
+          if (!jesty_data.profile.unique_domains.includes(domain)) {
+            jesty_data.profile.unique_domains.push(domain);
+            await chrome.storage.local.set({ jesty_data });
+          }
+        }
+      }
     }
   } catch (e) { /* non-critical */ }
 
@@ -249,6 +264,7 @@ async function handlePaymentSuccess(url) {
     // Deduplicate — jesty.fun may redirect internally, firing onUpdated twice
     if (sessionId === _lastProcessedSession) return;
     _lastProcessedSession = sessionId;
+    console.log('Jesty: Payment detected, verifying session', sessionId);
 
     // Verify payment server-side before activating
     const verifyRes = await fetch(
@@ -262,10 +278,16 @@ async function handlePaymentSuccess(url) {
     }
 
     const confirmedTier = verification.tier || tier;
+    const customerEmail = verification.email;
 
     // Activate premium locally
     const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
     if (!jesty_data) return;
+
+    // Store email from Stripe checkout
+    if (customerEmail) {
+      jesty_data.profile.email = customerEmail;
+    }
 
     if (confirmedTier === 'pro') {
       jesty_data.settings.subscription_tier = 'pro';

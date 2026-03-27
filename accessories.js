@@ -190,13 +190,15 @@ const JestyAccessories = (() => {
 
     // Pro-exclusive accessories require pro tier
     if (acc.tier === 'pro') {
-      if (typeof JestyPremium !== 'undefined' && !(await JestyPremium.isPro())) return false;
+      if (typeof JestyPremium === 'undefined') return false;
+      if (!(await JestyPremium.isPro())) return false;
       return true;
     }
 
     // Guilty-exclusive accessories require premium (guilty) tier or higher
     if (acc.tier === 'guilty') {
-      if (typeof JestyPremium !== 'undefined' && !(await JestyPremium.isPremium())) return false;
+      if (typeof JestyPremium === 'undefined') return false;
+      if (!(await JestyPremium.isPremium())) return false;
       return true;
     }
 
@@ -221,6 +223,8 @@ const JestyAccessories = (() => {
   async function equipAccessory(slot, accessoryId) {
     const accessory = CATALOG.find(a => a.id === accessoryId && a.slot === slot);
     if (!accessory) return false;
+
+    if (!(await isUnlocked(accessoryId))) return false;
 
     equipped[slot] = accessoryId;
     await saveEquipped();

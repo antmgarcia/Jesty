@@ -334,7 +334,7 @@
             '<span class="tab-tier-card-name">Guilty</span>' +
             '<span class="tab-tier-card-badge">Full judgement</span>' +
           '</div>' +
-          '<div class="tab-tier-card-price">$5 <span>once</span></div>' +
+          '<div class="tab-tier-card-price">' + PRICE.premium + ' <span>once</span></div>' +
         '</div>' +
       '</div>' +
       '<ul class="tab-tier-card-features">' +
@@ -343,7 +343,7 @@
         '<li>Tasks</li>' +
         '<li>+5 unlockable accessories</li>' +
       '</ul>' +
-      '<button class="tab-tier-card-cta">Plead Guilty — $5</button>';
+      '<button class="tab-tier-card-cta">Plead Guilty — ' + PRICE.premium + '</button>';
 
     card.querySelector('.tab-tier-card-cta').addEventListener('click', function() {
       chrome.runtime.sendMessage({ type: 'open-checkout' });

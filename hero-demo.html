@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jesty Hero Animation Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #FAFAFA;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .demo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .character-stage {
+      position: relative;
+      width: 500px;
+      height: 420px;
+      overflow: visible;
+    }
+
+    .character-wrapper {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      width: 320px;
+      height: 340px;
+    }
+
+    .character-wrapper svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .character-floor {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 180px;
+      height: 28px;
+      background: #F0F0F0;
+      border-radius: 50%;
+      transition: width 0.3s ease-out;
+    }
+
+    .mood-label {
+      font-size: 18px;
+      font-weight: 600;
+      color: #18181B;
+      min-height: 28px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="demo-container">
+    <div class="character-stage" id="character-stage">
+      <div class="character-wrapper" id="character-wrapper">
+        <div class="character-floor"></div>
+        <svg id="animated-character" viewBox="-15 -10 150 140">
+          <use href="#face-smug"/>
+        </svg>
+      </div>
+    </div>
+    <div class="mood-label" id="mood-label">smug</div>
+  </div>
+
+  <!-- GSAP from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <!-- Jesty character system -->
+  <script src="characters.js"></script>
+  <script src="character-animator.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Init character symbols
+      JestyCharacters.init();
+
+      // Purple color (default)
+      const color = { body: '#A78BFA', limb: '#8B6FD6', shadow: '#6D52B0', highlight: '#D4C4F7' };
+
+      // Init animator
+      const stage = document.getElementById('character-stage');
+      const wrapper = document.getElementById('character-wrapper');
+      const svg = document.getElementById('animated-character');
+      const label = document.getElementById('mood-label');
+
+      JestyAnimator.init(stage, wrapper, svg);
+      JestyAnimator.setColor(color);
+
+      // Update mood label when expression changes
+      setInterval(() => {
+        const mood = JestyAnimator.getExpression();
+        if (label.textContent !== mood) label.textContent = mood;
+      }, 200);
+
+      // Click to force mood change
+      stage.style.cursor = 'pointer';
+      stage.addEventListener('click', () => {
+        JestyAnimator.tapMoodChange();
+      });
+    });
+  </script>
+</body>
+</html>
