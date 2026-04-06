@@ -440,9 +440,7 @@ After your roast, add | and the mood from the list above.`;
         }
       }
     }
-    if (month === 4 && date <= 15) {
-      signals.push('SEASON: Tax season — deadline approaching');
-    }
+    // Tax season removed — too US-specific and dominated roasts for 2 weeks
     const holidayKey = `${month}-${date}`;
     if (holidays[holidayKey]) {
       signals.push(`TODAY: It's ${holidays[holidayKey]}`);
