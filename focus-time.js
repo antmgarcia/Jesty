@@ -130,7 +130,7 @@ const JestyFocusTime = (() => {
 
       const response = await fetch(CHAT_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Jesty-Key': CONFIG.API_KEY },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
