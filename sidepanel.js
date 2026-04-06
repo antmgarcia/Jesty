@@ -565,7 +565,10 @@ function openDrawer() {
 
   // Hide live comment when drawer is open
   const commentText = document.getElementById('comment-text');
-  if (commentText) commentText.classList.remove('visible');
+  if (commentText) {
+    commentText.classList.remove('visible');
+    commentText.style.opacity = '0';
+  }
 
   // Show remaining counter above input
   const inputRemaining = document.getElementById('input-remaining');
@@ -728,7 +731,7 @@ function showDeepReadOverlay(result) {
 
     // Add collapsed message — title only, expandable
     document.getElementById('empty-state')?.classList.add('hidden');
-    const chatContainer = document.getElementById('chat-messages');
+    const chatContainer = document.getElementById('chat-container');
     if (chatContainer) {
       const msgDiv = document.createElement('div');
       msgDiv.className = 'message jesty';
@@ -751,10 +754,7 @@ function showDeepReadOverlay(result) {
     }
 
     // Open chat drawer
-    const drawer = document.querySelector('.chat-drawer');
-    if (drawer && !drawer.classList.contains('open')) {
-      drawer.classList.add('open');
-    }
+    openDrawer();
     const input = document.getElementById('message-input');
     if (input) input.focus();
   });
@@ -1469,7 +1469,7 @@ async function renderDrawerGrid(refreshId) {
     const nextTierKey = tier === 'free' ? 'premium' : 'pro';
     const upgrade = tier === 'free'
       ? { name: 'Guilty', price: PRICE.premiumFull, desc: 'Unlock all accessories & exclusive drip' }
-      : { name: 'Sentenced', price: PRICE.pro, desc: 'Calendar roasts & exclusive accessories' };
+      : { name: 'Sentenced', price: PRICE.pro, desc: 'Exclusive accessories & more' };
     const combo = TIER_COMBOS[nextTierKey];
     const ucColor = SLOT_COLORS[combo.color];
 
@@ -2933,11 +2933,6 @@ async function initPremiumFeatures() {
   // Task card: visible to all, but disabled for free users
   await initProductivityTasks(isPremium);
 
-  // Premium+ features
-  if (isPremium) {
-    await initCalendarSchedule();
-  }
-
   // Fun Zone visible to all users (quiz/trivia gated for free)
   await initFunZone(isPremium);
 
@@ -3323,7 +3318,7 @@ async function renderDossierCard() {
 }
 
 function renderDossierCrowd() {
-  const crowd = document.getElementById('dossier-crowd');
+  let crowd = document.getElementById('dossier-crowd');
   if (!crowd) return;
 
   const expressions = [
@@ -3377,7 +3372,10 @@ function renderDossierCrowd() {
 
   crowd.innerHTML = html;
 
-  // Scatter effect: characters run away from cursor
+  // Scatter effect: characters run away from cursor — replace element to clear old listeners
+  const freshCrowd = crowd.cloneNode(true);
+  crowd.parentNode.replaceChild(freshCrowd, crowd);
+  crowd = freshCrowd;
   const faces = crowd.querySelectorAll('svg');
   const maxDist = 120;
   const maxPush = 25;
@@ -5228,111 +5226,6 @@ async function awardXP(amount) {
    ────────────────────────────────────────────── */
 
 
-/* ──────────────────────────────────────────────
-   CALENDAR SCHEDULE (Pro)
-   ────────────────────────────────────────────── */
-
-async function initCalendarSchedule() {
-  const card = document.getElementById('schedule-card');
-  if (!card) return;
-
-  const hasCal = await JestyPremium.checkFeature('calendar');
-  if (!hasCal) return;
-
-  try {
-    const calAuthed = await JestyCalendar.isAuthenticated();
-    if (!calAuthed) return;
-
-    const events = await JestyCalendar.getUpcomingEvents(5);
-    card.classList.remove('hidden');
-
-    const eventsContainer = document.getElementById('schedule-events');
-    if (!eventsContainer) return;
-
-    if (!events || events.length === 0) {
-      eventsContainer.innerHTML = '<p class="schedule-empty">No upcoming events. Lucky you.</p>';
-      return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const todayEvents = events.filter(e => e.start.startsWith(today));
-    const displayEvents = todayEvents.length > 0 ? todayEvents : events.slice(0, 3);
-
-    // Render events immediately (without comments)
-    renderScheduleEvents(eventsContainer, displayEvents, null);
-
-    // Generate AI comments in the background
-    generateEventComments(displayEvents).then(comments => {
-      if (comments) renderScheduleEvents(eventsContainer, displayEvents, comments);
-    });
-  } catch (e) {
-    // Calendar is non-critical, fail silently
-  }
-}
-
-function renderScheduleEvents(container, events, comments) {
-  container.innerHTML = events.map((e, i) => {
-    const start = new Date(e.start);
-    const now = new Date();
-    const diffMin = Math.round((start - now) / 60000);
-
-    let timeStr;
-    if (diffMin < 0) timeStr = 'Now';
-    else if (diffMin < 60) timeStr = `${diffMin}m`;
-    else if (diffMin < 1440) timeStr = `${Math.round(diffMin / 60)}h`;
-    else timeStr = 'Tomorrow';
-
-    const comment = comments && comments[i] ? `<p class="schedule-event-comment">${escapeHtml(comments[i])}</p>` : '';
-
-    return `
-      <div class="schedule-event">
-        <div class="schedule-event-main">
-          <span class="schedule-event-time">${timeStr}</span>
-          <span class="schedule-event-name">${escapeHtml(e.summary)}</span>
-        </div>
-        ${comment}
-      </div>
-    `;
-  }).join('');
-}
-
-async function generateEventComments(events) {
-  try {
-    const eventList = events.map((e, i) => {
-      const start = new Date(e.start);
-      const diffMin = Math.round((start - new Date()) / 60000);
-      let timeStr;
-      if (diffMin < 0) timeStr = 'happening now';
-      else if (diffMin < 60) timeStr = `in ${diffMin} minutes`;
-      else timeStr = `in ${Math.round(diffMin / 60)} hours`;
-      return `${i + 1}. "${e.summary}" (${timeStr})`;
-    }).join('\n');
-
-    const response = await fetch(CHAT_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are Jesty, a sarcastic AI. Give a very short (max 8 words) sarcastic roast or snarky advice for EACH calendar event. One line per event, numbered. No emojis. Be funny.' },
-          { role: 'user', content: eventList }
-        ],
-        max_tokens: 150,
-        temperature: 0.9
-      })
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const text = data.choices[0].message.content.trim();
-    // Parse numbered lines
-    const lines = text.split('\n').map(l => l.replace(/^\d+[\.\)]\s*/, '').trim()).filter(Boolean);
-    return lines;
-  } catch {
-    return null;
-  }
-}
 
 
 /* ──────────────────────────────────────────────
@@ -5774,11 +5667,10 @@ const TIER_DATA = [
     key: 'pro',
     name: 'Sentenced',
     tagline: 'No escape',
-    price: PRICE.premium,
-    priceSub: '/mo',
+    price: PRICE.pro,
+    priceSub: '',
     features: [
       'Everything in Guilty',
-      'Calendar events with Jesty commentary',
       'Exclusive accessories'
     ],
     cta: { label: 'Launching Soon', style: 'secondary', action: 'disabled' }
@@ -5840,8 +5732,8 @@ const SLOT_ROASTS = {
   ],
   pro: [
     "The full sentence. No parole. No mercy. No limits.",
-    "I'll roast your meetings too. Calendar integration hits different.",
-    "Exclusive drip and I haunt your Google Calendar.",
+    "Full sentence. No parole. Exclusive drip included.",
+    "The premium experience, but make it permanent.",
   ],
 };
 
@@ -6313,7 +6205,7 @@ function showChatLock() {
 async function openPremiumCheckout() {
   try {
     const { jesty_data } = await chrome.storage.local.get(['jesty_data']);
-    const userId = jesty_data ? jesty_data.profile.user_id : '';
+    const userId = jesty_data?.profile?.user_id || '';
     const locale = navigator.language || '';
     chrome.tabs.create({ url: `${CONFIG.API_URL}/api/checkout?user_id=${userId}&locale=${encodeURIComponent(locale)}` });
   } catch (e) {

@@ -32,10 +32,12 @@ let timerInterval = null;
 let _cachedTabId = null;
 let _blurEnabled = false;
 
-// Pre-cache the active tab ID so background can call sidePanel.open() synchronously
-chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
-  _cachedTabId = tabs[0]?.id || null;
-});
+// Pre-cache the active tab ID — chrome.tabs may not be available in content script iframes
+if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+  chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+    _cachedTabId = tabs[0]?.id || null;
+  }).catch(() => {});
+}
 
 // Read current blur state from storage
 chrome.storage.local.get(['focusBlurEnabled'], (result) => {

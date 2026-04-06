@@ -425,7 +425,8 @@ const JestyTabQuiz = (() => {
     const pool = generateQuestionPool(tabData);
     if (pool.length < 3) {
       const container = document.getElementById('tabquiz-content');
-      container.innerHTML = `<div class="quiz-start"><p class="quiz-start-desc">I need more to work with. Open some tabs and come back.</p><button class="quiz-start-btn" onclick="JestyTabQuiz.hide()">Got it</button></div>`;
+      container.innerHTML = `<div class="quiz-start"><p class="quiz-start-desc">I need more to work with. Open some tabs and come back.</p><button class="quiz-start-btn" id="tabquiz-dismiss-btn">Got it</button></div>`;
+      document.getElementById('tabquiz-dismiss-btn')?.addEventListener('click', () => JestyTabQuiz.hide());
       setCharacter('disappointed');
       return;
     }

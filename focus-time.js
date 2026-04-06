@@ -209,6 +209,7 @@ const JestyFocusTime = (() => {
         const ended = { ...focusSession, active: false, endedAt: Date.now(), pendingEnd: false };
         await chrome.storage.local.set({ focusSession: ended });
         await saveCompletedSession(ended);
+        return false;
       }
     }
 

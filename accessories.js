@@ -205,8 +205,10 @@ const JestyAccessories = (() => {
     // Free accessories are always unlocked
     if (acc.tier === 'free') return true;
 
-    // Premium accessories unlock by level (available to all tiers)
+    // Premium accessories unlock by level (requires premium or higher)
     if (acc.unlockLevel) {
+      if (typeof JestyPremium === 'undefined') return false;
+      if (!(await JestyPremium.isPremium())) return false;
       try {
         const data = await chrome.storage.local.get(['jesty_data']);
         const level = (data.jesty_data && data.jesty_data.progression && data.jesty_data.progression.level) || 1;

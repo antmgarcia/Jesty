@@ -7,6 +7,7 @@ const JestyCalendar = (() => {
   const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
   const CACHE_KEY = 'jestyCalendarCache';
   const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+  let _retrying = false;
 
   /**
    * Authenticate and get OAuth token
@@ -80,10 +81,16 @@ const JestyCalendar = (() => {
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
+        if (response.status === 401 && !_retrying) {
           // Token expired, remove and retry once
+          _retrying = true;
           await new Promise(resolve => chrome.identity.removeCachedAuthToken({ token }, resolve));
-          return getUpcomingEvents(count);
+          try {
+            const result = await getUpcomingEvents(count);
+            return result;
+          } finally {
+            _retrying = false;
+          }
         }
         return [];
       }

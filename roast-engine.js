@@ -2,7 +2,7 @@
  * RoastEngine — shared roast generation module.
  * Used by newtab.js and sidepanel.js.
  * Depends on: CONFIG (config.js), JestyStorage (storage.js),
- *             JestyPremium (premium.js), JestyCalendar (calendar.js — optional)
+ *             JestyPremium (premium.js)
  */
 const RoastEngine = (() => {
   const CHAT_API_URL = CONFIG.API_URL + '/api/chat';
@@ -350,9 +350,11 @@ After your roast, add | and the mood from the list above.`;
       })());
     }
 
-    // Weather
+    // Weather (only if permission already granted — avoid prompting)
     fetches.push((async () => {
       try {
+        const perm = await navigator.permissions?.query({ name: 'geolocation' }).catch(() => null);
+        if (!perm || perm.state !== 'granted') return;
         const pos = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000, maximumAge: 600000 });
         });
@@ -719,7 +721,8 @@ After your roast, add | and the mood from the list above.`;
         tags.push('ALREADY ROASTED - use only for callbacks');
       }
       const suffix = tags.length ? ` [${tags.join(', ')}]` : '';
-      return `- ${tab.title} (${tab.url})${suffix}`;
+      const safeTitle = (tab.title || '').replace(/[\r\n]/g, ' ').slice(0, 200);
+      return `- ${safeTitle} (${tab.url})${suffix}`;
     }).join('\n');
 
     const timeContext = `[It's ${day} ${timeLabel}, ${hour}:${String(now.getMinutes()).padStart(2, '0')}. User has ${tabs.length} tabs open.]`;
@@ -747,25 +750,6 @@ After your roast, add | and the mood from the list above.`;
 
     if (typeof CONFIG === 'undefined' || !CONFIG.API_URL) {
       throw new Error('API not configured');
-    }
-
-    // Calendar context for Pro users
-    let calendarContext = '';
-    const isProUser = await JestyPremium.isPro();
-    if (isProUser) {
-      try {
-        const calAuthed = await JestyCalendar.isAuthenticated();
-        if (calAuthed) {
-          const nextEvent = await JestyCalendar.getNextEvent();
-          if (nextEvent) {
-            const start = new Date(nextEvent.start);
-            const diffMin = Math.round((start - new Date()) / 60000);
-            if (diffMin > 0 && diffMin < 120) {
-              calendarContext = `\nCALENDAR CONTEXT: User has "${nextEvent.summary}" in ${diffMin} minutes. If their tabs contrast with what they should be preparing for, roast them about it.`;
-            }
-          }
-        }
-      } catch (e) { /* Calendar is non-critical */ }
     }
 
     // Determine tier for mood selection
@@ -828,8 +812,8 @@ After your roast, add | and the mood from the list above.`;
       : '';
 
     const fullPrompt = personalizedContext
-      ? `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}\n\nUSER CONTEXT:\n${personalizedContext}${calendarContext}`
-      : `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}${calendarContext}`;
+      ? `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}\n\nUSER CONTEXT:\n${personalizedContext}`
+      : `${tierPrompt}${moodDirective}${angleDirective}${recentRoastsBlock}${shortDirective}`;
 
     const response = await fetch(CHAT_API_URL, {
       method: 'POST',
@@ -991,7 +975,8 @@ After your paragraph, add | and a mood (smug, suspicious, yikes, eyeroll, disapp
       const extra = parseUrlContext(tab.url);
       if (extra) tags.push(extra);
       const suffix = tags.length ? ` [${tags.join(', ')}]` : '';
-      return `- ${tab.title} (${tab.url})${suffix}`;
+      const safeTitle = (tab.title || '').replace(/[\r\n]/g, ' ').slice(0, 200);
+      return `- ${safeTitle} (${tab.url})${suffix}`;
     }).join('\n');
 
     const timeContext = `[It's ${day} ${timeLabel}, ${hour}:${String(now.getMinutes()).padStart(2, '0')}. User has ${tabs.length} tabs open.]`;

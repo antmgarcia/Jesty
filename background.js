@@ -106,6 +106,10 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
           if (!jesty_data.profile.unique_domains) jesty_data.profile.unique_domains = [];
           if (!jesty_data.profile.unique_domains.includes(domain)) {
             jesty_data.profile.unique_domains.push(domain);
+            // Cap at 500 to prevent unbounded growth
+            if (jesty_data.profile.unique_domains.length > 500) {
+              jesty_data.profile.unique_domains = jesty_data.profile.unique_domains.slice(-500);
+            }
             await chrome.storage.local.set({ jesty_data });
           }
         }
@@ -539,26 +543,8 @@ async function checkDailyReport() {
       roasts_given: todayRoasts.length,
       categories: [...new Set(todayRoasts.flatMap(r => r.context.categories_present))],
       moods: [...new Set(todayRoasts.map(r => r.mood))],
-      shares: todayRoasts.filter(r => r.was_shared).length,
-      calendar_events: null
+      shares: todayRoasts.filter(r => r.was_shared).length
     };
-
-    // Include calendar data for Pro users
-    if (jesty_data.settings.subscription_tier === 'pro') {
-      try {
-        // Read cached calendar events from session storage
-        const cached = await chrome.storage.session.get(['jestyCalendarCache']);
-        if (cached.jestyCalendarCache && cached.jestyCalendarCache.events) {
-          const todayStart = new Date(today).getTime();
-          const todayEnd = todayStart + 86400000;
-          const todayCalEvents = cached.jestyCalendarCache.events.filter(e => {
-            const t = new Date(e.start).getTime();
-            return t >= todayStart && t < todayEnd;
-          });
-          stats.calendar_events = todayCalEvents.map(e => e.summary);
-        }
-      } catch { /* calendar data is non-critical */ }
-    }
 
     // Store pending report for generation (sidepanel will generate via API)
     await chrome.storage.local.set({
@@ -736,7 +722,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ open: sidePanelOpen });
     return;
   }
-  if (msg.type === 'open-tab' && msg.url) {
+  if (msg.type === 'open-tab' && msg.url && /^https?:\/\//i.test(msg.url)) {
     chrome.tabs.create({ url: msg.url });
     sendResponse({ ok: true });
   }

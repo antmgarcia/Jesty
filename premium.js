@@ -18,9 +18,6 @@ const JestyPremium = (() => {
     tasks: 'premium',
     tamagotchi: 'premium',
     games_full: 'premium',
-    calendar: 'pro',
-    calendar_roasts: 'pro',
-    schedule_awareness: 'pro',
     pro_accessories: 'pro'
   };
 
@@ -200,7 +197,7 @@ const JestyPremium = (() => {
       // Reset daily cap so roast limits test fresh
       if (jesty_data.settings) {
         jesty_data.settings.roasts_today = 0;
-        jesty_data.settings.roasts_today_date = null;
+        jesty_data.settings.roast_cap_date = null;
       }
       await chrome.storage.local.set({ jesty_data });
     }

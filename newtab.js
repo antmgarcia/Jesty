@@ -534,7 +534,7 @@ async function checkPendingXPGain() {
 /**
  * Show XP toast micro animation
  */
-function showXPToast(amount) {
+function showXPToast(amount, source) {
   const heroSection = document.querySelector('.hero-section');
   if (!heroSection) return;
 
@@ -583,31 +583,6 @@ function showJoke(text, mood) {
 }
 
 async function generateRoast() {
-  // Morning briefing check (newtab-specific, runs before roast)
-  const isProUser = await JestyPremium.isPro();
-  if (isProUser) {
-    try {
-      const calAuthed = await JestyCalendar.isAuthenticated();
-      if (calAuthed) {
-        const { lastBriefingDate } = await chrome.storage.local.get(['lastBriefingDate']);
-        const today = new Date().toISOString().split('T')[0];
-        if (lastBriefingDate !== today) {
-          const briefing = await JestyCalendar.getMorningBriefing();
-          if (briefing && briefing.totalToday > 0) {
-            await chrome.storage.local.set({ lastBriefingDate: today });
-            const hour = new Date().getHours();
-            if (hour < 12) {
-              const tabs = await chrome.tabs.query({});
-              const briefingMsg = `Morning. You have ${briefing.totalToday} meeting${briefing.totalToday > 1 ? 's' : ''} today. The first is "${briefing.nextEvent.summary}". Maybe close the ${tabs.length} tabs from yesterday first.`;
-              showJoke(briefingMsg, 'suspicious');
-              return;
-            }
-          }
-        }
-      }
-    } catch (e) { /* Calendar is non-critical */ }
-  }
-
   showLoading();
 
   try {
@@ -1038,8 +1013,8 @@ const NT_TIER_DATA = [
   },
   {
     key: 'pro', name: 'Sentenced', tagline: 'No escape',
-    price: PRICE.pro, priceSub: '/mo',
-    features: ['Everything in Guilty', 'Calendar events with Jesty commentary', 'Exclusive accessories'],
+    price: PRICE.pro, priceSub: '',
+    features: ['Everything in Guilty', 'Exclusive accessories'],
     cta: { label: 'Launching Soon', style: 'secondary', action: 'disabled' }
   }
 ];
@@ -2038,11 +2013,13 @@ async function openTabManager() {
 
     // Favicon
     const faviconUrl = tab.favIconUrl;
+    const domainInitial = (domain.charAt(0) || '?').toUpperCase();
     let faviconHtml;
-    if (faviconUrl && !faviconUrl.startsWith('chrome://')) {
-      faviconHtml = `<img class="tab-card-favicon" src="${faviconUrl}" alt="" onerror="this.outerHTML='<div class=\\'tab-card-favicon-fallback\\'>${domain.charAt(0).toUpperCase()}</div>'">`;
+    if (faviconUrl && !faviconUrl.startsWith('chrome://') && /^https?:\/\//.test(faviconUrl)) {
+      const safeSrc = faviconUrl.replace(/"/g, '&quot;');
+      faviconHtml = `<img class="tab-card-favicon" src="${safeSrc}" alt="" onerror="this.outerHTML='<div class=\\'tab-card-favicon-fallback\\'>${domainInitial}</div>'">`;
     } else {
-      faviconHtml = `<div class="tab-card-favicon-fallback">${domain.charAt(0).toUpperCase() || '?'}</div>`;
+      faviconHtml = `<div class="tab-card-favicon-fallback">${domainInitial}</div>`;
     }
 
     card.innerHTML = `
