@@ -35,7 +35,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["focus-island.html", "focus-island.css", "focus-island.js", "characters.js", "theme.js", "memory-game.html", "card.html", "card.css", "card.js"],
+      "resources": ["focus-island.html", "focus-island.css", "focus-island.js", "characters.js", "theme.js"],
       "matches": ["http://*/*", "https://*/*"]
     }
   ]
