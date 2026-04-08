@@ -1,6 +1,17 @@
 # API key - never commit
 config.js
 
+# Claude Code project files
+CLAUDE.md
+.claude/
+
+# Dev tools - not part of the extension
+hero-demo.html
+character-sheet.html
+
+# Removed from extension
+calendar.js
+
 # Design lab experiments
 design-lab/
 
