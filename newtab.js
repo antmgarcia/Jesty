@@ -70,8 +70,6 @@ async function init() {
   // Check for pending XP gain (user closed a roasted tab)
   const pendingXPGain = await checkPendingXPGain();
 
-  const searchForm = document.getElementById('search-form');
-  const searchInput = document.getElementById('search-input');
   const refreshBtn = document.getElementById('refresh-btn');
   const talkbackBtn = document.getElementById('talkback-btn');
   const tabCountEl = document.getElementById('tab-count');
@@ -79,6 +77,10 @@ async function init() {
   // Hero CTA (Plead Guilty) — opens upgrade panel
   const heroCta = document.getElementById('hero-cta');
   if (heroCta) heroCta.addEventListener('click', () => openUpgradePanel());
+
+  // Top-right "Level up" button — opens side panel to levels view
+  const topLevelUpBtn = document.getElementById('top-levelup-btn');
+  if (topLevelUpBtn) topLevelUpBtn.addEventListener('click', () => openSidePanelTo('levels'));
 
   // Show tab count (clickable → opens tab manager)
   const tabs = await chrome.tabs.query({});
@@ -91,20 +93,6 @@ async function init() {
     const capStatus = await JestyStorage.checkDailyCap();
     updateRoastsRemaining(capStatus.remaining);
   } catch (e) { /* non-critical */ }
-
-  // Search form submission
-  searchForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const query = searchInput.value.trim();
-    if (query) {
-      // Check if it's a URL
-      if (isValidUrl(query)) {
-        window.location.href = query.startsWith('http') ? query : `https://${query}`;
-      } else {
-        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-      }
-    }
-  });
 
   // Refresh button - track refresh before generating new roast
   refreshBtn.addEventListener('click', async () => {
@@ -290,12 +278,10 @@ function showWelcomePrompt() {
   renderWelcomeColorFaces(randomColor.body);
 
   // Hide everything except the welcome prompt — clean onboarding screen
-  const searchSection = document.querySelector('.search-section');
   const tabInfo = document.querySelector('.tab-info');
   const topBarLeft = document.getElementById('top-bar-left');
   const topLinks = document.querySelector('.top-links');
   const tasksWidget = document.getElementById('newtab-tasks');
-  if (searchSection) searchSection.classList.add('hidden');
   if (tabInfo) tabInfo.classList.add('hidden');
   if (topBarLeft) topBarLeft.classList.add('hidden');
   if (topLinks) topLinks.classList.add('hidden');
@@ -303,7 +289,6 @@ function showWelcomePrompt() {
 
   function dismissWelcome() {
     welcomePrompt.classList.add('hidden');
-    if (searchSection) searchSection.classList.remove('hidden');
     if (tabInfo) tabInfo.classList.remove('hidden');
     if (topBarLeft) topBarLeft.classList.remove('hidden');
     if (topLinks) topLinks.classList.remove('hidden');
@@ -363,12 +348,6 @@ async function openSidePanel() {
   }
 }
 
-
-function isValidUrl(string) {
-  // Simple URL detection
-  const urlPattern = /^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/.*)?$/i;
-  return urlPattern.test(string);
-}
 
 let _newtabIdleTimer = null;
 let _newtabFirstBlink = null;

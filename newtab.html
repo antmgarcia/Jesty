@@ -11,10 +11,6 @@
   <!-- Page-specific icons (shared character/accessory SVGs injected by characters.js) -->
   <svg style="display: none;">
     <defs>
-      <symbol id="icon-search" viewBox="0 0 24 24">
-        <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
-        <path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </symbol>
       <symbol id="icon-refresh" viewBox="0 0 24 24">
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M21 3v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -65,10 +61,9 @@
     <button class="level-panel-play" id="level-panel-next">Play to level up</button>
   </div>
 
-  <!-- Top Right Links -->
+  <!-- Top Right CTA -->
   <div class="top-links">
-    <a href="https://mail.google.com" class="top-link">Gmail</a>
-    <a href="https://www.google.com" class="top-link">Google</a>
+    <button type="button" id="top-levelup-btn" class="top-cta">Level up</button>
   </div>
 
   <div class="container">
@@ -122,22 +117,6 @@
         </button>
       </div>
 
-    </div>
-
-    <!-- Search Section (minimal, bottom) -->
-    <div class="search-section">
-      <form id="search-form" class="search-form">
-        <div class="search-box">
-          <svg class="search-icon"><use href="#icon-search"/></svg>
-          <input
-            type="text"
-            id="search-input"
-            class="search-input"
-            placeholder="Search Google"
-            autocomplete="off"
-          >
-        </div>
-      </form>
     </div>
 
     <!-- Tasks hint (below top-bar-left) -->

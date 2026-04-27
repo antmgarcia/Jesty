@@ -17,6 +17,12 @@ CRITICAL — VARIETY IS EVERYTHING:
 SPECIFICITY IS NON-NEGOTIABLE:
 Generic inputs produce generic roasts. Always name the actual site, search query, or tab title. "productivity tab" = failure. "How to wake up at 5am tab, unopened since Tuesday" = roast material. The more specific the detail, the sharper the landing. If the tab data is rich, use it. If it's thin, find the one weird detail that reveals something.
 
+AMBIENT TABS — SKIP THESE:
+Email inboxes, messaging apps (Slack, Teams), and productivity dashboards that are always open are NOT interesting on their own. If the tab says "not roast-worthy on its own" — skip it entirely unless:
+1. The unread count is extreme (50+ emails = fair game, roast the negligence)
+2. The combination with OTHER tabs reveals something (e.g., job app + email = waiting anxiously)
+"You have Gmail open" is never a roast. Find something better.
+
 YOUR ANGLES — MANDATORY ROTATION:
 The angle history is provided in USER CONTEXT. You are FORBIDDEN from using the same angle twice in a row. If no history exists, start with CONTRADICTION or LIFE NARRATION. Each angle must feel like a completely different type of observation — not just different words for the same move.
 
@@ -308,6 +314,19 @@ After your roast, add | and the mood from the list above.`;
     } catch {
       return null;
     }
+  }
+
+  const EMAIL_HOSTS = ['mail.google.com', 'outlook.live.com', 'outlook.office.com', 'outlook.office365.com', 'mail.yahoo.com', 'mail.proton.me', 'protonmail.com'];
+
+  function parseEmailContext(url, title) {
+    try {
+      const host = new URL(url).hostname.replace('www.', '');
+      if (!EMAIL_HOSTS.some(h => host.includes(h))) return null;
+      const match = (title || '').match(/\((\d+)\)/);
+      const unread = match ? parseInt(match[1], 10) : 0;
+      if (unread >= 50) return `${unread} unread emails — roast-worthy`;
+      return 'email inbox, always open — not roast-worthy on its own';
+    } catch { return null; }
   }
 
   async function fetchRealTimeContext(tabs) {
@@ -711,8 +730,13 @@ After your roast, add | and the mood from the list above.`;
       if (tab.active) tags.push('ACTIVE NOW');
       if (tab.audible) tags.push('playing audio');
       if (tab.pinned) tags.push('pinned');
-      const extra = parseUrlContext(tab.url);
-      if (extra) tags.push(extra);
+      const emailCtx = parseEmailContext(tab.url, tab.title);
+      if (emailCtx) {
+        tags.push(emailCtx);
+      } else {
+        const extra = parseUrlContext(tab.url);
+        if (extra) tags.push(extra);
+      }
       // Mark stale tabs
       const d = extractDomain(tab.url);
       if (d && cooldowns[d] && (nowMs - cooldowns[d].roastedAt <= COOLDOWN_WINDOW) && !tab.active) {
@@ -970,8 +994,13 @@ After your paragraph, add | and a mood (smug, suspicious, yikes, eyeroll, disapp
       if (tab.active) tags.push('ACTIVE NOW');
       if (tab.audible) tags.push('playing audio');
       if (tab.pinned) tags.push('pinned');
-      const extra = parseUrlContext(tab.url);
-      if (extra) tags.push(extra);
+      const emailCtx = parseEmailContext(tab.url, tab.title);
+      if (emailCtx) {
+        tags.push(emailCtx);
+      } else {
+        const extra = parseUrlContext(tab.url);
+        if (extra) tags.push(extra);
+      }
       const suffix = tags.length ? ` [${tags.join(', ')}]` : '';
       const safeTitle = (tab.title || '').replace(/[\r\n]/g, ' ').slice(0, 200);
       return `- ${safeTitle} (${tab.url})${suffix}`;

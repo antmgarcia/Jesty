@@ -14,6 +14,7 @@ calendar.js
 
 # Design lab experiments
 design-lab/
+.ui-fullflow/
 
 # OS files
 .DS_Store

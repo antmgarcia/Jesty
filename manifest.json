@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Jesty",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Meet Jesty! The companion you need that roasts your browsing, keeps you focused, and rewards you with games and collectibles.",
   "permissions": ["tabs", "storage", "sidePanel", "alarms", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
